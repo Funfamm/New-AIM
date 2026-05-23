@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Clock, Calendar, Lock } from "lucide-react";
 
 type FilmCardProps = {
@@ -9,133 +10,102 @@ type FilmCardProps = {
   duration?: number | null;
   genre?: string | null;
   requiresAuth?: boolean;
+  /** Pass true for above-fold cards (hero, first rail) to skip lazy-load */
+  priority?: boolean;
 };
 
 export default function FilmCard({
-  slug, title, posterUrl, year, duration, genre, requiresAuth,
+  slug,
+  title,
+  posterUrl,
+  year,
+  duration,
+  genre,
+  requiresAuth,
+  priority = false,
 }: FilmCardProps) {
+  const durationLabel =
+    duration !== null && duration !== undefined
+      ? duration >= 60
+        ? `${Math.floor(duration / 60)}h ${duration % 60}m`
+        : `${duration}m`
+      : null;
+
   return (
-    <Link href={`/works/${slug}`} className="film-card">
+    <Link
+      href={`/works/${slug}`}
+      aria-label={`Watch ${title}`}
+      className="group block rounded-sm overflow-hidden bg-brand-dark border border-brand-border transition-[transform,border-color] duration-200 ease-out hover:border-brand-accent hover:-translate-y-1"
+    >
       {/* Poster */}
-      <div className="film-card-poster">
+      <div className="relative aspect-[2/3] overflow-hidden bg-brand-surface">
         {posterUrl ? (
-          <img src={posterUrl} alt={title} className="film-card-img" loading="lazy" />
+          <Image
+            src={posterUrl}
+            alt={title}
+            fill
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+            className="object-cover transition-transform duration-300 ease-out group-hover:scale-[1.04]"
+            priority={priority}
+          />
         ) : (
-          <div className="film-card-placeholder">
-            <span>{title.charAt(0)}</span>
+          <div
+            className="flex h-full w-full items-center justify-center font-display text-[4rem] font-black text-brand-border"
+            aria-hidden="true"
+          >
+            {title.charAt(0)}
           </div>
         )}
+
+        {/* Bottom gradient — always visible, darkens for readability */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background:
+              "linear-gradient(to top, rgba(10,10,10,0.75) 0%, transparent 55%)",
+          }}
+          aria-hidden="true"
+        />
+
+        {/* Members-only lock badge */}
         {requiresAuth && (
-          <div className="film-card-lock">
-            <Lock size={12} />
+          <div
+            className="absolute top-2 right-2 flex items-center rounded p-1 text-brand-accent"
+            style={{ background: "rgba(10,10,10,0.82)" }}
+            aria-label="Members only"
+          >
+            <Lock size={11} aria-hidden="true" />
           </div>
         )}
-        <div className="film-card-overlay" />
       </div>
 
       {/* Info */}
-      <div className="film-card-info">
-        {genre && <span className="film-card-genre">{genre}</span>}
-        <h3 className="film-card-title">{title}</h3>
-        <div className="film-card-meta">
-          {year && (
-            <span className="film-card-meta-item">
-              <Calendar size={11} />{year}
-            </span>
-          )}
-          {duration && (
-            <span className="film-card-meta-item">
-              <Clock size={11} />{Math.floor(duration / 60)}h {duration % 60}m
-            </span>
-          )}
-        </div>
+      <div className="px-3.5 pt-3 pb-3.5">
+        {genre && (
+          <span className="block mb-1.5 font-body text-[0.65rem] font-semibold uppercase tracking-widest text-brand-accent">
+            {genre}
+          </span>
+        )}
+        <h3 className="font-display text-[1rem] font-bold leading-snug text-brand-white mb-2 line-clamp-2">
+          {title}
+        </h3>
+        {(year || durationLabel) && (
+          <div className="flex items-center gap-3 flex-wrap">
+            {year && (
+              <span className="flex items-center gap-1 font-body text-[0.72rem] text-brand-muted">
+                <Calendar size={11} aria-hidden="true" />
+                {year}
+              </span>
+            )}
+            {durationLabel && (
+              <span className="flex items-center gap-1 font-body text-[0.72rem] text-brand-muted">
+                <Clock size={11} aria-hidden="true" />
+                {durationLabel}
+              </span>
+            )}
+          </div>
+        )}
       </div>
-
-      <style>{`
-        .film-card {
-          display: block;
-          text-decoration: none;
-          background: var(--color-brand-dark);
-          border: 1px solid var(--color-brand-border);
-          border-radius: 8px;
-          overflow: hidden;
-          transition: transform 0.25s ease, border-color 0.25s ease;
-        }
-        .film-card:hover {
-          transform: translateY(-4px);
-          border-color: var(--color-brand-accent);
-        }
-        .film-card-poster {
-          position: relative;
-          aspect-ratio: 2/3;
-          overflow: hidden;
-          background: var(--color-brand-surface);
-        }
-        .film-card-img {
-          width: 100%; height: 100%;
-          object-fit: cover;
-          display: block;
-          transition: transform 0.4s ease;
-        }
-        .film-card:hover .film-card-img { transform: scale(1.04); }
-        .film-card-placeholder {
-          width: 100%; height: 100%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-family: var(--font-display);
-          font-size: 4rem;
-          font-weight: 900;
-          color: var(--color-brand-border);
-        }
-        .film-card-overlay {
-          position: absolute;
-          inset: 0;
-          background: linear-gradient(to top, rgba(10,10,10,0.7) 0%, transparent 50%);
-        }
-        .film-card-lock {
-          position: absolute;
-          top: 0.6rem; right: 0.6rem;
-          background: rgba(10,10,10,0.8);
-          color: var(--color-brand-accent);
-          border-radius: 4px;
-          padding: 0.25rem;
-          display: flex;
-          align-items: center;
-        }
-        .film-card-info { padding: 0.9rem 1rem 1rem; }
-        .film-card-genre {
-          font-family: var(--font-body);
-          font-size: 0.65rem;
-          font-weight: 600;
-          letter-spacing: 0.1em;
-          text-transform: uppercase;
-          color: var(--color-brand-accent);
-          display: block;
-          margin-bottom: 0.3rem;
-        }
-        .film-card-title {
-          font-family: var(--font-display);
-          font-size: 1rem;
-          font-weight: 700;
-          color: var(--color-brand-white);
-          margin: 0 0 0.5rem;
-          line-height: 1.3;
-        }
-        .film-card-meta {
-          display: flex;
-          gap: 0.75rem;
-          flex-wrap: wrap;
-        }
-        .film-card-meta-item {
-          display: flex;
-          align-items: center;
-          gap: 0.3rem;
-          font-family: var(--font-body);
-          font-size: 0.72rem;
-          color: var(--color-brand-muted);
-        }
-      `}</style>
     </Link>
   );
 }
