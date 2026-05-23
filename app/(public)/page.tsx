@@ -1,25 +1,37 @@
-// Home page — cinematic hero + featured films
+// Home page — cinematic hero + New Releases + Staff Picks rails
 import Link from "next/link";
+import Image from "next/image";
 import { prisma } from "@/lib/prisma";
 import FilmCard from "@/components/film-card";
 import { Play, ChevronRight } from "lucide-react";
 
-async function getFeaturedFilms() {
-  return prisma.film.findMany({
-    where: { isPublic: true },
-    orderBy: { order: "asc" },
-    take: 6,
-    select: {
-      id: true, slug: true, title: true, posterUrl: true,
-      year: true, duration: true, genre: true, requiresAuth: true,
-      description: true, trailerUrl: true,
-    },
-  });
+const FILM_FIELDS = {
+  id: true, slug: true, title: true, posterUrl: true,
+  year: true, duration: true, genre: true, requiresAuth: true,
+  description: true, trailerUrl: true,
+} as const;
+
+async function getHomeFilms() {
+  const [newReleases, staffPicks] = await Promise.all([
+    prisma.film.findMany({
+      where: { isPublic: true },
+      orderBy: { createdAt: "desc" },
+      take: 8,
+      select: FILM_FIELDS,
+    }),
+    prisma.film.findMany({
+      where: { isPublic: true },
+      orderBy: { order: "asc" },
+      take: 8,
+      select: FILM_FIELDS,
+    }),
+  ]);
+  return { newReleases, staffPicks };
 }
 
 export default async function HomePage() {
-  const films = await getFeaturedFilms();
-  const hero = films[0] ?? null;
+  const { newReleases, staffPicks } = await getHomeFilms();
+  const hero = staffPicks[0] ?? null;
 
   return (
     <main>
@@ -27,7 +39,18 @@ export default async function HomePage() {
       <section className="hero">
         <div className="hero-bg">
           {hero?.posterUrl && (
-            <img src={hero.posterUrl} alt="" className="hero-bg-img" aria-hidden />
+            <Image
+              src={hero.posterUrl}
+              alt=""
+              fill
+              priority
+              style={{
+                objectFit: "cover",
+                objectPosition: "center top",
+                opacity: 0.35,
+              }}
+              aria-hidden={true}
+            />
           )}
           <div className="hero-bg-gradient" />
         </div>
@@ -39,7 +62,8 @@ export default async function HomePage() {
             {hero ? hero.title : "AI-Generated\nCinema"}
           </h1>
           <p className="hero-desc">
-            {hero?.description ?? "Groundbreaking films created with artificial intelligence. Stream trailers, discover new works, and experience the future of storytelling."}
+            {hero?.description ??
+              "Groundbreaking films created with artificial intelligence. Stream trailers, discover new works, and experience the future of storytelling."}
           </p>
           <div className="hero-actions">
             {hero ? (
@@ -61,27 +85,49 @@ export default async function HomePage() {
         <div className="hero-scroll-hint">scroll</div>
       </section>
 
-      {/* ── Featured Films ───────────────────────────── */}
-      <section className="section container-app">
-        <div className="section-header">
-          <h2 className="section-title">Featured Works</h2>
-          <Link href="/works" className="section-more">
-            All Films <ChevronRight size={14} />
-          </Link>
-        </div>
-
-        {films.length > 0 ? (
-          <div className="film-grid">
-            {films.map((f) => (
-              <FilmCard key={f.id} {...f} />
+      {/* ── New Releases rail ────────────────────────── */}
+      {newReleases.length > 0 && (
+        <section className="section container-app">
+          <div className="section-header">
+            <h2 className="section-title">New Releases</h2>
+            <Link href="/works" className="section-more">
+              All Films <ChevronRight size={14} />
+            </Link>
+          </div>
+          <div className="film-rail">
+            {newReleases.map((f, i) => (
+              <div key={f.id} className="film-rail-card">
+                <FilmCard {...f} priority={i < 3} />
+              </div>
             ))}
           </div>
-        ) : (
+        </section>
+      )}
+
+      {/* ── Staff Picks rail ─────────────────────────── */}
+      {staffPicks.length > 0 && (
+        <section className="section section--compact container-app">
+          <div className="section-header">
+            <h2 className="section-title">Staff Picks</h2>
+          </div>
+          <div className="film-rail">
+            {staffPicks.map((f) => (
+              <div key={f.id} className="film-rail-card">
+                <FilmCard {...f} />
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ── Empty state (no public films yet) ────────── */}
+      {newReleases.length === 0 && staffPicks.length === 0 && (
+        <section className="section container-app">
           <div className="empty-state">
             <p>Films coming soon. Check back shortly.</p>
           </div>
-        )}
-      </section>
+        </section>
+      )}
 
       {/* ── About strip ──────────────────────────────── */}
       <section className="about-strip">
@@ -89,17 +135,27 @@ export default async function HomePage() {
           <div className="about-strip-text">
             <h2 className="about-strip-title">The Future of Film is Here</h2>
             <p className="about-strip-desc">
-              AIM Studio creates AI-generated films that push the boundaries of storytelling.
-              Watch trailers, follow your favourite creators, and stream full films on any device.
+              AIM Studio creates AI-generated films that push the boundaries of
+              storytelling. Watch trailers, follow your favourite creators, and
+              stream full films on any device.
             </p>
             <Link href="/about" className="about-strip-link">
               Our Story <ChevronRight size={14} />
             </Link>
           </div>
           <div className="about-strip-stats">
-            <div className="stat"><span className="stat-num">AI</span><span className="stat-label">Generated</span></div>
-            <div className="stat"><span className="stat-num">4K</span><span className="stat-label">Quality</span></div>
-            <div className="stat"><span className="stat-num">∞</span><span className="stat-label">Stories</span></div>
+            <div className="stat">
+              <span className="stat-num">AI</span>
+              <span className="stat-label">Generated</span>
+            </div>
+            <div className="stat">
+              <span className="stat-num">4K</span>
+              <span className="stat-label">Quality</span>
+            </div>
+            <div className="stat">
+              <span className="stat-num">∞</span>
+              <span className="stat-label">Stories</span>
+            </div>
           </div>
         </div>
       </section>
@@ -118,12 +174,6 @@ export default async function HomePage() {
           position: absolute;
           inset: 0;
           z-index: 0;
-        }
-        .hero-bg-img {
-          width: 100%; height: 100%;
-          object-fit: cover;
-          object-position: center top;
-          opacity: 0.35;
         }
         .hero-bg-gradient {
           position: absolute;
@@ -228,15 +278,16 @@ export default async function HomePage() {
 
         /* ── Sections ── */
         .section { padding: 5rem 0; }
+        .section--compact { padding-top: 0; }
         .section-header {
           display: flex;
           align-items: baseline;
           justify-content: space-between;
-          margin-bottom: 2.5rem;
+          margin-bottom: 1.75rem;
         }
         .section-title {
           font-family: var(--font-display);
-          font-size: clamp(1.5rem, 4vw, 2rem);
+          font-size: clamp(1.3rem, 3.5vw, 1.8rem);
           font-weight: 700;
           color: var(--color-brand-white);
           margin: 0;
@@ -255,14 +306,33 @@ export default async function HomePage() {
         }
         .section-more:hover { gap: 0.5rem; }
 
-        /* ── Film grid ── */
-        .film-grid {
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 1rem;
+        /* ── Film rail (horizontal scroll) ── */
+        .film-rail {
+          display: flex;
+          gap: 0.875rem;
+          overflow-x: auto;
+          scroll-snap-type: x mandatory;
+          -webkit-overflow-scrolling: touch;
+          scrollbar-width: none;
+          /* breathing room so card lift + border-glow aren't clipped */
+          padding: 6px 2px 12px;
+          margin: -6px -2px -12px;
         }
-        @media (min-width: 640px)  { .film-grid { grid-template-columns: repeat(3, 1fr); } }
-        @media (min-width: 1024px) { .film-grid { grid-template-columns: repeat(4, 1fr); gap: 1.25rem; } }
+        .film-rail::-webkit-scrollbar { display: none; }
+        .film-rail-card {
+          flex: 0 0 155px;
+          scroll-snap-align: start;
+        }
+        @media (min-width: 480px) {
+          .film-rail-card { flex-basis: 175px; }
+        }
+        @media (min-width: 768px) {
+          .film-rail { gap: 1rem; }
+          .film-rail-card { flex-basis: 200px; }
+        }
+        @media (min-width: 1024px) {
+          .film-rail-card { flex-basis: 220px; }
+        }
 
         .empty-state {
           text-align: center;
