@@ -19,6 +19,24 @@ enum Role {
   ADMIN
 }
 
+enum WorkType {
+  SHORT_FILM
+  FULL_FILM
+  SERIES
+  EPISODE
+  TRAILER
+  COMMERCIAL
+  BRANDING
+  CAMPAIGN
+  CASE_STUDY
+}
+
+enum WorkStatus {
+  DRAFT
+  PUBLISHED
+  PRIVATE
+}
+
 // ─────────────────────────────────────────────
 // USER
 // ─────────────────────────────────────────────
@@ -42,30 +60,56 @@ model User {
 }
 
 // ─────────────────────────────────────────────
-// FILM
+// WORK  (replaces Film — covers all content types)
 // ─────────────────────────────────────────────
 
-model Film {
-  id           String   @id @default(cuid())
-  slug         String   @unique
-  title        String
-  description  String?
-  posterUrl    String?
-  trailerUrl   String?
-  filmUrl      String?
-  isPublic     Boolean  @default(false)
-  requiresAuth Boolean  @default(true)
-  year         Int?
-  duration     Int?
-  genre        String?
-  director     String?
+model Work {
+  id          String     @id @default(cuid())
+  slug        String     @unique
+  type        WorkType
+  status      WorkStatus @default(DRAFT)
+  title       String
+  description String?
+  posterUrl   String?
+
+  // Video URLs — stored only, files live in R2/S3 later
+  trailerUrl  String?   // short film, full film, series
+  videoUrl    String?   // main video (film, episode, commercial, branding)
+  teaserUrl   String?   // optional second video for commercials
+
+  // Film/series metadata
+  year        Int?
+  duration    Int?      // minutes
+  director    String?
+  genre       String?
+
+  // Client/portfolio metadata
+  clientName  String?
+  industry    String?
+  projectGoal String?
+  deliverables String?
+  caseStudy   String?
+  galleryUrls String[]  @default([])
+
+  // Display controls
+  requiresAuth Boolean  @default(false)
+  featured     Boolean  @default(false)
+  showOnHome   Boolean  @default(false)
   order        Int      @default(0)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+
+  // Series → Episode relationship (self-referential)
+  parentId      String?
+  parent        Work?   @relation("WorkEpisodes", fields: [parentId], references: [id], onDelete: SetNull)
+  episodes      Work[]  @relation("WorkEpisodes")
+  episodeNumber Int?
+  seasonNumber  Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   progress WatchProgress[]
 
-  @@map("films")
+  @@map("works")
 }
 
 // ─────────────────────────────────────────────
@@ -75,15 +119,16 @@ model Film {
 model WatchProgress {
   id        String   @id @default(cuid())
   userId    String
-  filmId    String
+  workId    String
   seconds   Int      @default(0)
+  duration  Int?     // duration in minutes at time of save — used to compute % complete
   completed Boolean  @default(false)
   updatedAt DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  film Film @relation(fields: [filmId], references: [id], onDelete: Cascade)
+  work Work @relation(fields: [workId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, filmId])
+  @@unique([userId, workId])
   @@map("watch_progress")
 }
 

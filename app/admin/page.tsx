@@ -1,13 +1,13 @@
 import { prisma } from "@/lib/prisma";
-import { Film, Users, Eye, TrendingUp } from "lucide-react";
+import { Clapperboard, Users, Eye, TrendingUp } from "lucide-react";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Admin — Overview" };
 
 async function getStats() {
-  const [totalFilms, publicFilms, totalUsers, recentUsers] = await Promise.all([
-    prisma.film.count(),
-    prisma.film.count({ where: { isPublic: true } }),
+  const [totalWorks, publishedWorks, totalUsers, recentUsers] = await Promise.all([
+    prisma.work.count(),
+    prisma.work.count({ where: { status: "PUBLISHED" } }),
     prisma.user.count(),
     prisma.user.findMany({
       orderBy: { createdAt: "desc" },
@@ -15,17 +15,17 @@ async function getStats() {
       select: { id: true, name: true, email: true, createdAt: true, role: true },
     }),
   ]);
-  return { totalFilms, publicFilms, totalUsers, recentUsers };
+  return { totalWorks, publishedWorks, totalUsers, recentUsers };
 }
 
 export default async function AdminOverviewPage() {
-  const { totalFilms, publicFilms, totalUsers, recentUsers } = await getStats();
+  const { totalWorks, publishedWorks, totalUsers, recentUsers } = await getStats();
 
   const stats = [
-    { label: "Total Films", value: totalFilms, icon: Film, color: "#e8c97e" },
-    { label: "Public Films", value: publicFilms, icon: Eye, color: "#27ae60" },
-    { label: "Total Users", value: totalUsers, icon: Users, color: "#3498db" },
-    { label: "Private Films", value: totalFilms - publicFilms, icon: TrendingUp, color: "#9b59b6" },
+    { label: "Total Works",     value: totalWorks,                    icon: Clapperboard, color: "#e8c97e" },
+    { label: "Published",       value: publishedWorks,                icon: Eye,          color: "#27ae60" },
+    { label: "Total Users",     value: totalUsers,                    icon: Users,        color: "#3498db" },
+    { label: "Unpublished",     value: totalWorks - publishedWorks,   icon: TrendingUp,   color: "#9b59b6" },
   ];
 
   return (

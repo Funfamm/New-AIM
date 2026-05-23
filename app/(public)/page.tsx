@@ -1,37 +1,63 @@
-// Home page — cinematic hero + New Releases + Staff Picks rails
+// Home page — cinematic hero + work rails
 import Link from "next/link";
 import Image from "next/image";
 import { prisma } from "@/lib/prisma";
-import FilmCard from "@/components/film-card";
+import { auth } from "@/lib/auth";
+import FilmRail from "@/components/film-rail";
 import { Play, ChevronRight } from "lucide-react";
 
-const FILM_FIELDS = {
+const HOME_SELECT = {
   id: true, slug: true, title: true, posterUrl: true,
-  year: true, duration: true, genre: true, requiresAuth: true,
-  description: true, trailerUrl: true,
+  genre: true, requiresAuth: true,
 } as const;
 
-async function getHomeFilms() {
-  const [newReleases, staffPicks] = await Promise.all([
-    prisma.film.findMany({
-      where: { isPublic: true },
-      orderBy: { createdAt: "desc" },
-      take: 8,
-      select: FILM_FIELDS,
-    }),
-    prisma.film.findMany({
-      where: { isPublic: true },
+async function getHomeWorks() {
+  const [featured, newReleases] = await Promise.all([
+    prisma.work.findMany({
+      where: { status: "PUBLISHED", showOnHome: true, featured: true, type: { not: "EPISODE" } },
       orderBy: { order: "asc" },
       take: 8,
-      select: FILM_FIELDS,
+      select: { ...HOME_SELECT, description: true },
+    }),
+    prisma.work.findMany({
+      where: { status: "PUBLISHED", showOnHome: true, type: { not: "EPISODE" } },
+      orderBy: { createdAt: "desc" },
+      take: 8,
+      select: HOME_SELECT,
     }),
   ]);
-  return { newReleases, staffPicks };
+  return { featured, newReleases };
+}
+
+async function getContinueWatching(userId: string) {
+  const progress = await prisma.watchProgress.findMany({
+    where: {
+      userId,
+      completed: false,
+      seconds: { gt: 0 },
+      work: { status: "PUBLISHED" },
+    },
+    select: {
+      work: { select: HOME_SELECT },
+    },
+    orderBy: { updatedAt: "desc" },
+    take: 8,
+  });
+  return progress.map((p) => p.work);
 }
 
 export default async function HomePage() {
-  const { newReleases, staffPicks } = await getHomeFilms();
-  const hero = staffPicks[0] ?? null;
+  const session = await auth();
+  const userId = session?.user?.id ?? null;
+
+  const [{ featured, newReleases }, continueWatching] = await Promise.all([
+    getHomeWorks(),
+    userId
+      ? getContinueWatching(userId)
+      : Promise.resolve([] as Awaited<ReturnType<typeof getContinueWatching>>),
+  ]);
+
+  const hero = featured[0] ?? newReleases[0] ?? null;
 
   return (
     <main>
@@ -44,25 +70,19 @@ export default async function HomePage() {
               alt=""
               fill
               priority
-              style={{
-                objectFit: "cover",
-                objectPosition: "center top",
-                opacity: 0.35,
-              }}
+              style={{ objectFit: "cover", objectPosition: "center top", opacity: 0.65 }}
               aria-hidden={true}
             />
           )}
           <div className="hero-bg-gradient" />
         </div>
         <div className="container-app hero-content">
-          <div className="hero-eyebrow">
-            <span className="hero-badge">Now Streaming</span>
-          </div>
+          <p className="hero-eyebrow">Now Streaming</p>
           <h1 className="hero-title">
             {hero ? hero.title : "AI-Generated\nCinema"}
           </h1>
           <p className="hero-desc">
-            {hero?.description ??
+            {(hero as { description?: string | null } | null)?.description ??
               "Groundbreaking films created with artificial intelligence. Stream trailers, discover new works, and experience the future of storytelling."}
           </p>
           <div className="hero-actions">
@@ -77,55 +97,36 @@ export default async function HomePage() {
               </>
             ) : (
               <Link href="/works" className="hero-btn-primary">
-                <Play size={16} fill="currentColor" /> Browse Films
+                <Play size={16} fill="currentColor" /> Browse Works
               </Link>
             )}
           </div>
         </div>
-        <div className="hero-scroll-hint">scroll</div>
       </section>
 
-      {/* ── New Releases rail ────────────────────────── */}
-      {newReleases.length > 0 && (
-        <section className="section container-app">
-          <div className="section-header">
-            <h2 className="section-title">New Releases</h2>
-            <Link href="/works" className="section-more">
-              All Films <ChevronRight size={14} />
-            </Link>
-          </div>
-          <div className="film-rail">
-            {newReleases.map((f, i) => (
-              <div key={f.id} className="film-rail-card">
-                <FilmCard {...f} priority={i < 3} />
-              </div>
-            ))}
-          </div>
-        </section>
+      {/* ── Rails ────────────────────────────────────── */}
+      {continueWatching.length > 0 && (
+        <FilmRail title="Continue Watching" films={continueWatching} />
       )}
+      <FilmRail
+        title="Featured Works"
+        label="— Now Streaming"
+        href="/works"
+        films={featured}
+        priority
+      />
+      <FilmRail
+        title="New Releases"
+        label="— Latest Work"
+        href="/works"
+        films={newReleases}
+      />
 
-      {/* ── Staff Picks rail ─────────────────────────── */}
-      {staffPicks.length > 0 && (
-        <section className="section section--compact container-app">
-          <div className="section-header">
-            <h2 className="section-title">Staff Picks</h2>
-          </div>
-          <div className="film-rail">
-            {staffPicks.map((f) => (
-              <div key={f.id} className="film-rail-card">
-                <FilmCard {...f} />
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* ── Empty state (no public films yet) ────────── */}
-      {newReleases.length === 0 && staffPicks.length === 0 && (
-        <section className="section container-app">
-          <div className="empty-state">
-            <p>Films coming soon. Check back shortly.</p>
-          </div>
+      {featured.length === 0 && newReleases.length === 0 && (
+        <section className="py-24 container-app">
+          <p className="text-center font-body text-brand-muted">
+            Works coming soon. Check back shortly.
+          </p>
         </section>
       )}
 
@@ -163,249 +164,95 @@ export default async function HomePage() {
       <style>{`
         /* ── Hero ── */
         .hero {
-          position: relative;
-          min-height: 92dvh;
-          display: flex;
-          align-items: flex-end;
-          padding-bottom: 5rem;
-          overflow: hidden;
+          position: relative; min-height: 92dvh;
+          display: flex; align-items: flex-end;
+          padding-bottom: 5rem; overflow: hidden;
         }
-        .hero-bg {
-          position: absolute;
-          inset: 0;
-          z-index: 0;
-        }
+        .hero-bg { position: absolute; inset: 0; z-index: 0; }
         .hero-bg-gradient {
-          position: absolute;
-          inset: 0;
+          position: absolute; inset: 0;
           background: linear-gradient(
             to bottom,
-            rgba(10,10,10,0.3) 0%,
-            rgba(10,10,10,0.1) 30%,
-            rgba(10,10,10,0.85) 75%,
-            rgba(10,10,10,1) 100%
+            rgba(10,10,10,0.2) 0%, rgba(10,10,10,0.05) 25%,
+            rgba(10,10,10,0.8) 70%, rgba(10,10,10,1) 100%
           );
         }
         .hero-content {
-          position: relative;
-          z-index: 1;
-          max-width: 680px;
+          position: relative; z-index: 1; max-width: 680px;
           animation: fadeUp 0.9s ease both;
         }
         @keyframes fadeUp {
           from { opacity: 0; transform: translateY(24px); }
           to   { opacity: 1; transform: translateY(0); }
         }
-        .hero-eyebrow { margin-bottom: 1rem; }
-        .hero-badge {
-          font-family: var(--font-body);
-          font-size: 0.7rem;
-          font-weight: 600;
-          letter-spacing: 0.12em;
-          text-transform: uppercase;
-          color: var(--color-brand-accent);
-          border: 1px solid var(--color-brand-accent);
-          padding: 0.25rem 0.75rem;
-          border-radius: 2px;
+        .hero-eyebrow {
+          font-family: var(--font-body); font-size: 0.6875rem; font-weight: 600;
+          letter-spacing: 0.1em; text-transform: uppercase;
+          color: var(--color-brand-accent); margin: 0 0 1rem;
         }
         .hero-title {
-          font-family: var(--font-display);
-          font-size: clamp(2.4rem, 7vw, 5rem);
-          font-weight: 900;
-          line-height: 1.05;
-          color: var(--color-brand-white);
-          margin: 0 0 1.25rem;
-          white-space: pre-line;
+          font-family: var(--font-display); font-size: clamp(2.4rem, 7vw, 5rem);
+          font-weight: 700; line-height: 1.05; letter-spacing: -0.02em;
+          color: var(--color-brand-white); margin: 0 0 1.25rem; white-space: pre-line;
         }
         .hero-desc {
-          font-family: var(--font-body);
-          font-size: clamp(0.95rem, 2vw, 1.1rem);
-          color: var(--color-brand-light);
-          line-height: 1.7;
-          max-width: 520px;
-          margin-bottom: 2rem;
-          opacity: 0.85;
+          font-family: var(--font-body); font-size: clamp(0.95rem, 2vw, 1rem);
+          color: var(--color-brand-light); line-height: 1.7;
+          max-width: 480px; margin: 0 0 2rem; opacity: 0.85;
         }
         .hero-actions { display: flex; gap: 1rem; flex-wrap: wrap; }
         .hero-btn-primary {
-          display: inline-flex;
-          align-items: center;
-          gap: 0.5rem;
-          font-family: var(--font-body);
-          font-size: 0.9rem;
-          font-weight: 600;
-          color: var(--color-brand-black);
-          background: var(--color-brand-accent);
-          padding: 0.75rem 1.75rem;
-          border-radius: 4px;
-          text-decoration: none;
-          transition: opacity 0.2s, transform 0.2s;
+          display: inline-flex; align-items: center; gap: 0.5rem;
+          font-family: var(--font-body); font-size: 0.875rem; font-weight: 600;
+          letter-spacing: 0.06em; text-transform: uppercase;
+          color: var(--color-brand-black); background: var(--color-brand-accent);
+          height: 52px; padding: 0 2rem; border-radius: 2px; text-decoration: none;
+          transition: transform 0.2s, filter 0.2s;
         }
-        .hero-btn-primary:hover { opacity: 0.88; transform: translateY(-1px); }
+        .hero-btn-primary:hover { transform: translateY(-2px); filter: brightness(1.05); }
         .hero-btn-secondary {
-          display: inline-flex;
-          align-items: center;
-          font-family: var(--font-body);
-          font-size: 0.9rem;
-          font-weight: 500;
-          color: var(--color-brand-white);
-          border: 1px solid rgba(255,255,255,0.25);
-          padding: 0.75rem 1.75rem;
-          border-radius: 4px;
-          text-decoration: none;
+          display: inline-flex; align-items: center;
+          font-family: var(--font-body); font-size: 0.875rem; font-weight: 500;
+          color: var(--color-brand-white); border: 1px solid rgba(255,255,255,0.3);
+          height: 52px; padding: 0 2rem; border-radius: 2px; text-decoration: none;
           transition: border-color 0.2s, background 0.2s;
         }
-        .hero-btn-secondary:hover {
-          border-color: var(--color-brand-white);
-          background: rgba(255,255,255,0.05);
-        }
-        .hero-scroll-hint {
-          position: absolute;
-          bottom: 1.5rem;
-          left: 50%;
-          transform: translateX(-50%);
-          font-family: var(--font-body);
-          font-size: 0.65rem;
-          letter-spacing: 0.2em;
-          text-transform: uppercase;
-          color: var(--color-brand-muted);
-          animation: bounce 2s ease-in-out infinite;
-        }
-        @keyframes bounce {
-          0%,100% { transform: translateX(-50%) translateY(0); }
-          50%      { transform: translateX(-50%) translateY(6px); }
-        }
-
-        /* ── Sections ── */
-        .section { padding: 5rem 0; }
-        .section--compact { padding-top: 0; }
-        .section-header {
-          display: flex;
-          align-items: baseline;
-          justify-content: space-between;
-          margin-bottom: 1.75rem;
-        }
-        .section-title {
-          font-family: var(--font-display);
-          font-size: clamp(1.3rem, 3.5vw, 1.8rem);
-          font-weight: 700;
-          color: var(--color-brand-white);
-          margin: 0;
-        }
-        .section-more {
-          display: inline-flex;
-          align-items: center;
-          gap: 0.25rem;
-          font-family: var(--font-body);
-          font-size: 0.8rem;
-          letter-spacing: 0.06em;
-          text-transform: uppercase;
-          color: var(--color-brand-accent);
-          text-decoration: none;
-          transition: gap 0.2s;
-        }
-        .section-more:hover { gap: 0.5rem; }
-
-        /* ── Film rail (horizontal scroll) ── */
-        .film-rail {
-          display: flex;
-          gap: 0.875rem;
-          overflow-x: auto;
-          scroll-snap-type: x mandatory;
-          -webkit-overflow-scrolling: touch;
-          scrollbar-width: none;
-          /* breathing room so card lift + border-glow aren't clipped */
-          padding: 6px 2px 12px;
-          margin: -6px -2px -12px;
-        }
-        .film-rail::-webkit-scrollbar { display: none; }
-        .film-rail-card {
-          flex: 0 0 155px;
-          scroll-snap-align: start;
-        }
-        @media (min-width: 480px) {
-          .film-rail-card { flex-basis: 175px; }
-        }
-        @media (min-width: 768px) {
-          .film-rail { gap: 1rem; }
-          .film-rail-card { flex-basis: 200px; }
-        }
-        @media (min-width: 1024px) {
-          .film-rail-card { flex-basis: 220px; }
-        }
-
-        .empty-state {
-          text-align: center;
-          padding: 5rem 0;
-          color: var(--color-brand-muted);
-          font-family: var(--font-body);
-        }
+        .hero-btn-secondary:hover { border-color: rgba(255,255,255,0.7); background: rgba(255,255,255,0.05); }
 
         /* ── About strip ── */
         .about-strip {
-          background: var(--color-brand-dark);
-          border-top: 1px solid var(--color-brand-border);
-          border-bottom: 1px solid var(--color-brand-border);
-          padding: 4rem 0;
+          background: var(--color-brand-dark); border-top: 1px solid var(--color-brand-border);
+          border-bottom: 1px solid var(--color-brand-border); padding: 4rem 0; margin-top: 4rem;
         }
-        .about-strip-inner {
-          display: flex;
-          flex-direction: column;
-          gap: 2.5rem;
-        }
+        .about-strip-inner { display: flex; flex-direction: column; gap: 2.5rem; }
         @media (min-width: 768px) {
-          .about-strip-inner {
-            flex-direction: row;
-            align-items: center;
-            justify-content: space-between;
-          }
+          .about-strip-inner { flex-direction: row; align-items: center; justify-content: space-between; }
         }
         .about-strip-text { max-width: 520px; }
         .about-strip-title {
-          font-family: var(--font-display);
-          font-size: clamp(1.4rem, 3vw, 1.9rem);
-          font-weight: 700;
-          color: var(--color-brand-white);
-          margin: 0 0 0.75rem;
+          font-family: var(--font-display); font-size: clamp(1.4rem, 3vw, 1.9rem);
+          font-weight: 700; letter-spacing: -0.01em;
+          color: var(--color-brand-white); margin: 0 0 0.75rem;
         }
         .about-strip-desc {
-          font-family: var(--font-body);
-          font-size: 0.95rem;
-          color: var(--color-brand-muted);
-          line-height: 1.7;
-          margin: 0 0 1.25rem;
+          font-family: var(--font-body); font-size: 0.95rem;
+          color: var(--color-brand-muted); line-height: 1.7; margin: 0 0 1.25rem;
         }
         .about-strip-link {
-          display: inline-flex;
-          align-items: center;
-          gap: 0.25rem;
-          font-family: var(--font-body);
-          font-size: 0.85rem;
-          font-weight: 600;
-          color: var(--color-brand-accent);
-          text-decoration: none;
-          transition: gap 0.2s;
+          display: inline-flex; align-items: center; gap: 0.25rem;
+          font-family: var(--font-body); font-size: 0.875rem; font-weight: 500;
+          color: var(--color-brand-muted); text-decoration: none; transition: color 0.2s;
         }
-        .about-strip-link:hover { gap: 0.5rem; }
-        .about-strip-stats {
-          display: flex;
-          gap: 2.5rem;
-          flex-shrink: 0;
-        }
-        .stat { display: flex; flex-direction: column; align-items: center; gap: 0.2rem; }
+        .about-strip-link:hover { color: var(--color-brand-white); }
+        .about-strip-stats { display: flex; gap: 2.5rem; flex-shrink: 0; }
+        .stat { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; }
         .stat-num {
-          font-family: var(--font-display);
-          font-size: 2rem;
-          font-weight: 900;
-          color: var(--color-brand-accent);
-          line-height: 1;
+          font-family: var(--font-display); font-size: 2rem; font-weight: 700;
+          color: var(--color-brand-white); line-height: 1;
         }
         .stat-label {
-          font-family: var(--font-body);
-          font-size: 0.65rem;
-          letter-spacing: 0.12em;
-          text-transform: uppercase;
-          color: var(--color-brand-muted);
+          font-family: var(--font-body); font-size: 0.6875rem; letter-spacing: 0.1em;
+          text-transform: uppercase; color: var(--color-brand-muted);
         }
       `}</style>
     </main>

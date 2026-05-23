@@ -5,35 +5,32 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 
 // ── Save progress ─────────────────────────────────────────────
-export async function saveWatchProgress(filmId: string, seconds: number) {
+export async function saveWatchProgress(
+  workId: string,
+  seconds: number,
+  durationMinutes?: number,
+) {
   const session = await auth();
-  if (!session?.user?.id) return; // silently skip for guests
+  if (!session?.user?.id) return;
+
+  const duration = durationMinutes ?? null;
+  // Mark complete when 90% of duration has been watched
+  const completed = duration ? seconds >= duration * 60 * 0.9 : false;
 
   await prisma.watchProgress.upsert({
-    where: {
-      userId_filmId: { userId: session.user.id, filmId },
-    },
-    update: {
-      seconds,
-      completed: seconds > 0, // mark complete if non-zero (refine later)
-    },
-    create: {
-      userId: session.user.id,
-      filmId,
-      seconds,
-    },
+    where: { userId_workId: { userId: session.user.id, workId } },
+    update: { seconds, duration, completed },
+    create: { userId: session.user.id, workId, seconds, duration, completed: false },
   });
 }
 
-// ── Get progress for a single film ────────────────────────────
-export async function getWatchProgress(filmId: string): Promise<number> {
+// ── Get progress for a single work ───────────────────────────
+export async function getWatchProgress(workId: string): Promise<number> {
   const session = await auth();
   if (!session?.user?.id) return 0;
 
   const record = await prisma.watchProgress.findUnique({
-    where: {
-      userId_filmId: { userId: session.user.id, filmId },
-    },
+    where: { userId_workId: { userId: session.user.id, workId } },
     select: { seconds: true },
   });
 
@@ -48,8 +45,11 @@ export async function getAllWatchProgress() {
   return prisma.watchProgress.findMany({
     where: { userId: session.user.id },
     include: {
-      film: {
-        select: { id: true, title: true, slug: true, posterUrl: true, duration: true },
+      work: {
+        select: {
+          id: true, title: true, slug: true,
+          posterUrl: true, duration: true, type: true,
+        },
       },
     },
     orderBy: { updatedAt: "desc" },

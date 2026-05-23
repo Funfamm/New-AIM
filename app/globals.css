@@ -33,6 +33,7 @@
 html {
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
+  overflow-x: hidden;
 }
 
 body {
@@ -44,6 +45,7 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   min-height: 100dvh;
+  overflow-x: hidden;
 }
 
 /* ── Typography ─────────────────────────────────────── */
@@ -84,3 +86,21 @@ a {
 @media (min-width: 1024px) {
   .container-app { padding-inline: 2rem; }
 }
+
+/* ── Film rail ─────────────────────────────────────── */
+.rail-track {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.75rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  padding-bottom: 0.5rem;
+}
+.rail-track::-webkit-scrollbar { display: none; }
+.rail-card { width: 150px; flex-shrink: 0; }
+
+@media (min-width: 480px) { .rail-card { width: 165px; } }
+@media (min-width: 768px) { .rail-track { gap: 1rem; } .rail-card { width: 190px; } }
+@media (min-width: 1024px) { .rail-card { width: 220px; } }
+@media (min-width: 1280px) { .rail-card { width: 240px; } }

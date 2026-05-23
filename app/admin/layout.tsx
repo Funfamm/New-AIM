@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { LayoutDashboard, Film, Users, LogOut } from "lucide-react";
+import { LayoutDashboard, Clapperboard, Users, LogOut } from "lucide-react";
 import { logoutUser } from "@/lib/actions/auth";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -19,8 +19,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <Link href="/admin" className="admin-nav-link">
             <LayoutDashboard size={16} /> Overview
           </Link>
-          <Link href="/admin/films" className="admin-nav-link">
-            <Film size={16} /> Films
+          <Link href="/admin/works" className="admin-nav-link">
+            <Clapperboard size={16} /> Works
           </Link>
           <Link href="/admin/users" className="admin-nav-link">
             <Users size={16} /> Users

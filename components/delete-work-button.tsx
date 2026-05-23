@@ -1,11 +1,12 @@
 "use client";
-import { deleteFilm } from "@/lib/actions/films";
-import { Trash2 } from "lucide-react";
 
-export function DeleteFilmButton({ id, title }: { id: string; title: string }) {
+import { Trash2 } from "lucide-react";
+import { deleteWork } from "@/lib/actions/works";
+
+export function DeleteWorkButton({ id, title }: { id: string; title: string }) {
   return (
     <form
-      action={deleteFilm.bind(null, id)}
+      action={deleteWork.bind(null, id)}
       onSubmit={(e) => {
         if (!confirm(`Delete "${title}"?`)) e.preventDefault();
       }}
