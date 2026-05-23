@@ -4,7 +4,12 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Create Account" };
 
-export default function RegisterPage() {
+export default async function RegisterPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const params = await searchParams;
   return (
     <main className="auth-page">
       <div className="auth-card">
@@ -13,6 +18,10 @@ export default function RegisterPage() {
           <h1 className="auth-title">Create account</h1>
           <p className="auth-sub">Free — no credit card required</p>
         </div>
+
+        {params?.error && (
+          <div className="auth-error">{params.error}</div>
+        )}
 
         <form action={registerUser} className="auth-form">
           <div className="form-group">

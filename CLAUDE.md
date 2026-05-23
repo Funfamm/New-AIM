@@ -1,107 +1,116 @@
-# AIM Studio Lite — Claude Rules
+# CLAUDE.md
 
-> This file governs how Claude Code behaves in this project.
-> Reference: awesome-claude-code, ECC, agentic-saas-blueprint patterns.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ---
 
-## ⚠ Core Rules
+## Commands
 
-1. **Only install a package when it is necessary for the current feature.**
-   Before installing anything, check if it can be done in plain TypeScript.
+```bash
+npm run dev          # Start dev server (Turbopack)
+npm run build        # Production build
+npm run lint         # ESLint
+npm run db:push      # Push Prisma schema to DB (no migration history)
+npm run db:generate  # Regenerate Prisma client after schema changes
+npm run db:migrate   # Run migrations (dev only)
+npm run db:studio    # Open Prisma Studio UI
+npm run db:seed      # Create first admin user (tsx prisma/seed.ts)
+```
 
-2. **Never install packages speculatively** ("we might need this later").
+Environment variables required (copy `.env.local.example`):
+- `DATABASE_URL` — Neon PostgreSQL connection string
+- `AUTH_SECRET` — 32-byte JWT secret (`openssl rand -base64 32`)
+- `NEXT_PUBLIC_APP_URL` — App base URL
 
-3. **Mobile-first always.** Write mobile styles first, then `md:` and `lg:` breakpoints.
+Prisma CLI reads `DATABASE_URL` from `.env`. Next.js reads all vars from `.env.local`.
 
-4. **Prefer React Server Components.** Only add `"use client"` when the component
-   needs browser APIs, event handlers, or useState/useEffect.
+There is no test framework configured.
 
-5. **Prefer Server Actions over API routes** for form submissions and mutations.
+---
 
-6. **Always use Prisma** for DB access. Never raw SQL unless writing a migration.
+## Architecture
 
-7. **Always hash passwords with bcryptjs** before storing. Never store plain text.
+**Next.js 15 App Router** full-stack app — a cinematic video streaming platform with admin film management and user authentication.
 
-8. **Always check role** before admin mutations in Server Actions (`requireAdmin()`).
+### Route groups
 
-9. **Keep components small** — if a file exceeds ~150 lines, split it.
+```
+app/
+  (auth)/         login, register — redirects if already logged in
+  (public)/       public-facing pages (home, works, watch, about, contact)
+  admin/          ADMIN role required (enforced in middleware + page-level guard)
+  dashboard/      authenticated user area
+  api/auth/       Auth.js route handler only
+```
 
-10. **No inline styles in components** — use Tailwind utility classes.
+Middleware (`middleware.ts`) guards routes at the edge:
+- `/admin/*` → requires `role === "ADMIN"`
+- `/dashboard/*` → requires any valid session
+- `/login`, `/register` → redirect to `/dashboard` if already signed in
+
+### Data layer
+
+All mutations go through **Server Actions** in `/lib/actions/` — no custom API routes:
+- `auth.ts` — register (bcrypt hash + Prisma create), login (signIn), logout
+- `films.ts` — CRUD for Film model; every mutating action calls `requireAdmin()` first
+- `progress.ts` — save/retrieve WatchProgress per user+film
+
+Prisma client is a singleton in `/lib/prisma.ts` (needed for Next.js dev hot-reload).
+
+### Auth
+
+Auth.js v5 with a credentials provider and JWT strategy (required for credentials). Session is extended with `id` and `role` via callbacks in `/lib/auth.ts`. Role is sourced from the DB on every JWT creation but not re-fetched on refresh — update the token if the role changes at the DB level.
+
+### Design tokens
+
+All colors and fonts are CSS custom properties in `app/globals.css` under `@theme`. Use Tailwind's `brand-*` scale (e.g., `bg-brand-dark`, `text-brand-accent`) — never arbitrary hex values.
+
+```css
+brand-black   #0a0a0a   page background
+brand-dark    #111111   card background
+brand-surface #1a1a1a   elevated surfaces
+brand-border  #2a2a2a   borders
+brand-muted   #6b7280   secondary text
+brand-light   #e5e7eb   body text
+brand-white   #f9fafb   headings
+brand-accent  #e8c97e   gold — CTAs, highlights
+brand-red     #c0392b   errors
+font-display  "Playfair Display", Georgia, serif
+font-body     "DM Sans", system-ui, sans-serif
+```
+
+---
+
+## Core rules
+
+1. **Only install a package when necessary for the current feature.** Check if plain TypeScript suffices first. Never install speculatively.
+2. **Mobile-first always.** Write mobile styles first, then `md:` and `lg:` breakpoints.
+3. **Prefer React Server Components.** Add `"use client"` only for browser APIs, event handlers, or hooks.
+4. **Prefer Server Actions over API routes** for form submissions and mutations.
+5. **Always use Prisma** for DB access. Never raw SQL except in migration files.
+6. **Hash passwords with bcryptjs** (12 rounds). Never store plain text.
+7. **Always call `requireAdmin()`** at the top of any admin Server Action.
+8. **UI components** — shadcn/ui copy-paste only; never run `npx shadcn add`. No inline styles; use Tailwind utilities. Split files that exceed ~150 lines.
 
 ---
 
 ## Stack
 
-| Layer       | Choice                                         |
-|-------------|------------------------------------------------|
-| Framework   | Next.js 15 App Router                          |
-| Language    | TypeScript (strict mode)                       |
-| Styling     | Tailwind CSS v4 (CSS-first, `@theme` tokens)   |
-| UI          | shadcn/ui copy-paste only — no `npx shadcn add`|
-| Database    | Neon (serverless Postgres)                     |
-| ORM         | Prisma                                         |
-| Auth        | Auth.js v5 — credentials only in v1            |
-| Video       | Native `<video>` / `<iframe>` — no video lib   |
-| Icons       | lucide-react (already installed)               |
-| Deployment  | Vercel                                         |
+| Layer      | Choice                                       |
+|------------|----------------------------------------------|
+| Framework  | Next.js 15 App Router                        |
+| Language   | TypeScript strict mode                       |
+| Styling    | Tailwind CSS v4 — CSS-first `@theme` tokens  |
+| UI         | shadcn/ui copy-paste (no CLI install)        |
+| Database   | Neon serverless Postgres                     |
+| ORM        | Prisma                                       |
+| Auth       | Auth.js v5 — credentials provider + JWT      |
+| Video      | Native `<video>` / `<iframe>` — no video lib |
+| Icons      | lucide-react                                 |
+| Deployment | Vercel                                       |
 
 ---
 
-## Folder conventions
+## Out of scope for v1
 
-- `/app/(public)/`    — public-facing pages
-- `/app/(auth)/`      — login, register
-- `/app/admin/`       — admin dashboard (role-gated in middleware)
-- `/app/dashboard/`   — logged-in user area
-- `/components/ui/`   — copy-pasted shadcn primitives
-- `/lib/actions/`     — all Server Actions
-- `/lib/prisma.ts`    — singleton Prisma client
-- `/lib/auth.ts`      — Auth.js config
-- `/lib/utils.ts`     — cn(), slugify(), formatDuration()
-
----
-
-## Design tokens (use these, not arbitrary values)
-
-```css
---color-brand-black:    #0a0a0a   /* page background */
---color-brand-dark:     #111111   /* card background */
---color-brand-surface:  #1a1a1a   /* elevated surfaces */
---color-brand-border:   #2a2a2a   /* borders */
---color-brand-muted:    #6b7280   /* secondary text */
---color-brand-light:    #e5e7eb   /* body text */
---color-brand-white:    #f9fafb   /* headings */
---color-brand-accent:   #e8c97e   /* cinematic gold — CTAs, highlights */
---color-brand-red:      #c0392b   /* errors, danger */
---font-display:         "Playfair Display", Georgia, serif
---font-body:            "DM Sans", system-ui, sans-serif
-```
-
----
-
-## Do NOT build in v1
-
-- Multilingual / i18n system
-- Watch party
-- Advanced AI automation
-- Complex RAG / memory system
-- Notification system
-- Casting system
-- Training hub
-- Payment / subscription system
-- Complex analytics
-
----
-
-## Reference repos (do not install into production)
-
-| Repo                  | Purpose                                      |
-|-----------------------|----------------------------------------------|
-| agentic-saas-blueprint | Structure and Claude workflow reference      |
-| ui-ux-pro-max-skill   | UI quality checklist                         |
-| magic-mcp             | Component design inspiration                 |
-| awesome-claude-code   | Claude Code hooks and slash commands         |
-| ECC / superpowers / GSD | Claude workflow rules                      |
-| claude-mem / LightRAG | Future memory — do not build yet             |
-| n8n-MCP / Ruflo       | Future automation — do not build yet         |
+Multilingual/i18n, watch party, payment/subscription, notifications, casting system, training hub, advanced analytics, RAG/memory system, AI automation.

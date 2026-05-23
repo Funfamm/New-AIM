@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { slugify } from "@/lib/utils";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 async function requireAdmin() {
   const session = await auth();
@@ -20,13 +21,13 @@ export async function createFilm(formData: FormData) {
   await requireAdmin();
 
   const title = formData.get("title") as string;
-  if (!title?.trim()) return { error: "Title is required." };
+  if (!title?.trim()) redirect("/admin/films/new?error=" + encodeURIComponent("Title is required."));
 
   const slug = slugify(title);
 
   // Ensure slug is unique
   const existing = await prisma.film.findUnique({ where: { slug } });
-  if (existing) return { error: "A film with this title already exists." };
+  if (existing) redirect("/admin/films/new?error=" + encodeURIComponent("A film with this title already exists."));
 
   await prisma.film.create({
     data: {
@@ -47,7 +48,7 @@ export async function createFilm(formData: FormData) {
 
   revalidatePath("/admin/films");
   revalidatePath("/works");
-  return { success: true };
+  redirect("/admin/films");
 }
 
 // ── Update film ───────────────────────────────────────────────
@@ -73,7 +74,7 @@ export async function updateFilm(id: string, formData: FormData) {
 
   revalidatePath("/admin/films");
   revalidatePath("/works");
-  return { success: true };
+  redirect("/admin/films");
 }
 
 // ── Toggle visibility ─────────────────────────────────────────

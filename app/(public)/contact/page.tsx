@@ -29,7 +29,7 @@ export default function ContactPage() {
           </div>
 
           {/* Form placeholder — Phase 3 will wire this up */}
-          <form className="contact-form" onSubmit={(e) => e.preventDefault()}>
+          <form className="contact-form">
             <div className="form-group">
               <label className="form-label">Name</label>
               <input type="text" className="form-input" placeholder="Your name" />

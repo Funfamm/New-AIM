@@ -17,13 +17,13 @@ export async function registerUser(formData: FormData) {
 
   // Basic validation
   if (!email || !password || password.length < 8) {
-    return { error: "Please provide a valid email and a password of at least 8 characters." };
+    redirect("/register?error=" + encodeURIComponent("Please provide a valid email and a password of at least 8 characters."));
   }
 
   // Check if user already exists
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
-    return { error: "An account with this email already exists." };
+    redirect("/register?error=" + encodeURIComponent("An account with this email already exists."));
   }
 
   // Hash password — 12 rounds is secure without being slow
@@ -56,7 +56,8 @@ export async function loginUser(formData: FormData) {
     });
   } catch (err) {
     if (err instanceof AuthError) {
-      return { error: "Invalid email or password." };
+      const fromParam = from !== "/" ? `&from=${encodeURIComponent(from)}` : "";
+      redirect("/login?error=" + encodeURIComponent("Invalid email or password.") + fromParam);
     }
     throw err; // re-throw redirect, etc.
   }

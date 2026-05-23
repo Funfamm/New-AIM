@@ -5,7 +5,10 @@ import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import type { Metadata } from "next";
 
-type Props = { params: Promise<{ id: string }> };
+type Props = {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ error?: string }>;
+};
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
@@ -13,8 +16,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return { title: "Admin — Edit Film" };
 }
 
-export default async function AdminFilmFormPage({ params }: Props) {
+export default async function AdminFilmFormPage({ params, searchParams }: Props) {
   const { id } = await params;
+  const { error } = await searchParams;
   const isNew = id === "new";
 
   const film = isNew
@@ -36,6 +40,12 @@ export default async function AdminFilmFormPage({ params }: Props) {
       <h1 className="admin-page-title">
         {isNew ? "Add Film" : `Edit: ${film?.title}`}
       </h1>
+
+      {error && (
+        <div style={{ background: "rgba(192,57,43,0.15)", border: "1px solid var(--color-brand-red)", color: "#e74c3c", fontFamily: "var(--font-body)", fontSize: "0.85rem", padding: "0.75rem 1rem", borderRadius: "6px", marginBottom: "1.25rem" }}>
+          {error}
+        </div>
+      )}
 
       <form action={action} className="film-form">
         <div className="form-row">

@@ -4,11 +4,12 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Sign In" };
 
-export default function LoginPage({
+export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: { from?: string; error?: string };
+  searchParams: Promise<{ from?: string; error?: string }>;
 }) {
+  const params = await searchParams;
   return (
     <main className="auth-page">
       <div className="auth-card">
@@ -18,13 +19,13 @@ export default function LoginPage({
           <p className="auth-sub">Sign in to your account</p>
         </div>
 
-        {searchParams?.error && (
-          <div className="auth-error">{searchParams.error}</div>
+        {params?.error && (
+          <div className="auth-error">{params.error}</div>
         )}
 
         <form action={loginUser} className="auth-form">
-          {searchParams?.from && (
-            <input type="hidden" name="from" value={searchParams.from} />
+          {params?.from && (
+            <input type="hidden" name="from" value={params.from} />
           )}
           <div className="form-group">
             <label className="form-label">Email</label>
