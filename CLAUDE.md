@@ -91,6 +91,9 @@ font-body     "DM Sans", system-ui, sans-serif
 6. **Hash passwords with bcryptjs** (12 rounds). Never store plain text.
 7. **Always call `requireAdmin()`** at the top of any admin Server Action.
 8. **UI components** — shadcn/ui copy-paste only; never run `npx shadcn add`. No inline styles; use Tailwind utilities. Split files that exceed ~150 lines.
+9. **Always follow `docs/DESIGN_SYSTEM.md` for all UI work.** Before making any visual change, check the design system for the correct color, spacing, typography, button, and card rules.
+10. **Do not make visual changes without checking the design system.** No arbitrary colors, no random spacing, no gold overuse, no card info panels below posters.
+11. **Keep all UI work premium, cinematic, mobile-first, and 4G-friendly.** The standard is Netflix-level browsing, Apple-level spacing, A24-level restraint. If a change looks template-generic, it does not meet the standard.
 
 ---
 
