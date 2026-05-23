@@ -111,6 +111,23 @@ font-body     "DM Sans", system-ui, sans-serif
 
 ---
 
+## Token and Context Management
+
+- **Concise by default.** Keep responses short unless deep detail is explicitly requested.
+- **No repeat reads.** Do not re-read a file that hasn't changed since the last read in this session.
+- **No full-repo scans.** Use targeted `Grep` or `Glob` searches instead of reading every file.
+- **One task at a time.** Finish and confirm before starting the next task.
+- **One component or page at a time** for design changes. Do not cascade into adjacent files.
+- **Summarize before editing.** State what you found and what you plan to change before making edits.
+- **Ask before reading large folders.** If a task seems to require reading 5+ files, confirm with the user first.
+- **Reference repos on demand only.** Do not load reference repos unless the user asks. When you do, read at most 2–3 files (prefer `README.md`, `CLAUDE.md`, or the single relevant component).
+- **Never use reference repos as context dumps.** They are inspiration sources, not documentation to recite.
+- **Recommend `/compact` after major milestones** (completed page, completed feature, completed fix cycle).
+
+See `.claude/commands/token-budget.md` for the pre-task checklist format.
+
+---
+
 ## Out of scope for v1
 
 Multilingual/i18n, watch party, payment/subscription, notifications, casting system, training hub, advanced analytics, RAG/memory system, AI automation.
