@@ -1,0 +1,86 @@
+/* AIM Studio Lite — Global Styles
+   Tailwind v4: CSS-first configuration */
+
+@import "tailwindcss";
+
+/* ── Design Tokens ──────────────────────────────────── */
+@theme {
+  /* Brand palette — deep cinematic tones */
+  --color-brand-black:    #0a0a0a;
+  --color-brand-dark:     #111111;
+  --color-brand-surface:  #1a1a1a;
+  --color-brand-border:   #2a2a2a;
+  --color-brand-muted:    #6b7280;
+  --color-brand-light:    #e5e7eb;
+  --color-brand-white:    #f9fafb;
+  --color-brand-accent:   #e8c97e;   /* cinematic gold */
+  --color-brand-red:      #c0392b;   /* deep film red */
+
+  /* Typography */
+  --font-display: "Playfair Display", Georgia, serif;
+  --font-body:    "DM Sans", system-ui, sans-serif;
+
+  /* Spacing scale additions */
+  --spacing-18: 4.5rem;
+  --spacing-22: 5.5rem;
+}
+
+/* ── Base ───────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background-color: var(--color-brand-black);
+  color: var(--color-brand-light);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100dvh;
+}
+
+/* ── Typography ─────────────────────────────────────── */
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--color-brand-white);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* ── Focus styles (accessibility) ───────────────────── */
+:focus-visible {
+  outline: 2px solid var(--color-brand-accent);
+  outline-offset: 2px;
+}
+
+/* ── Scrollbar (subtle, dark) ────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--color-brand-dark); }
+::-webkit-scrollbar-thumb { background: var(--color-brand-border); border-radius: 3px; }
+
+/* ── Utilities ───────────────────────────────────────── */
+.container-app {
+  width: 100%;
+  max-width: 1200px;
+  margin-inline: auto;
+  padding-inline: 1rem;
+}
+
+@media (min-width: 640px) {
+  .container-app { padding-inline: 1.5rem; }
+}
+@media (min-width: 1024px) {
+  .container-app { padding-inline: 2rem; }
+}

@@ -1,0 +1,57 @@
+"use server";
+// Server Actions for watch progress — save and retrieve resume position
+
+import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
+
+// ── Save progress ─────────────────────────────────────────────
+export async function saveWatchProgress(filmId: string, seconds: number) {
+  const session = await auth();
+  if (!session?.user?.id) return; // silently skip for guests
+
+  await prisma.watchProgress.upsert({
+    where: {
+      userId_filmId: { userId: session.user.id, filmId },
+    },
+    update: {
+      seconds,
+      completed: seconds > 0, // mark complete if non-zero (refine later)
+    },
+    create: {
+      userId: session.user.id,
+      filmId,
+      seconds,
+    },
+  });
+}
+
+// ── Get progress for a single film ────────────────────────────
+export async function getWatchProgress(filmId: string): Promise<number> {
+  const session = await auth();
+  if (!session?.user?.id) return 0;
+
+  const record = await prisma.watchProgress.findUnique({
+    where: {
+      userId_filmId: { userId: session.user.id, filmId },
+    },
+    select: { seconds: true },
+  });
+
+  return record?.seconds ?? 0;
+}
+
+// ── Get all progress for user dashboard ───────────────────────
+export async function getAllWatchProgress() {
+  const session = await auth();
+  if (!session?.user?.id) return [];
+
+  return prisma.watchProgress.findMany({
+    where: { userId: session.user.id },
+    include: {
+      film: {
+        select: { id: true, title: true, slug: true, posterUrl: true, duration: true },
+      },
+    },
+    orderBy: { updatedAt: "desc" },
+  });
+}

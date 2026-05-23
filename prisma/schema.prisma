@@ -1,0 +1,129 @@
+// AIM Studio Lite — Prisma Schema
+// Run: npx prisma db push  (after setting DATABASE_URL in .env)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────
+
+enum Role {
+  USER
+  ADMIN
+}
+
+// ─────────────────────────────────────────────
+// USER
+// ─────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  password      String?
+  role          Role      @default(USER)
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  progress WatchProgress[]
+  accounts Account[]
+  sessions Session[]
+
+  @@map("users")
+}
+
+// ─────────────────────────────────────────────
+// FILM
+// ─────────────────────────────────────────────
+
+model Film {
+  id           String   @id @default(cuid())
+  slug         String   @unique
+  title        String
+  description  String?
+  posterUrl    String?
+  trailerUrl   String?
+  filmUrl      String?
+  isPublic     Boolean  @default(false)
+  requiresAuth Boolean  @default(true)
+  year         Int?
+  duration     Int?
+  genre        String?
+  director     String?
+  order        Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  progress WatchProgress[]
+
+  @@map("films")
+}
+
+// ─────────────────────────────────────────────
+// WATCH PROGRESS
+// ─────────────────────────────────────────────
+
+model WatchProgress {
+  id        String   @id @default(cuid())
+  userId    String
+  filmId    String
+  seconds   Int      @default(0)
+  completed Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  film Film @relation(fields: [filmId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, filmId])
+  @@map("watch_progress")
+}
+
+// ─────────────────────────────────────────────
+// AUTH.JS ADAPTER MODELS
+// ─────────────────────────────────────────────
+
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@id([identifier, token])
+  @@map("verification_tokens")
+}
