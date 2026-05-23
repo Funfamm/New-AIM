@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/prisma";
-import { toggleFilmVisibility, deleteFilm } from "@/lib/actions/films";
+import { toggleFilmVisibility } from "@/lib/actions/films";
+import { DeleteFilmButton } from "@/components/delete-film-button";
 import Link from "next/link";
-import { Plus, Pencil, Eye, EyeOff, Trash2 } from "lucide-react";
+import { Plus, Pencil, Eye, EyeOff } from "lucide-react";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Admin — Films" };
@@ -64,12 +65,7 @@ export default async function AdminFilmsPage() {
                         {f.isPublic ? <EyeOff size={14} /> : <Eye size={14} />}
                       </button>
                     </form>
-                    <form action={deleteFilm.bind(null, f.id)}
-                      onSubmit={(e) => { if (!confirm(`Delete "${f.title}"?`)) e.preventDefault(); }}>
-                      <button type="submit" className="action-btn action-btn--danger" title="Delete">
-                        <Trash2 size={14} />
-                      </button>
-                    </form>
+                    <DeleteFilmButton id={f.id} title={f.title} />
                   </div>
                 </td>
               </tr>
