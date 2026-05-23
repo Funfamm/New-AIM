@@ -1,10 +1,10 @@
-import Nav from "@/components/nav";
+import NavWrapper from "@/components/nav-wrapper";
 import Footer from "@/components/footer";
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
-      <Nav />
+      <NavWrapper />
       <div style={{ paddingTop: "60px" }}>{children}</div>
       <Footer />
     </>
