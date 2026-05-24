@@ -43,7 +43,7 @@ export async function getAllWatchProgress() {
   if (!session?.user?.id) return [];
 
   return prisma.watchProgress.findMany({
-    where: { userId: session.user.id },
+    where: { userId: session.user.id, completed: false },
     include: {
       work: {
         select: {

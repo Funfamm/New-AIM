@@ -1,0 +1,8 @@
+.hr-stack { position: absolute; inset: 0; }
+.hr-slide {
+  position: absolute; inset: 0;
+  transition: opacity 0.8s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hr-slide { transition: none; }
+}

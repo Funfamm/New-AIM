@@ -1,8 +1,20 @@
-import { loginUser } from "@/lib/actions/auth";
+import { loginUser, signInWithGoogle } from "@/lib/actions/auth";
 import Link from "next/link";
 import type { Metadata } from "next";
+import "./login.css";
 
 export const metadata: Metadata = { title: "Sign In — AIM Studio" };
+
+function GoogleIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908C16.658 14.013 17.64 11.705 17.64 9.2z" fill="#4285F4"/>
+      <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
+      <path d="M3.964 10.707A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.039l3.007-2.332z" fill="#FBBC05"/>
+      <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.961L3.964 6.593C4.672 4.466 6.656 3.58 9 3.58z" fill="#EA4335"/>
+    </svg>
+  );
+}
 
 export default async function LoginPage({
   searchParams,
@@ -49,7 +61,22 @@ export default async function LoginPage({
               autoComplete="current-password"
             />
           </div>
+          <div className="auth-forgot">
+            <Link href="/forgot-password">Forgot password?</Link>
+          </div>
           <button type="submit" className="auth-btn">Sign In</button>
+        </form>
+
+        <div className="auth-divider"><span>or</span></div>
+
+        <form action={signInWithGoogle}>
+          {params?.from && (
+            <input type="hidden" name="redirectTo" value={params.from} />
+          )}
+          <button type="submit" className="auth-btn-google">
+            <GoogleIcon />
+            Continue with Google
+          </button>
         </form>
 
         <p className="auth-switch">
@@ -58,109 +85,6 @@ export default async function LoginPage({
         </p>
       </div>
 
-      <style>{`
-        .auth-page {
-          min-height: 100dvh;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 2rem 1rem;
-          background: var(--color-brand-black);
-        }
-        .auth-card {
-          width: 100%;
-          max-width: 420px;
-          background: var(--color-brand-dark);
-          border: 1px solid var(--color-brand-border);
-          border-radius: 12px;
-          padding: 2.5rem 2rem;
-        }
-        .auth-header { text-align: center; margin-bottom: 2rem; }
-        .auth-logo {
-          display: inline-block;
-          font-family: var(--font-display);
-          font-size: 1.4rem;
-          font-weight: 900;
-          color: var(--color-brand-white);
-          text-decoration: none;
-          margin-bottom: 1.5rem;
-        }
-        .auth-logo span { color: var(--color-brand-accent); }
-        .auth-title {
-          font-family: var(--font-display);
-          font-size: 1.6rem;
-          font-weight: 700;
-          color: var(--color-brand-white);
-          margin: 0 0 0.4rem;
-        }
-        .auth-sub {
-          font-family: var(--font-body);
-          font-size: 0.875rem;
-          color: var(--color-brand-muted);
-          margin: 0;
-        }
-        .auth-error {
-          background: rgba(192,57,43,0.15);
-          border: 1px solid var(--color-brand-red);
-          color: #e74c3c;
-          font-family: var(--font-body);
-          font-size: 0.85rem;
-          padding: 0.75rem 1rem;
-          border-radius: 6px;
-          margin-bottom: 1.25rem;
-        }
-        .auth-form { display: flex; flex-direction: column; gap: 1.1rem; }
-        .form-group { display: flex; flex-direction: column; gap: 0.4rem; }
-        .form-label {
-          font-family: var(--font-body);
-          font-size: 0.8rem;
-          font-weight: 500;
-          color: var(--color-brand-light);
-        }
-        .form-input {
-          font-family: var(--font-body);
-          font-size: 0.95rem;
-          color: var(--color-brand-white);
-          background: var(--color-brand-surface);
-          border: 1px solid var(--color-brand-border);
-          border-radius: 6px;
-          padding: 0.7rem 0.9rem;
-          outline: none;
-          transition: border-color 0.2s;
-          width: 100%;
-          box-sizing: border-box;
-        }
-        .form-input::placeholder { color: var(--color-brand-muted); }
-        .form-input:focus { border-color: var(--color-brand-accent); }
-        .auth-btn {
-          width: 100%;
-          font-family: var(--font-body);
-          font-size: 0.95rem;
-          font-weight: 600;
-          color: var(--color-brand-black);
-          background: var(--color-brand-accent);
-          border: none;
-          border-radius: 6px;
-          padding: 0.8rem;
-          cursor: pointer;
-          margin-top: 0.5rem;
-          transition: opacity 0.2s;
-        }
-        .auth-btn:hover { opacity: 0.88; }
-        .auth-switch {
-          text-align: center;
-          font-family: var(--font-body);
-          font-size: 0.85rem;
-          color: var(--color-brand-muted);
-          margin-top: 1.5rem;
-        }
-        .auth-switch a {
-          color: var(--color-brand-accent);
-          text-decoration: none;
-          font-weight: 500;
-        }
-        .auth-switch a:hover { text-decoration: underline; }
-      `}</style>
     </main>
   );
 }

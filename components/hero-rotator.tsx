@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
+import "./hero-rotator.css";
 
 export type HeroItem = {
   posterUrl: string;
@@ -51,16 +52,6 @@ export default function HeroRotator({ items, interval = 6000 }: Props) {
           />
         </div>
       ))}
-      <style>{`
-        .hr-stack { position: absolute; inset: 0; }
-        .hr-slide {
-          position: absolute; inset: 0;
-          transition: opacity 0.8s ease;
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .hr-slide { transition: none; }
-        }
-      `}</style>
     </div>
   );
 }

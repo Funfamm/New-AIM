@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import type { Metadata } from "next";
+import "./users.css";
 
 export const metadata: Metadata = { title: "Admin — Users" };
 
@@ -52,13 +53,6 @@ export default async function AdminUsersPage() {
         </table>
       </div>
 
-      <style>{`
-        .td-email { color: var(--color-brand-muted); font-size: 0.8125rem; }
-        .admin-count {
-          font-family: var(--font-body); font-size: 0.8rem;
-          color: var(--color-brand-muted);
-        }
-      `}</style>
     </div>
   );
 }

@@ -1,14 +1,16 @@
 // Auth.js v5 (NextAuth) configuration
 // Strategy: JWT (required for credentials provider)
-// Providers: Credentials only in v1
+// Providers: Credentials + Google OAuth
 
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
+import Google from "next-auth/providers/google";
+import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  // No adapter — credentials + JWT strategy manages sessions without DB session table
+  adapter: PrismaAdapter(prisma),
   session: { strategy: "jwt" },
 
   pages: {
@@ -17,6 +19,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
 
   providers: [
+    // Reads AUTH_GOOGLE_ID and AUTH_GOOGLE_SECRET from env automatically
+    Google,
     Credentials({
       name: "credentials",
       credentials: {
@@ -50,11 +54,47 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
 
   callbacks: {
+    // Guard: block Google sign-in if a credentials-only account exists with the same email
+    async signIn({ user, account }) {
+      if (account?.provider === "google" && user.email) {
+        const existing = await prisma.user.findUnique({
+          where: { email: user.email },
+          select: {
+            password: true,
+            accounts: {
+              where: { provider: "google" },
+              select: { provider: true },
+            },
+          },
+        });
+        // Has a password but no Google account linked — do not auto-link
+        if (existing?.password && existing.accounts.length === 0) {
+          return (
+            "/login?error=" +
+            encodeURIComponent(
+              "This email is registered with a password. Please sign in with your email and password."
+            )
+          );
+        }
+      }
+      return true;
+    },
+
     // Attach role and id to the JWT token
-    async jwt({ token, user }) {
+    async jwt({ token, user, account }) {
       if (user) {
         token.id = user.id;
-        token.role = user.role;
+        if (account?.type === "oauth") {
+          // OAuth sign-in: role is not on Auth.js user type, fetch from DB
+          const dbUser = await prisma.user.findUnique({
+            where: { id: user.id! },
+            select: { role: true },
+          });
+          token.role = dbUser?.role ?? "USER";
+        } else {
+          // Credentials sign-in: role comes from authorize() return value
+          token.role = (user as { role?: string }).role ?? "USER";
+        }
       }
       return token;
     },

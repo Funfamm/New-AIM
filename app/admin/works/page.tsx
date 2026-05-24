@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { setWorkStatus } from "@/lib/actions/works";
 import { DeleteWorkButton } from "@/components/delete-work-button";
 import Link from "next/link";
+import "./admin-works.css";
 import { Plus, Pencil, Eye, EyeOff } from "lucide-react";
 import type { Metadata } from "next";
 import type { WorkType, WorkStatus } from "@prisma/client";
@@ -105,19 +106,6 @@ export default async function AdminWorksPage() {
         </table>
       </div>
 
-      <style>{`
-        .td-title { font-weight: 500; color: var(--color-brand-white); max-width: 220px; }
-        .td-sub { display: block; font-size: 0.75rem; color: var(--color-brand-muted); font-weight: 400; margin-top: 0.15rem; }
-        .type-label {
-          font-family: var(--font-body); font-size: 0.6875rem; font-weight: 500;
-          color: var(--color-brand-muted); white-space: nowrap;
-        }
-        .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
-        .dot--green { background: #4ade80; }
-        .dot--red   { background: var(--color-brand-border); }
-        .check { color: #4ade80; font-size: 0.9rem; }
-        .dash  { color: var(--color-brand-border); }
-      `}</style>
     </div>
   );
 }

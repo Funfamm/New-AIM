@@ -1,4 +1,5 @@
 // Global loading skeleton shown during RSC streaming
+import "./loading.css";
 export default function Loading() {
   return (
     <div
@@ -19,7 +20,6 @@ export default function Loading() {
           animation: "spin 0.8s linear infinite",
         }}
       />
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }

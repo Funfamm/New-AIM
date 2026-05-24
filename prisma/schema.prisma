@@ -172,3 +172,18 @@ model VerificationToken {
   @@id([identifier, token])
   @@map("verification_tokens")
 }
+
+// ─────────────────────────────────────────────
+// PASSWORD RESET
+// ─────────────────────────────────────────────
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique  // SHA-256 of the raw token — raw token never stored
+  email     String
+  expires   DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@map("password_reset_tokens")
+}

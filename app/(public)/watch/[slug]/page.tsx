@@ -2,9 +2,12 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
+import "./watch.css";
 import { ChevronLeft, ChevronRight, Lock } from "lucide-react";
 import type { Metadata } from "next";
 import EpisodePlayer from "@/components/episode-player";
+import VideoPlayer from "@/components/video-player";
+import { getWatchProgress } from "@/lib/actions/progress";
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -24,7 +27,7 @@ async function getWork(slug: string) {
       id: true, slug: true, title: true, status: true, type: true,
       trailerUrl: true, videoUrl: true,
       requiresAuth: true, posterUrl: true, description: true,
-      episodeNumber: true, seasonNumber: true,
+      episodeNumber: true, seasonNumber: true, duration: true,
       // SERIES: need first episode slug for redirect
       episodes: {
         where: { status: "PUBLISHED" },
@@ -105,6 +108,10 @@ export default async function WatchPage({ params, searchParams }: Props) {
   const isEmbed   = isYouTube || isVimeo;
   const embedUrl  = videoUrl ? toEmbedUrl(videoUrl) : null;
 
+  const initialSeconds = session?.user && !isEmbed && work.id
+    ? await getWatchProgress(work.id)
+    : 0;
+
   // Episode navigation
   const siblings = work.parent?.episodes ?? [];
   const currentIdx = siblings.findIndex((ep) => ep.slug === slug);
@@ -159,14 +166,25 @@ export default async function WatchPage({ params, searchParams }: Props) {
                     src={videoUrl}
                     poster={work.posterUrl ?? undefined}
                     nextSlug={nextEp.slug}
+                    workId={work.id}
+                    initialSeconds={initialSeconds}
+                    durationMinutes={work.duration ?? undefined}
+                  />
+                ) : isEpisode ? (
+                  <EpisodePlayer
+                    src={videoUrl}
+                    poster={work.posterUrl ?? undefined}
+                    workId={work.id}
+                    initialSeconds={initialSeconds}
+                    durationMinutes={work.duration ?? undefined}
                   />
                 ) : (
-                  <video
+                  <VideoPlayer
                     src={videoUrl}
-                    className="watch-video"
-                    controls
-                    playsInline
                     poster={work.posterUrl ?? undefined}
+                    workId={work.id}
+                    initialSeconds={initialSeconds}
+                    durationMinutes={work.duration ?? undefined}
                   />
                 )
               ) : (
@@ -258,124 +276,6 @@ export default async function WatchPage({ params, searchParams }: Props) {
         </div>
       </div>
 
-      <style>{`
-        .watch-page { padding: 2rem 0 6rem; }
-        .watch-back {
-          display: inline-flex; align-items: center; gap: 0.3rem;
-          font-family: var(--font-body); font-size: 0.8rem;
-          letter-spacing: 0.06em; text-transform: uppercase;
-          color: var(--color-brand-muted); text-decoration: none;
-          margin-bottom: 1rem; transition: color 0.2s;
-        }
-        .watch-back:hover { color: var(--color-brand-white); }
-        .watch-label {
-          font-family: var(--font-body); font-size: 0.6875rem; font-weight: 600;
-          letter-spacing: 0.1em; text-transform: uppercase;
-          color: var(--color-brand-accent); margin: 0 0 1rem;
-        }
-
-        /* ── Two-column layout ── */
-        .watch-layout { display: flex; flex-direction: column; gap: 2rem; }
-        @media (min-width: 1024px) {
-          .watch-layout { flex-direction: row; align-items: flex-start; gap: 2rem; }
-          .watch-main { flex: 1; min-width: 0; }
-          .watch-ep-sidebar { width: 272px; flex-shrink: 0; position: sticky; top: 88px; max-height: calc(100vh - 100px); overflow: hidden; display: flex; flex-direction: column; }
-        }
-
-        /* ── Player ── */
-        .watch-player-wrap {
-          position: relative; width: 100%; aspect-ratio: 16/9;
-          background: #000; border-radius: 4px; overflow: hidden;
-          border: 1px solid var(--color-brand-border);
-        }
-        .watch-iframe, .watch-video {
-          position: absolute; inset: 0; width: 100%; height: 100%;
-          border: none; display: block;
-        }
-        .watch-no-video {
-          position: absolute; inset: 0; display: flex; align-items: center;
-          justify-content: center; color: var(--color-brand-muted); font-family: var(--font-body);
-        }
-
-        /* ── Info ── */
-        .watch-info { padding: 1.5rem 0; max-width: 720px; }
-        .watch-title {
-          font-family: var(--font-display); font-size: clamp(1.4rem, 4vw, 2rem);
-          font-weight: 700; letter-spacing: -0.01em;
-          color: var(--color-brand-white); margin: 0 0 0.75rem;
-        }
-        .watch-desc {
-          font-family: var(--font-body); font-size: 0.92rem;
-          color: var(--color-brand-muted); line-height: 1.7; margin: 0 0 1.25rem;
-        }
-        .watch-next-ep {
-          display: inline-flex; align-items: center; gap: 0.35rem;
-          font-family: var(--font-body); font-size: 0.875rem; font-weight: 600;
-          color: var(--color-brand-accent); text-decoration: none;
-          margin-bottom: 1.25rem; transition: opacity 0.15s;
-        }
-        .watch-next-ep:hover { opacity: 0.72; }
-
-        /* ── Upsell ── */
-        .watch-upsell {
-          display: inline-flex; align-items: center; gap: 0.5rem;
-          font-family: var(--font-body); font-size: 0.85rem; color: var(--color-brand-muted);
-          background: var(--color-brand-surface); border: 1px solid var(--color-brand-border);
-          padding: 0.75rem 1.25rem; border-radius: 4px;
-        }
-        .watch-upsell a { color: var(--color-brand-accent); text-decoration: none; }
-        .watch-upsell a:hover { text-decoration: underline; }
-        .watch-upsell-btn { color: var(--color-brand-accent) !important; font-weight: 600; }
-
-        /* ── Episode sidebar ── */
-        .watch-ep-sidebar {
-          border: 1px solid var(--color-brand-border);
-          border-radius: 4px; overflow: hidden;
-          background: var(--color-brand-dark);
-        }
-        .watch-ep-sidebar-label {
-          font-family: var(--font-body); font-size: 0.6875rem; font-weight: 600;
-          letter-spacing: 0.1em; text-transform: uppercase;
-          color: var(--color-brand-muted);
-          padding: 0.875rem 1rem; margin: 0;
-          border-bottom: 1px solid var(--color-brand-border);
-          flex-shrink: 0;
-        }
-        .watch-ep-list {
-          list-style: none; margin: 0; padding: 0;
-          overflow-y: auto;
-          scrollbar-width: thin;
-          scrollbar-color: var(--color-brand-border) transparent;
-        }
-        .watch-ep-item { border-bottom: 1px solid var(--color-brand-border); }
-        .watch-ep-item:last-child { border-bottom: none; }
-        .watch-ep-item--current { background: rgba(255,255,255,0.04); }
-        .watch-ep-link {
-          display: flex; flex-direction: column; gap: 0.2rem;
-          padding: 0.875rem 1rem; text-decoration: none;
-          transition: background 0.15s;
-        }
-        .watch-ep-link:not(.watch-ep-link--static):hover { background: rgba(255,255,255,0.05); }
-        .watch-ep-meta { display: flex; align-items: center; gap: 0.6rem; }
-        .watch-ep-num {
-          font-family: var(--font-body); font-size: 0.65rem; font-weight: 600;
-          letter-spacing: 0.08em; text-transform: uppercase;
-          color: var(--color-brand-accent);
-        }
-        .watch-ep-dur {
-          font-family: var(--font-body); font-size: 0.65rem;
-          color: var(--color-brand-muted);
-        }
-        .watch-ep-title {
-          font-family: var(--font-body); font-size: 0.875rem; font-weight: 500;
-          color: var(--color-brand-white); line-height: 1.35;
-        }
-        .watch-ep-now {
-          font-family: var(--font-body); font-size: 0.625rem; font-weight: 600;
-          letter-spacing: 0.08em; text-transform: uppercase;
-          color: var(--color-brand-accent); margin-top: 0.1rem;
-        }
-      `}</style>
     </main>
   );
 }

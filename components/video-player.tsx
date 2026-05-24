@@ -1,13 +1,11 @@
 "use client";
 
 import { useRef } from "react";
-import { useRouter } from "next/navigation";
 import { saveWatchProgress } from "@/lib/actions/progress";
 
 type Props = {
   src: string;
   poster?: string;
-  nextSlug?: string;
   workId: string;
   initialSeconds: number;
   durationMinutes?: number;
@@ -15,10 +13,9 @@ type Props = {
 
 const SAVE_INTERVAL_MS = 10_000;
 
-export default function EpisodePlayer({
-  src, poster, nextSlug, workId, initialSeconds, durationMinutes,
+export default function VideoPlayer({
+  src, poster, workId, initialSeconds, durationMinutes,
 }: Props) {
-  const router = useRouter();
   const videoRef = useRef<HTMLVideoElement>(null);
   const lastSaveRef = useRef<number>(0);
 
@@ -55,7 +52,6 @@ export default function EpisodePlayer({
       onEnded={() => {
         const video = videoRef.current;
         if (video) save(Math.floor(video.duration));
-        if (nextSlug) router.push(`/watch/${nextSlug}`);
       }}
     />
   );
