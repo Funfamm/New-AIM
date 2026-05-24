@@ -1,8 +1,6 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import Link from "next/link";
-import { LayoutDashboard, Clapperboard, Users, LogOut } from "lucide-react";
-import { logoutUser } from "@/lib/actions/auth";
+import AdminSidebar from "@/components/admin-sidebar";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
@@ -10,124 +8,105 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <div className="admin-shell">
-      {/* Sidebar */}
-      <aside className="admin-sidebar">
-        <Link href="/" className="admin-logo">AIM<span>Studio</span></Link>
-        <span className="admin-badge">Admin</span>
-
-        <nav className="admin-nav">
-          <Link href="/admin" className="admin-nav-link">
-            <LayoutDashboard size={16} /> Overview
-          </Link>
-          <Link href="/admin/works" className="admin-nav-link">
-            <Clapperboard size={16} /> Works
-          </Link>
-          <Link href="/admin/users" className="admin-nav-link">
-            <Users size={16} /> Users
-          </Link>
-        </nav>
-
-        <form action={logoutUser} className="admin-logout-form">
-          <button type="submit" className="admin-logout-btn">
-            <LogOut size={15} /> Sign Out
-          </button>
-        </form>
-      </aside>
-
-      {/* Main */}
+      <AdminSidebar />
       <main className="admin-main">{children}</main>
 
       <style>{`
-        .admin-shell {
-          display: flex;
-          min-height: 100dvh;
-          background: var(--color-brand-black);
-        }
-        .admin-sidebar {
-          width: 220px;
-          flex-shrink: 0;
-          background: var(--color-brand-dark);
-          border-right: 1px solid var(--color-brand-border);
-          display: flex;
-          flex-direction: column;
-          padding: 1.5rem 1rem;
-          position: fixed;
-          top: 0; left: 0; bottom: 0;
-          z-index: 50;
+        /* ── Shell ── */
+        .admin-shell { display: flex; min-height: 100dvh; background: var(--color-brand-black); }
+        .admin-main {
+          flex: 1; margin-left: 240px;
+          padding: 2.5rem; min-width: 0; overflow-x: hidden;
         }
         @media (max-width: 768px) {
-          .admin-sidebar { display: none; }
-          .admin-main { margin-left: 0 !important; }
+          .admin-main { margin-left: 0; padding: 1.5rem; padding-top: 4rem; }
         }
-        .admin-logo {
-          font-family: var(--font-display);
-          font-size: 1.1rem;
-          font-weight: 900;
-          color: var(--color-brand-white);
-          text-decoration: none;
-          margin-bottom: 0.4rem;
+
+        /* ── Page wrapper ── */
+        .admin-page { max-width: 1100px; }
+        .admin-page-header {
+          display: flex; align-items: center; justify-content: space-between;
+          margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;
         }
-        .admin-logo span { color: var(--color-brand-accent); }
-        .admin-badge {
-          font-family: var(--font-body);
-          font-size: 0.65rem;
-          font-weight: 600;
-          letter-spacing: 0.1em;
-          text-transform: uppercase;
-          color: var(--color-brand-accent);
-          background: rgba(232,201,126,0.1);
-          border: 1px solid rgba(232,201,126,0.2);
-          padding: 0.2rem 0.5rem;
-          border-radius: 3px;
-          display: inline-block;
-          margin-bottom: 2rem;
+        .admin-page-title {
+          font-family: var(--font-display); font-size: 1.75rem; font-weight: 700;
+          letter-spacing: -0.01em; color: var(--color-brand-white); margin: 0;
         }
-        .admin-nav {
-          display: flex;
-          flex-direction: column;
-          gap: 0.25rem;
-          flex: 1;
+
+        /* ── Shared buttons ── */
+        .admin-add-btn {
+          display: inline-flex; align-items: center; gap: 0.4rem;
+          font-family: var(--font-body); font-size: 0.8rem; font-weight: 600;
+          letter-spacing: 0.04em; text-transform: uppercase;
+          color: var(--color-brand-black); background: var(--color-brand-accent);
+          height: 36px; padding: 0 1rem; border-radius: 2px; text-decoration: none;
+          transition: filter 0.15s;
         }
-        .admin-nav-link {
-          display: flex;
-          align-items: center;
-          gap: 0.6rem;
-          font-family: var(--font-body);
-          font-size: 0.875rem;
-          font-weight: 500;
+        .admin-add-btn:hover { filter: brightness(1.06); }
+        .admin-ghost-btn {
+          display: inline-flex; align-items: center; gap: 0.4rem;
+          font-family: var(--font-body); font-size: 0.8rem; font-weight: 500;
           color: var(--color-brand-muted);
-          text-decoration: none;
-          padding: 0.6rem 0.75rem;
-          border-radius: 6px;
-          transition: background 0.15s, color 0.15s;
+          border: 1px solid var(--color-brand-border);
+          height: 36px; padding: 0 1rem; border-radius: 2px; text-decoration: none;
+          transition: color 0.15s, border-color 0.15s;
         }
-        .admin-nav-link:hover {
+        .admin-ghost-btn:hover { color: var(--color-brand-white); border-color: rgba(255,255,255,0.28); }
+
+        /* ── Shared table ── */
+        .admin-table-wrap {
+          background: var(--color-brand-dark);
+          border: 1px solid var(--color-brand-border);
+          border-radius: 4px; overflow-x: auto;
+        }
+        .admin-table {
+          width: 100%; border-collapse: collapse;
+          font-family: var(--font-body); font-size: 0.875rem;
+        }
+        .admin-table th {
+          text-align: left; padding: 0.75rem 1.25rem;
+          font-family: var(--font-body); font-size: 0.6875rem; font-weight: 600;
+          letter-spacing: 0.08em; text-transform: uppercase;
+          color: var(--color-brand-muted);
+          border-bottom: 1px solid var(--color-brand-border);
+          white-space: nowrap;
+        }
+        .admin-table td {
+          padding: 0.875rem 1.25rem; color: var(--color-brand-light);
+          border-bottom: 1px solid rgba(42,42,42,0.6); vertical-align: middle;
+        }
+        .admin-table tr:last-child td { border-bottom: none; }
+        .admin-table tbody tr:hover td { background: rgba(255,255,255,0.015); }
+        .table-empty {
+          text-align: center; color: var(--color-brand-muted);
+          padding: 3rem; font-family: var(--font-body); font-size: 0.875rem;
+        }
+
+        /* ── Shared badges ── */
+        .status-badge, .role-badge {
+          font-family: var(--font-body); font-size: 0.625rem; font-weight: 600;
+          letter-spacing: 0.07em; text-transform: uppercase;
+          padding: 0.2rem 0.55rem; border-radius: 2px; white-space: nowrap;
+        }
+        .badge--published { background: rgba(74,222,128,0.1); color: #4ade80; }
+        .badge--draft     { background: rgba(107,114,128,0.1); color: var(--color-brand-muted); }
+        .badge--private   { background: rgba(248,113,113,0.1); color: #f87171; }
+        .role-badge--admin { background: rgba(232,201,126,0.1); color: var(--color-brand-accent); }
+        .role-badge--user  { background: rgba(148,163,184,0.08); color: var(--color-brand-muted); }
+
+        /* ── Action buttons ── */
+        .action-btns { display: flex; gap: 0.375rem; align-items: center; }
+        .action-btn {
+          display: flex; align-items: center; justify-content: center;
+          width: 30px; height: 30px;
           background: var(--color-brand-surface);
-          color: var(--color-brand-white);
+          border: 1px solid var(--color-brand-border);
+          border-radius: 3px; color: var(--color-brand-muted);
+          text-decoration: none; cursor: pointer;
+          transition: color 0.15s, border-color 0.15s;
         }
-        .admin-logout-form { margin-top: auto; padding-top: 1rem; }
-        .admin-logout-btn {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          width: 100%;
-          font-family: var(--font-body);
-          font-size: 0.8rem;
-          color: var(--color-brand-muted);
-          background: none;
-          border: none;
-          cursor: pointer;
-          padding: 0.5rem 0.75rem;
-          border-radius: 6px;
-          transition: color 0.2s;
-        }
-        .admin-logout-btn:hover { color: var(--color-brand-white); }
-        .admin-main {
-          flex: 1;
-          margin-left: 220px;
-          padding: 2rem;
-          overflow-y: auto;
-        }
+        .action-btn:hover { color: var(--color-brand-white); border-color: rgba(255,255,255,0.25); }
+        .action-btn--danger:hover { color: #f87171; border-color: rgba(248,113,113,0.35); }
       `}</style>
     </div>
   );

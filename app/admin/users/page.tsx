@@ -53,66 +53,11 @@ export default async function AdminUsersPage() {
       </div>
 
       <style>{`
-        .admin-page { max-width: 900px; }
-        .admin-page-header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          margin-bottom: 1.5rem;
-        }
-        .admin-page-title {
-          font-family: var(--font-display);
-          font-size: 1.8rem;
-          font-weight: 700;
-          color: var(--color-brand-white);
-          margin: 0;
-        }
+        .td-email { color: var(--color-brand-muted); font-size: 0.8125rem; }
         .admin-count {
-          font-family: var(--font-body);
-          font-size: 0.8rem;
+          font-family: var(--font-body); font-size: 0.8rem;
           color: var(--color-brand-muted);
         }
-        .admin-table-wrap {
-          background: var(--color-brand-dark);
-          border: 1px solid var(--color-brand-border);
-          border-radius: 8px;
-          overflow-x: auto;
-        }
-        .admin-table {
-          width: 100%;
-          border-collapse: collapse;
-          font-family: var(--font-body);
-          font-size: 0.875rem;
-        }
-        .admin-table th {
-          text-align: left;
-          padding: 0.75rem 1rem;
-          color: var(--color-brand-muted);
-          font-weight: 500;
-          font-size: 0.75rem;
-          letter-spacing: 0.06em;
-          text-transform: uppercase;
-          border-bottom: 1px solid var(--color-brand-border);
-        }
-        .admin-table td {
-          padding: 0.75rem 1rem;
-          color: var(--color-brand-light);
-          border-bottom: 1px solid rgba(42,42,42,0.5);
-          vertical-align: middle;
-        }
-        .admin-table tr:last-child td { border-bottom: none; }
-        .td-email { color: var(--color-brand-muted); font-size: 0.8rem; }
-        .role-badge {
-          font-size: 0.7rem;
-          font-weight: 600;
-          letter-spacing: 0.06em;
-          text-transform: uppercase;
-          padding: 0.2rem 0.5rem;
-          border-radius: 3px;
-        }
-        .role-badge--admin { background: rgba(232,201,126,0.15); color: var(--color-brand-accent); }
-        .role-badge--user  { background: rgba(52,152,219,0.15);  color: #3498db; }
-        .table-empty { text-align: center; color: var(--color-brand-muted); padding: 3rem; }
       `}</style>
     </div>
   );

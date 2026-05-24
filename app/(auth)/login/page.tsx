@@ -2,7 +2,7 @@ import { loginUser } from "@/lib/actions/auth";
 import Link from "next/link";
 import type { Metadata } from "next";
 
-export const metadata: Metadata = { title: "Sign In" };
+export const metadata: Metadata = { title: "Sign In — AIM Studio" };
 
 export default async function LoginPage({
   searchParams,
@@ -15,8 +15,8 @@ export default async function LoginPage({
       <div className="auth-card">
         <div className="auth-header">
           <Link href="/" className="auth-logo">AIM<span>Studio</span></Link>
-          <h1 className="auth-title">Welcome back</h1>
-          <p className="auth-sub">Sign in to your account</p>
+          <h1 className="auth-title">Welcome Back</h1>
+          <p className="auth-sub">Sign in to continue.</p>
         </div>
 
         {params?.error && (
@@ -53,8 +53,8 @@ export default async function LoginPage({
         </form>
 
         <p className="auth-switch">
-          Don't have an account?{" "}
-          <Link href="/register">Create one free</Link>
+          New here?{" "}
+          <Link href="/register">Create your free account</Link>
         </p>
       </div>
 

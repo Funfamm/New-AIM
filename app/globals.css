@@ -16,9 +16,9 @@
   --color-brand-accent:   #e8c97e;   /* cinematic gold */
   --color-brand-red:      #c0392b;   /* deep film red */
 
-  /* Typography */
-  --font-display: "Playfair Display", Georgia, serif;
-  --font-body:    "DM Sans", system-ui, sans-serif;
+  /* Typography — next/font injects --font-cormorant and --font-manrope on <html> */
+  --font-display: var(--font-cormorant), Georgia, serif;
+  --font-body:    var(--font-manrope), system-ui, sans-serif;
 
   /* Spacing scale additions */
   --spacing-18: 4.5rem;
@@ -49,10 +49,17 @@ body {
 }
 
 /* ── Typography ─────────────────────────────────────── */
-h1, h2, h3, h4 {
+h1 {
   font-family: var(--font-display);
   font-weight: 700;
-  line-height: 1.2;
+  line-height: 1.1;
+  color: var(--color-brand-white);
+}
+
+h2, h3, h4 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: 1.25;
   color: var(--color-brand-white);
 }
 
@@ -75,16 +82,16 @@ a {
 /* ── Utilities ───────────────────────────────────────── */
 .container-app {
   width: 100%;
-  max-width: 1200px;
+  max-width: 1280px;
   margin-inline: auto;
-  padding-inline: 1rem;
+  padding-inline: 1.5rem;
 }
 
 @media (min-width: 640px) {
-  .container-app { padding-inline: 1.5rem; }
+  .container-app { padding-inline: 3rem; }
 }
 @media (min-width: 1024px) {
-  .container-app { padding-inline: 2rem; }
+  .container-app { padding-inline: 4rem; }
 }
 
 /* ── Film rail ─────────────────────────────────────── */
@@ -98,9 +105,7 @@ a {
   padding-bottom: 0.5rem;
 }
 .rail-track::-webkit-scrollbar { display: none; }
-.rail-card { width: 150px; flex-shrink: 0; }
+.rail-card { width: 160px; flex-shrink: 0; }
 
-@media (min-width: 480px) { .rail-card { width: 165px; } }
-@media (min-width: 768px) { .rail-track { gap: 1rem; } .rail-card { width: 190px; } }
+@media (min-width: 768px) { .rail-track { gap: 1rem; } .rail-card { width: 180px; } }
 @media (min-width: 1024px) { .rail-card { width: 220px; } }
-@media (min-width: 1280px) { .rail-card { width: 240px; } }

@@ -1,53 +1,89 @@
 import { prisma } from "@/lib/prisma";
-import { Clapperboard, Users, Eye, TrendingUp } from "lucide-react";
+import Link from "next/link";
+import { Plus, Clapperboard, Users } from "lucide-react";
 import type { Metadata } from "next";
 
-export const metadata: Metadata = { title: "Admin — Overview" };
+export const metadata: Metadata = { title: "Admin — Command Center" };
+
+function getGreeting(): string {
+  const h = new Date().getHours();
+  if (h < 5)  return "Late night";
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  if (h < 21) return "Good evening";
+  return "Late night";
+}
 
 async function getStats() {
-  const [totalWorks, publishedWorks, totalUsers, recentUsers] = await Promise.all([
-    prisma.work.count(),
-    prisma.work.count({ where: { status: "PUBLISHED" } }),
+  const monthStart = new Date();
+  monthStart.setDate(1);
+  monthStart.setHours(0, 0, 0, 0);
+
+  const [totalWorks, publishedWorks, totalUsers, newThisMonth, recentUsers] = await Promise.all([
+    prisma.work.count({ where: { type: { not: "EPISODE" } } }),
+    prisma.work.count({ where: { status: "PUBLISHED", type: { not: "EPISODE" } } }),
     prisma.user.count(),
+    prisma.user.count({ where: { createdAt: { gte: monthStart } } }),
     prisma.user.findMany({
       orderBy: { createdAt: "desc" },
-      take: 5,
+      take: 6,
       select: { id: true, name: true, email: true, createdAt: true, role: true },
     }),
   ]);
-  return { totalWorks, publishedWorks, totalUsers, recentUsers };
+
+  return { totalWorks, publishedWorks, totalUsers, newThisMonth, recentUsers };
 }
 
 export default async function AdminOverviewPage() {
-  const { totalWorks, publishedWorks, totalUsers, recentUsers } = await getStats();
+  const { totalWorks, publishedWorks, totalUsers, newThisMonth, recentUsers } = await getStats();
+  const greeting = getGreeting();
 
   const stats = [
-    { label: "Total Works",     value: totalWorks,                    icon: Clapperboard, color: "#e8c97e" },
-    { label: "Published",       value: publishedWorks,                icon: Eye,          color: "#27ae60" },
-    { label: "Total Users",     value: totalUsers,                    icon: Users,        color: "#3498db" },
-    { label: "Unpublished",     value: totalWorks - publishedWorks,   icon: TrendingUp,   color: "#9b59b6" },
+    { label: "Total Works",    value: totalWorks,      note: "films & series" },
+    { label: "Published",      value: publishedWorks,  note: "live now" },
+    { label: "Members",        value: totalUsers,       note: "registered" },
+    { label: "New This Month", value: newThisMonth,    note: "recent signups" },
   ];
 
   return (
     <div className="admin-page">
-      <h1 className="admin-page-title">Overview</h1>
 
-      {/* Stat cards */}
-      <div className="stats-grid">
+      {/* ── Command Center header ── */}
+      <div className="cmd-header">
+        <div>
+          <p className="cmd-greeting">{greeting}, Director.</p>
+          <h1 className="cmd-title">Studio Command Center</h1>
+        </div>
+        <div className="cmd-actions">
+          <Link href="/admin/works/new" className="admin-add-btn">
+            <Plus size={13} /> New Work
+          </Link>
+          <Link href="/admin/works" className="admin-ghost-btn">
+            <Clapperboard size={13} /> Works
+          </Link>
+          <Link href="/admin/users" className="admin-ghost-btn">
+            <Users size={13} /> Users
+          </Link>
+        </div>
+      </div>
+
+      {/* ── Stat cards ── */}
+      <div className="cmd-stats">
         {stats.map((s) => (
-          <div key={s.label} className="stat-card">
-            <div className="stat-card-icon" style={{ color: s.color }}>
-              <s.icon size={20} />
-            </div>
-            <div className="stat-card-num">{s.value}</div>
-            <div className="stat-card-label">{s.label}</div>
+          <div key={s.label} className="cmd-stat">
+            <div className="cmd-stat-value">{s.value}</div>
+            <div className="cmd-stat-label">{s.label}</div>
+            <div className="cmd-stat-note">{s.note}</div>
           </div>
         ))}
       </div>
 
-      {/* Recent users */}
+      {/* ── Recent members ── */}
       <div className="admin-section">
-        <h2 className="admin-section-title">Recent Signups</h2>
+        <div className="admin-section-hd">
+          <h2 className="admin-section-title">Recent Members</h2>
+          <Link href="/admin/users" className="admin-section-link">View all</Link>
+        </div>
         <div className="admin-table-wrap">
           <table className="admin-table">
             <thead>
@@ -61,18 +97,18 @@ export default async function AdminOverviewPage() {
             <tbody>
               {recentUsers.map((u) => (
                 <tr key={u.id}>
-                  <td>{u.name ?? "—"}</td>
-                  <td>{u.email}</td>
+                  <td className="td-primary">{u.name ?? "—"}</td>
+                  <td className="td-muted">{u.email}</td>
                   <td>
                     <span className={`role-badge role-badge--${u.role.toLowerCase()}`}>
                       {u.role}
                     </span>
                   </td>
-                  <td>{new Date(u.createdAt).toLocaleDateString()}</td>
+                  <td className="td-muted">{new Date(u.createdAt).toLocaleDateString()}</td>
                 </tr>
               ))}
               {recentUsers.length === 0 && (
-                <tr><td colSpan={4} className="table-empty">No users yet.</td></tr>
+                <tr><td colSpan={4} className="table-empty">No members yet.</td></tr>
               )}
             </tbody>
           </table>
@@ -80,90 +116,71 @@ export default async function AdminOverviewPage() {
       </div>
 
       <style>{`
-        .admin-page { max-width: 900px; }
-        .admin-page-title {
+        /* ── Command Center header ── */
+        .cmd-header {
+          display: flex; align-items: flex-start; justify-content: space-between;
+          gap: 1.5rem; flex-wrap: wrap; margin-bottom: 2rem;
+          background: linear-gradient(135deg, rgba(232,201,126,0.05) 0%, rgba(255,255,255,0.01) 100%);
+          border: 1px solid rgba(232,201,126,0.1);
+          border-radius: 4px; padding: 1.75rem 2rem;
+        }
+        .cmd-greeting {
+          font-family: var(--font-body); font-size: 0.6875rem; font-weight: 600;
+          letter-spacing: 0.12em; text-transform: uppercase;
+          color: var(--color-brand-accent); margin: 0 0 0.5rem;
+        }
+        .cmd-title {
           font-family: var(--font-display);
-          font-size: 1.8rem;
-          font-weight: 700;
-          color: var(--color-brand-white);
-          margin: 0 0 2rem;
+          font-size: clamp(1.5rem, 3vw, 2.25rem);
+          font-weight: 700; letter-spacing: -0.02em; line-height: 1.1;
+          color: var(--color-brand-white); margin: 0;
         }
-        .stats-grid {
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 1rem;
-          margin-bottom: 2.5rem;
+        .cmd-actions {
+          display: flex; gap: 0.5rem; flex-wrap: wrap;
+          align-items: center; align-self: center;
         }
-        @media (min-width: 640px) { .stats-grid { grid-template-columns: repeat(4, 1fr); } }
-        .stat-card {
-          background: var(--color-brand-dark);
+
+        /* ── Stat cards ── */
+        .cmd-stats {
+          display: grid; grid-template-columns: repeat(2, 1fr);
+          gap: 1rem; margin-bottom: 2.5rem;
+        }
+        @media (min-width: 640px) { .cmd-stats { grid-template-columns: repeat(4, 1fr); } }
+        .cmd-stat {
+          background: var(--color-brand-surface);
           border: 1px solid var(--color-brand-border);
-          border-radius: 8px;
-          padding: 1.25rem;
+          border-radius: 4px; padding: 1.25rem 1.5rem;
         }
-        .stat-card-icon { margin-bottom: 0.75rem; }
-        .stat-card-num {
-          font-family: var(--font-display);
-          font-size: 2rem;
-          font-weight: 900;
-          color: var(--color-brand-white);
-          line-height: 1;
-          margin-bottom: 0.3rem;
+        .cmd-stat-value {
+          font-family: var(--font-display); font-size: 2.5rem;
+          font-weight: 700; letter-spacing: -0.02em; line-height: 1;
+          color: var(--color-brand-accent); margin-bottom: 0.4rem;
         }
-        .stat-card-label {
-          font-family: var(--font-body);
-          font-size: 0.75rem;
-          color: var(--color-brand-muted);
-          text-transform: uppercase;
-          letter-spacing: 0.06em;
+        .cmd-stat-label {
+          font-family: var(--font-body); font-size: 0.875rem; font-weight: 600;
+          color: var(--color-brand-white); margin-bottom: 0.2rem;
         }
+        .cmd-stat-note {
+          font-family: var(--font-body); font-size: 0.75rem; color: var(--color-brand-muted);
+        }
+
+        /* ── Section ── */
         .admin-section { margin-top: 2rem; }
+        .admin-section-hd {
+          display: flex; align-items: baseline;
+          justify-content: space-between; margin-bottom: 1rem;
+        }
         .admin-section-title {
-          font-family: var(--font-display);
-          font-size: 1.1rem;
-          font-weight: 700;
-          color: var(--color-brand-white);
-          margin: 0 0 1rem;
+          font-family: var(--font-display); font-size: 1.125rem; font-weight: 700;
+          letter-spacing: -0.01em; color: var(--color-brand-white); margin: 0;
         }
-        .admin-table-wrap {
-          background: var(--color-brand-dark);
-          border: 1px solid var(--color-brand-border);
-          border-radius: 8px;
-          overflow-x: auto;
+        .admin-section-link {
+          font-family: var(--font-body); font-size: 0.75rem; font-weight: 500;
+          color: var(--color-brand-muted); text-decoration: none; transition: color 0.15s;
         }
-        .admin-table {
-          width: 100%;
-          border-collapse: collapse;
-          font-family: var(--font-body);
-          font-size: 0.875rem;
-        }
-        .admin-table th {
-          text-align: left;
-          padding: 0.75rem 1rem;
-          color: var(--color-brand-muted);
-          font-weight: 500;
-          font-size: 0.75rem;
-          letter-spacing: 0.06em;
-          text-transform: uppercase;
-          border-bottom: 1px solid var(--color-brand-border);
-        }
-        .admin-table td {
-          padding: 0.75rem 1rem;
-          color: var(--color-brand-light);
-          border-bottom: 1px solid rgba(42,42,42,0.5);
-        }
-        .admin-table tr:last-child td { border-bottom: none; }
-        .role-badge {
-          font-size: 0.7rem;
-          font-weight: 600;
-          letter-spacing: 0.06em;
-          text-transform: uppercase;
-          padding: 0.2rem 0.5rem;
-          border-radius: 3px;
-        }
-        .role-badge--admin { background: rgba(232,201,126,0.15); color: var(--color-brand-accent); }
-        .role-badge--user  { background: rgba(52,152,219,0.15);  color: #3498db; }
-        .table-empty { text-align: center; color: var(--color-brand-muted); padding: 2rem; }
+        .admin-section-link:hover { color: var(--color-brand-white); }
+        .td-primary { font-weight: 500; color: var(--color-brand-white); }
+        .td-muted { color: var(--color-brand-muted); font-size: 0.8125rem; }
       `}</style>
     </div>
   );

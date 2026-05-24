@@ -106,67 +106,17 @@ export default async function AdminWorksPage() {
       </div>
 
       <style>{`
-        .admin-page { max-width: 1100px; }
-        .admin-page-header {
-          display: flex; align-items: center; justify-content: space-between;
-          margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;
-        }
-        .admin-page-title {
-          font-family: var(--font-display); font-size: 1.8rem;
-          font-weight: 700; color: var(--color-brand-white); margin: 0;
-        }
-        .admin-add-btn {
-          display: inline-flex; align-items: center; gap: 0.4rem;
-          font-family: var(--font-body); font-size: 0.875rem; font-weight: 600;
-          color: var(--color-brand-black); background: var(--color-brand-accent);
-          padding: 0.55rem 1.1rem; border-radius: 4px; text-decoration: none;
-          transition: filter 0.2s;
-        }
-        .admin-add-btn:hover { filter: brightness(1.05); }
-        .admin-table-wrap {
-          background: var(--color-brand-dark); border: 1px solid var(--color-brand-border);
-          border-radius: 6px; overflow-x: auto;
-        }
-        .admin-table { width: 100%; border-collapse: collapse; font-family: var(--font-body); font-size: 0.875rem; }
-        .admin-table th {
-          text-align: left; padding: 0.75rem 1rem; color: var(--color-brand-muted);
-          font-weight: 500; font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase;
-          border-bottom: 1px solid var(--color-brand-border); white-space: nowrap;
-        }
-        .admin-table td {
-          padding: 0.75rem 1rem; color: var(--color-brand-light);
-          border-bottom: 1px solid rgba(42,42,42,0.5); vertical-align: middle;
-        }
-        .admin-table tr:last-child td { border-bottom: none; }
         .td-title { font-weight: 500; color: var(--color-brand-white); max-width: 220px; }
         .td-sub { display: block; font-size: 0.75rem; color: var(--color-brand-muted); font-weight: 400; margin-top: 0.15rem; }
         .type-label {
-          font-family: var(--font-body); font-size: 0.7rem; font-weight: 500;
+          font-family: var(--font-body); font-size: 0.6875rem; font-weight: 500;
           color: var(--color-brand-muted); white-space: nowrap;
         }
         .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
-        .dot--green { background: #27ae60; }
+        .dot--green { background: #4ade80; }
         .dot--red   { background: var(--color-brand-border); }
-        .status-badge {
-          font-size: 0.7rem; font-weight: 600; letter-spacing: 0.06em;
-          text-transform: uppercase; padding: 0.2rem 0.55rem; border-radius: 3px; white-space: nowrap;
-        }
-        .badge--published { background: rgba(39,174,96,0.15);  color: #27ae60; }
-        .badge--draft     { background: rgba(107,114,128,0.12); color: var(--color-brand-muted); }
-        .badge--private   { background: rgba(192,57,43,0.12);   color: #e07060; }
-        .check { color: #27ae60; font-size: 0.9rem; }
+        .check { color: #4ade80; font-size: 0.9rem; }
         .dash  { color: var(--color-brand-border); }
-        .action-btns { display: flex; gap: 0.4rem; align-items: center; }
-        .action-btn {
-          display: flex; align-items: center; justify-content: center;
-          width: 28px; height: 28px; background: var(--color-brand-surface);
-          border: 1px solid var(--color-brand-border); border-radius: 4px;
-          color: var(--color-brand-muted); text-decoration: none;
-          cursor: pointer; transition: color 0.15s, border-color 0.15s;
-        }
-        .action-btn:hover { color: var(--color-brand-white); border-color: var(--color-brand-white); }
-        .action-btn--danger:hover { color: #e74c3c; border-color: #e74c3c; }
-        .table-empty { text-align: center; color: var(--color-brand-muted); padding: 3rem; }
       `}</style>
     </div>
   );

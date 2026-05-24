@@ -88,14 +88,17 @@ export default function Nav({ user }: NavProps) {
           -webkit-backdrop-filter: blur(12px);
           border-bottom: 1px solid var(--color-brand-border);
         }
-        .nav-inner { display:flex; align-items:center; justify-content:space-between; height:60px; }
+        .nav-inner { display:flex; align-items:center; justify-content:space-between; height:68px; }
         .nav-logo {
-          font-family:var(--font-display); font-size:1.25rem; font-weight:900;
-          letter-spacing:-0.02em; color:var(--color-brand-white); text-decoration:none;
+          font-family:var(--font-display); font-size:1.375rem; font-weight:700;
+          letter-spacing:0.04em; color:var(--color-brand-white); text-decoration:none;
         }
-        .nav-logo span { color:var(--color-brand-accent); }
+        .nav-logo span {
+          font-weight:300; color:var(--color-brand-accent);
+          margin-left:0.35rem; letter-spacing:0.1em;
+        }
         .nav-links-desktop { display:none; align-items:center; gap:2rem; }
-        @media(min-width:768px){ .nav-links-desktop{display:flex} .nav-burger{display:none} }
+        @media(min-width:768px){ .nav-links-desktop{display:flex} }
         .nav-link {
           font-family:var(--font-body); font-size:0.875rem; font-weight:500;
           letter-spacing:0.05em; text-transform:uppercase;
@@ -107,18 +110,19 @@ export default function Nav({ user }: NavProps) {
           color:var(--color-brand-accent) !important;
         }
         .nav-cta {
-          display:inline-flex; align-items:center; gap:0.35rem;
-          font-family:var(--font-body); font-size:0.8rem; font-weight:600;
-          letter-spacing:0.08em; text-transform:uppercase;
-          color:var(--color-brand-black); background:var(--color-brand-accent);
-          padding:0.4rem 1rem; border-radius:4px; text-decoration:none;
-          transition:opacity 0.2s;
+          display:inline-flex; align-items:center; gap:0.25rem;
+          font-family:var(--font-body); font-size:0.875rem; font-weight:500;
+          letter-spacing:0.05em; text-transform:uppercase;
+          color:var(--color-brand-muted); background:none;
+          padding:0; text-decoration:none;
+          transition:color 0.2s;
         }
-        .nav-cta:hover { opacity:0.85; }
+        .nav-cta:hover { color:var(--color-brand-white); }
         .nav-burger {
           background:none; border:none; color:var(--color-brand-white);
           cursor:pointer; padding:0.25rem; display:flex; align-items:center;
         }
+        @media(min-width:768px){ .nav-burger{display:none} }
         .nav-drawer {
           display:flex; flex-direction:column;
           padding:1rem 1.5rem 1.5rem; gap:0.25rem;
@@ -132,12 +136,14 @@ export default function Nav({ user }: NavProps) {
           padding:0.75rem 0; border-bottom:1px solid var(--color-brand-border);
           transition:color 0.2s;
         }
-        .nav-drawer-link:hover { color:var(--color-brand-accent); }
+        .nav-drawer-link:hover { color:var(--color-brand-white); }
         .nav-drawer-cta {
-          margin-top:1rem; font-family:var(--font-body); font-size:0.9rem; font-weight:600;
+          margin-top:1rem; font-family:var(--font-body); font-size:0.875rem; font-weight:500;
           letter-spacing:0.06em; text-transform:uppercase;
-          color:var(--color-brand-black); background:var(--color-brand-accent);
-          padding:0.75rem 1.5rem; border-radius:4px; text-decoration:none; text-align:center;
+          color:var(--color-brand-white); background:none;
+          border:1px solid rgba(255,255,255,0.3);
+          padding:0.75rem 1.5rem; border-radius:2px; text-decoration:none; text-align:center;
+          transition:border-color 0.2s;
         }
       `}</style>
     </header>

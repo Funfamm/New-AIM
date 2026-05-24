@@ -33,12 +33,12 @@ export default function FilmRail({
       <div className="container-app">
         <div className="mb-6">
           {label && (
-            <span className="block font-body text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-brand-accent mb-2">
+            <span className="block font-body text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-brand-muted mb-2">
               {label}
             </span>
           )}
           <div className="flex items-baseline justify-between">
-            <h2 className="font-display text-[clamp(1.4rem,3vw,1.875rem)] font-bold text-brand-white tracking-[-0.01em] m-0">
+            <h2 className="font-display text-[1.375rem] font-bold text-brand-white tracking-[-0.02em] m-0">
               {title}
             </h2>
             {href && (

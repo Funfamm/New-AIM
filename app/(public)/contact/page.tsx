@@ -1,107 +1,147 @@
 import type { Metadata } from "next";
-export const metadata: Metadata = { title: "Contact" };
+
+export const metadata: Metadata = {
+  title: "Contact — AIM Studio",
+  description: "For partnerships, press, casting, or just to say hi. We read every message.",
+};
 
 export default function ContactPage() {
   return (
     <main className="contact-page">
       <div className="container-app">
+
         <div className="contact-header">
-          <span className="contact-eyebrow">Get In Touch</span>
-          <h1 className="contact-title">Contact Us</h1>
+          <span className="contact-eyebrow">— Get in Touch</span>
+          <h1 className="contact-title">Get in Touch</h1>
           <p className="contact-subtitle">
-            Questions, collaborations, or press enquiries — we'd love to hear from you.
+            For partnerships, press, casting, or just to say hi.
+          </p>
+          <p className="contact-intro">
+            We read every message. We can&apos;t always reply immediately,
+            but if your message matters &mdash; we&apos;ll see it.
           </p>
         </div>
 
-        <div className="contact-layout">
-          {/* Info */}
-          <div className="contact-info">
-            {[
-              { label: "General", value: "hello@aimstudio.com" },
-              { label: "Press", value: "press@aimstudio.com" },
-              { label: "Creators", value: "creators@aimstudio.com" },
-            ].map((item) => (
-              <div key={item.label} className="contact-info-item">
-                <span className="contact-info-label">{item.label}</span>
-                <a href={`mailto:${item.value}`} className="contact-info-value">{item.value}</a>
-              </div>
-            ))}
+        <form className="contact-form">
+          <div className="form-row">
+            <div className="form-group">
+              <label htmlFor="cf-name" className="form-label">Name</label>
+              <input
+                id="cf-name"
+                type="text"
+                name="name"
+                className="form-input"
+                placeholder="Your name"
+                autoComplete="name"
+              />
+            </div>
+            <div className="form-group">
+              <label htmlFor="cf-email" className="form-label">Email</label>
+              <input
+                id="cf-email"
+                type="email"
+                name="email"
+                className="form-input"
+                placeholder="your@email.com"
+                autoComplete="email"
+              />
+            </div>
           </div>
 
-          {/* Form placeholder — Phase 3 will wire this up */}
-          <form className="contact-form">
-            <div className="form-group">
-              <label className="form-label">Name</label>
-              <input type="text" className="form-input" placeholder="Your name" />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Email</label>
-              <input type="email" className="form-input" placeholder="your@email.com" />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Message</label>
-              <textarea className="form-textarea" rows={5} placeholder="Your message..." />
-            </div>
+          <div className="form-group">
+            <label htmlFor="cf-subject" className="form-label">What&apos;s this about?</label>
+            <select id="cf-subject" name="subject" className="form-select">
+              <option value="">Select a topic…</option>
+              <option value="general">General</option>
+              <option value="press">Press</option>
+              <option value="partnerships">Partnerships</option>
+              <option value="casting">Casting</option>
+              <option value="support">Support</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="cf-message" className="form-label">Message</label>
+            <textarea
+              id="cf-message"
+              name="message"
+              className="form-textarea"
+              rows={6}
+              placeholder="Your message…"
+            />
+          </div>
+
+          <div className="form-footer">
             <button type="submit" className="form-submit">Send Message</button>
-          </form>
-        </div>
+            <p className="form-note">
+              For urgent matters, email us directly:{" "}
+              <a href="mailto:hello@impactaistudio.com" className="form-note-link">
+                hello@impactaistudio.com
+              </a>
+              <br />
+              We typically respond within 48 hours.
+            </p>
+          </div>
+        </form>
+
       </div>
 
       <style>{`
         .contact-page { padding: 4rem 0 8rem; }
-        .contact-header { padding: 2rem 0 3rem; max-width: 520px; }
+
+        .contact-header { padding-bottom: 3rem; max-width: 560px; }
         .contact-eyebrow {
           display: block;
           font-family: var(--font-body);
-          font-size: 0.7rem;
+          font-size: 0.6875rem;
           font-weight: 600;
-          letter-spacing: 0.12em;
+          letter-spacing: 0.1em;
           text-transform: uppercase;
           color: var(--color-brand-accent);
-          margin-bottom: 0.75rem;
+          margin-bottom: 1rem;
         }
         .contact-title {
           font-family: var(--font-display);
           font-size: clamp(2rem, 5vw, 3rem);
-          font-weight: 900;
+          font-weight: 700;
+          letter-spacing: -0.02em;
           color: var(--color-brand-white);
           margin: 0 0 0.75rem;
+          line-height: 1.1;
         }
         .contact-subtitle {
           font-family: var(--font-body);
-          font-size: 0.95rem;
+          font-size: 1rem;
+          color: var(--color-brand-light);
+          line-height: 1.6;
+          margin: 0 0 0.75rem;
+          opacity: 0.85;
+        }
+        .contact-intro {
+          font-family: var(--font-body);
+          font-size: 0.9rem;
           color: var(--color-brand-muted);
           line-height: 1.65;
           margin: 0;
         }
-        .contact-layout {
+
+        /* ── Form ── */
+        .contact-form {
           display: flex;
           flex-direction: column;
-          gap: 3rem;
+          gap: 1.25rem;
+          max-width: 640px;
         }
-        @media (min-width: 768px) {
-          .contact-layout { flex-direction: row; gap: 4rem; }
+        .form-row {
+          display: flex;
+          flex-direction: column;
+          gap: 1.25rem;
         }
-        .contact-info { display: flex; flex-direction: column; gap: 1.5rem; min-width: 200px; }
-        .contact-info-label {
-          display: block;
-          font-family: var(--font-body);
-          font-size: 0.7rem;
-          font-weight: 600;
-          letter-spacing: 0.1em;
-          text-transform: uppercase;
-          color: var(--color-brand-muted);
-          margin-bottom: 0.3rem;
+        @media (min-width: 640px) {
+          .form-row { flex-direction: row; gap: 1rem; }
+          .form-row .form-group { flex: 1; }
         }
-        .contact-info-value {
-          font-family: var(--font-body);
-          font-size: 0.9rem;
-          color: var(--color-brand-accent);
-          text-decoration: none;
-          transition: opacity 0.2s;
-        }
-        .contact-info-value:hover { opacity: 0.75; }
-        .contact-form { flex: 1; display: flex; flex-direction: column; gap: 1.25rem; max-width: 520px; }
         .form-group { display: flex; flex-direction: column; gap: 0.4rem; }
         .form-label {
           font-family: var(--font-body);
@@ -110,36 +150,75 @@ export default function ContactPage() {
           color: var(--color-brand-light);
           letter-spacing: 0.03em;
         }
-        .form-input, .form-textarea {
+        .form-input,
+        .form-select,
+        .form-textarea {
           font-family: var(--font-body);
           font-size: 0.9rem;
           color: var(--color-brand-white);
           background: var(--color-brand-surface);
           border: 1px solid var(--color-brand-border);
-          border-radius: 5px;
-          padding: 0.65rem 0.9rem;
+          border-radius: 2px;
+          padding: 0.7rem 0.9rem;
           outline: none;
-          transition: border-color 0.2s;
-          resize: vertical;
+          transition: border-color 0.15s;
           width: 100%;
           box-sizing: border-box;
         }
-        .form-input::placeholder, .form-textarea::placeholder { color: var(--color-brand-muted); }
-        .form-input:focus, .form-textarea:focus { border-color: var(--color-brand-accent); }
+        .form-select {
+          appearance: none;
+          -webkit-appearance: none;
+          cursor: pointer;
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b7280' stroke-width='1.5' stroke-linecap='round' fill='none'/%3E%3C/svg%3E");
+          background-repeat: no-repeat;
+          background-position: right 0.9rem center;
+          padding-right: 2.5rem;
+        }
+        .form-textarea { resize: vertical; min-height: 140px; }
+        .form-input::placeholder,
+        .form-textarea::placeholder { color: var(--color-brand-muted); }
+        .form-select option { background: var(--color-brand-surface); color: var(--color-brand-white); }
+        .form-input:focus,
+        .form-select:focus,
+        .form-textarea:focus { border-color: var(--color-brand-accent); }
+
+        .form-footer {
+          display: flex;
+          flex-direction: column;
+          gap: 1.25rem;
+        }
+        @media (min-width: 640px) {
+          .form-footer { flex-direction: row; align-items: flex-start; gap: 2rem; }
+        }
         .form-submit {
-          align-self: flex-start;
+          flex-shrink: 0;
           font-family: var(--font-body);
-          font-size: 0.9rem;
+          font-size: 0.875rem;
           font-weight: 600;
+          letter-spacing: 0.04em;
           color: var(--color-brand-black);
           background: var(--color-brand-accent);
           border: none;
-          padding: 0.75rem 2rem;
-          border-radius: 4px;
+          height: 52px;
+          padding: 0 2rem;
+          border-radius: 2px;
           cursor: pointer;
-          transition: opacity 0.2s;
+          transition: filter 0.2s;
         }
-        .form-submit:hover { opacity: 0.85; }
+        .form-submit:hover { filter: brightness(1.06); }
+        .form-note {
+          font-family: var(--font-body);
+          font-size: 0.8rem;
+          color: var(--color-brand-muted);
+          line-height: 1.65;
+          margin: 0;
+          padding-top: 0.25rem;
+        }
+        .form-note-link {
+          color: var(--color-brand-accent);
+          text-decoration: none;
+        }
+        .form-note-link:hover { text-decoration: underline; }
       `}</style>
     </main>
   );

@@ -1,8 +1,20 @@
-// Root layout — wraps every page
-// Fonts loaded here via <link> (no next/font package needed)
-
 import type { Metadata } from "next";
+import { Cormorant_Garamond, Manrope } from "next/font/google";
 import "./globals.css";
+
+const cormorant = Cormorant_Garamond({
+  subsets: ["latin"],
+  weight: ["300", "600", "700"],
+  display: "swap",
+  variable: "--font-cormorant",
+});
+
+const manrope = Manrope({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
+  variable: "--font-manrope",
+});
 
 export const metadata: Metadata = {
   title: {
@@ -10,7 +22,7 @@ export const metadata: Metadata = {
     template: "%s | AIM Studio",
   },
   description:
-    "AI-generated films, creators, and streaming. Fast. Mobile-first.",
+    "Cinema about sacrifice, regret, and the people we'd do anything for.",
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_APP_URL ?? "https://aimstudio.vercel.app"
   ),
@@ -26,20 +38,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <head>
-        {/* Google Fonts — display + body */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link
-          rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossOrigin="anonymous"
-        />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@400;500;600&display=swap"
-          rel="stylesheet"
-        />
-      </head>
+    <html
+      lang="en"
+      className={`${cormorant.variable} ${manrope.variable}`}
+      suppressHydrationWarning
+    >
       <body>{children}</body>
     </html>
   );

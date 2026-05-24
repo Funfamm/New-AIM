@@ -4,14 +4,11 @@
 
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: PrismaAdapter(prisma),
-
-  // JWT strategy is required when using credentials provider
+  // No adapter — credentials + JWT strategy manages sessions without DB session table
   session: { strategy: "jwt" },
 
   pages: {

@@ -46,18 +46,24 @@ Palette tokens are defined in `app/globals.css` under `@theme`. Never use arbitr
 
 ## Typography Rules
 
-Both fonts are loaded via `next/font/google` in the app layout.
+Fonts are loaded via `next/font/google` in the app layout. CSS variables `--font-cormorant` and `--font-manrope` are injected on `<html>`, then aliased to `--font-display` and `--font-body` in `@theme`.
+
+**Font stack:**
+- Display/editorial: **Cormorant Garamond** — weights 300, 600, 700 — `var(--font-display)`
+- Body/UI: **Manrope** — weights 400, 500, 600, 700 — `var(--font-body)`
+
+**Logo wordmark:** `AIM` in Cormorant 700 + `0.04em` tracking / `Studio` in Cormorant 300 + gold + `0.1em` tracking — never weight 900.
 
 | Name | Font | Size | Weight | Tracking | Line height | Use |
 |---|---|---|---|---|---|---|
-| Display | Playfair Display | `clamp(3.5rem, 9vw, 7rem)` | 700 | `-0.03em` | `1.05` | Hero title only |
-| H1 | Playfair Display | `clamp(2rem, 5vw, 3.25rem)` | 700 | `-0.02em` | `1.15` | Page titles |
-| H2 | Playfair Display | `clamp(1.4rem, 3vw, 1.875rem)` | 700 | `-0.01em` | `1.15` | Section headings |
-| H3 | Playfair Display | `1.125rem` | 600 | `0` | `1.35` | Card titles, sub-heads |
-| Body | DM Sans | `1rem` | 400 | `0` | `1.6` | Paragraphs, descriptions |
-| UI | DM Sans | `0.875rem` | 500 | `0` | — | Nav links, button labels |
-| Label | DM Sans | `0.6875rem` | 600 | `0.1em` | — | Uppercase tags, genres, eyebrows |
-| Micro | DM Sans | `0.75rem` | 400 | `0` | — | Meta, timestamps, captions |
+| Display | Cormorant Garamond | `clamp(3.5rem, 9vw, 7rem)` | 700 | `-0.03em` | `1.05` | Hero title only |
+| H1 | Cormorant Garamond | `clamp(2rem, 5vw, 3.25rem)` | 700 | `-0.02em` | `1.15` | Page titles |
+| H2 | Cormorant Garamond | `clamp(1.4rem, 3vw, 1.875rem)` | 700 | `-0.01em` | `1.15` | Section headings |
+| H3 | Cormorant Garamond | `1.125rem` | 600 | `0` | `1.35` | Card titles, sub-heads |
+| Body | Manrope | `1rem` | 400 | `0` | `1.6` | Paragraphs, descriptions |
+| UI | Manrope | `0.875rem` | 500 | `0` | — | Nav links, button labels |
+| Label | Manrope | `0.6875rem` | 600 | `0.1em` | — | Uppercase tags, genres, eyebrows |
+| Micro | Manrope | `0.75rem` | 400 | `0` | — | Meta, timestamps, captions |
 
 **Rules:**
 - Negative letter-spacing on all display/heading type — this creates editorial confidence

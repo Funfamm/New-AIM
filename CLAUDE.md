@@ -75,9 +75,11 @@ brand-light   #e5e7eb   body text
 brand-white   #f9fafb   headings
 brand-accent  #e8c97e   gold — CTAs, highlights
 brand-red     #c0392b   errors
-font-display  "Playfair Display", Georgia, serif
-font-body     "DM Sans", system-ui, sans-serif
+font-display  "Cormorant Garamond", Georgia, serif   — headings, logo, hero, blockquotes
+font-body     "Manrope", system-ui, sans-serif       — nav, buttons, body, labels, admin UI
 ```
+
+Fonts are loaded via `next/font/google` in `app/layout.tsx` (weights: Cormorant 300/600/700, Manrope 400/500/600/700). CSS variables `--font-cormorant` and `--font-manrope` are injected on `<html>` and aliased to `--font-display` and `--font-body` in `globals.css @theme`.
 
 ---
 
@@ -94,6 +96,8 @@ font-body     "DM Sans", system-ui, sans-serif
 9. **Always follow `docs/DESIGN_SYSTEM.md` for all UI work.** Before making any visual change, check the design system for the correct color, spacing, typography, button, and card rules.
 10. **Do not make visual changes without checking the design system.** No arbitrary colors, no random spacing, no gold overuse, no card info panels below posters.
 11. **Keep all UI work premium, cinematic, mobile-first, and 4G-friendly.** The standard is Netflix-level browsing, Apple-level spacing, A24-level restraint. If a change looks template-generic, it does not meet the standard.
+12. **Always follow `docs/BRAND_COPY_GUIDE_V2.md` for all public-facing copy.** This supersedes `docs/BRAND_COPY_GUIDE.md`. Use exact words from the guide — do not paraphrase or invent new copy. Never use buzzwords (revolutionize, disrupt, leverage, synergize, AI-powered, AI-driven). Section 3 (Future) must not be built yet; Section 1 is cleared for V1.
+13. **Always follow `docs/ADMIN_DASHBOARD_BLUEPRINT.md` for all admin UI work.** Before any admin redesign or new admin module, read Sections 1–4. Do not build modules listed in Section 2 (Future). Propose a phase plan before touching multiple admin areas at once.
 
 ---
 
@@ -125,9 +129,25 @@ font-body     "DM Sans", system-ui, sans-serif
 - **Ask before reading large folders.** If a task seems to require reading 5+ files, confirm with the user first.
 - **Reference repos on demand only.** Do not load reference repos unless the user asks. When you do, read at most 2–3 files (prefer `README.md`, `CLAUDE.md`, or the single relevant component).
 - **Never use reference repos as context dumps.** They are inspiration sources, not documentation to recite.
+- **Refresh reference repos before major design/planning sessions** using the command below. Do not install packages from them, do not copy full systems blindly. After refreshing, inspect only the relevant files and summarize useful findings before applying any pattern.
 - **Recommend `/compact` after major milestones** (completed page, completed feature, completed fix cycle).
 
 See `.claude/commands/token-budget.md` for the pre-task checklist format.
+
+### Reference repo refresh command
+
+Run this in PowerShell before major UI/UX, workflow, or architecture sessions:
+
+```powershell
+cd "C:\Users\mxz\Desktop\ai-agent-repos"
+Get-ChildItem -Directory | ForEach-Object {
+  if (Test-Path "$($_.FullName)\.git") {
+    git -C $_.FullName pull --ff-only
+  }
+}
+```
+
+Reference repos live at `C:\Users\mxz\Desktop\ai-agent-repos`. Use for inspiration only — never install packages from them into AIM Studio Lite.
 
 ---
 

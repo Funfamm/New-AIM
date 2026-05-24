@@ -1,6 +1,18 @@
 import Link from "next/link";
 import Image from "next/image";
-import { Lock } from "lucide-react";
+import { Lock, Play } from "lucide-react";
+
+const TYPE_LABEL: Record<string, string> = {
+  SHORT_FILM: "Short",
+  FULL_FILM: "Film",
+  SERIES: "Series",
+  EPISODE: "Episode",
+  TRAILER: "Trailer",
+  COMMERCIAL: "Commercial",
+  BRANDING: "Brand",
+  CAMPAIGN: "Campaign",
+  CASE_STUDY: "Case Study",
+};
 
 type FilmCardProps = {
   slug: string;
@@ -8,7 +20,7 @@ type FilmCardProps = {
   posterUrl?: string | null;
   genre?: string | null;
   requiresAuth?: boolean;
-  /** Pass true for above-fold cards (hero rail) to skip lazy-load */
+  type?: string;
   priority?: boolean;
 };
 
@@ -18,13 +30,15 @@ export default function FilmCard({
   posterUrl,
   genre,
   requiresAuth,
+  type,
   priority = false,
 }: FilmCardProps) {
   return (
     <Link
       href={`/works/${slug}`}
-      aria-label={`Watch ${title}`}
-      className="group relative block rounded transition-shadow duration-300 ease-out hover:shadow-[0_8px_32px_rgba(0,0,0,0.65)]"
+      aria-label={`View details for ${title}`}
+      className="group relative block rounded cursor-pointer transition-[transform,box-shadow] duration-200 ease-out hover:scale-[1.04] hover:shadow-[0_8px_32px_rgba(0,0,0,0.6)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-accent"
+      style={{ touchAction: "manipulation" }}
     >
       {/* Poster — image IS the card */}
       <div className="relative aspect-[2/3] overflow-hidden rounded bg-brand-surface">
@@ -33,8 +47,9 @@ export default function FilmCard({
             src={posterUrl}
             alt={title}
             fill
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
-            className="object-cover transition-transform duration-300 ease-out group-hover:scale-[1.03]"
+            sizes="(max-width: 640px) calc(50vw - 1.5rem), (max-width: 768px) 160px, (max-width: 1024px) 180px, 220px"
+            className="object-cover"
+            quality={85}
             priority={priority}
           />
         ) : (
@@ -46,29 +61,60 @@ export default function FilmCard({
           </div>
         )}
 
-        {/* Gradient — strong dark at bottom, fades out at mid-card */}
+        {/* Gradient */}
         <div
           className="absolute inset-0 pointer-events-none"
-          style={{
-            background:
-              "linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0) 52%)",
-          }}
+          style={{ background: "linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0) 55%)" }}
           aria-hidden="true"
         />
 
-        {/* Genre + title — anchored inside the poster */}
+        {/* Play overlay — appears on desktop hover */}
+        <div
+          className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none"
+          aria-hidden="true"
+        >
+          <div style={{
+            background: "rgba(0,0,0,0.55)", borderRadius: "50%",
+            width: 44, height: 44,
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+            <Play size={16} fill="currentColor" style={{ color: "var(--color-brand-white)", marginLeft: 2 }} />
+          </div>
+        </div>
+
+        {/* Genre + title */}
         <div className="absolute bottom-0 left-0 right-0 p-4">
           {genre && (
-            <span className="mb-1 block font-body text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-brand-accent">
+            <span className="mb-1 block font-body text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-brand-light">
               {genre}
             </span>
           )}
-          <h3 className="font-display text-[1.125rem] font-semibold leading-snug tracking-normal text-brand-white line-clamp-2">
+          <h3 className="font-body text-[1rem] font-semibold leading-snug tracking-tight text-brand-white line-clamp-2">
             {title}
           </h3>
         </div>
 
-        {/* Members-only lock badge */}
+        {/* Type badge — top-left */}
+        {type && TYPE_LABEL[type] && (
+          <div
+            className="absolute left-3 top-3"
+            style={{
+              background: "rgba(0,0,0,0.72)",
+              padding: "0.2rem 0.4rem",
+              borderRadius: 2,
+            }}
+          >
+            <span style={{
+              fontFamily: "var(--font-body)", fontSize: "0.6875rem",
+              fontWeight: 600, letterSpacing: "0.08em",
+              textTransform: "uppercase", color: "var(--color-brand-light)",
+            }}>
+              {TYPE_LABEL[type]}
+            </span>
+          </div>
+        )}
+
+        {/* Lock badge — top-right */}
         {requiresAuth && (
           <div
             className="absolute right-3 top-3 flex items-center rounded p-1 text-brand-accent"
