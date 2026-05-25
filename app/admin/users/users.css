@@ -403,3 +403,181 @@
 }
 
 .upag-sub { color: var(--color-brand-border); }
+
+/* ── DEACTIVATED status badge + row ── */
+.ustatus-badge--deactivated {
+  background: rgba(107, 114, 128, 0.1);
+  color: #9ca3af;
+}
+
+.urow--deactivated td {
+  opacity: 0.45;
+}
+
+.urow--deactivated .ucell-name {
+  text-decoration: line-through;
+  text-decoration-color: rgba(156, 163, 175, 0.4);
+}
+
+/* ── Last login sub-text ── */
+.ucell-login-via {
+  font-size: 0.68rem;
+  color: var(--color-brand-muted);
+  opacity: 0.7;
+  margin-top: 0.1rem;
+}
+
+.ucell-never {
+  font-size: 0.75rem;
+  color: var(--color-brand-muted);
+  opacity: 0.5;
+  font-style: italic;
+}
+
+/* ── Action button variants ── */
+.action-btn--deactivate {
+  color: #f59e0b;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.action-btn--restore {
+  color: #60a5fa;
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.action-btn--purge {
+  color: rgba(239, 68, 68, 0.6);
+  font-size: 0.7rem;
+  line-height: 1;
+}
+
+.action-btn--purge:hover:not(:disabled) {
+  color: #ef4444;
+}
+
+/* ── Purge confirmation modal ── */
+.purge-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 1rem;
+}
+
+.purge-modal {
+  background: var(--color-brand-dark);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
+  padding: 1.75rem;
+  max-width: 440px;
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+}
+
+.purge-modal-title {
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 700;
+  color: #f87171;
+  margin: 0 0 0.75rem;
+}
+
+.purge-modal-body {
+  font-size: 0.82rem;
+  color: var(--color-brand-muted);
+  line-height: 1.6;
+  margin: 0 0 1.25rem;
+}
+
+.purge-modal-label {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--color-brand-light);
+  margin-bottom: 0.5rem;
+}
+
+.purge-code {
+  background: rgba(239, 68, 68, 0.1);
+  color: #f87171;
+  padding: 0.1rem 0.35rem;
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: 0.82em;
+}
+
+.purge-modal-input {
+  width: 100%;
+  background: var(--color-brand-surface);
+  border: 1px solid var(--color-brand-border);
+  border-radius: 4px;
+  color: var(--color-brand-white);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  padding: 0.55rem 0.75rem;
+  outline: none;
+  transition: border-color 0.15s;
+  box-sizing: border-box;
+}
+
+.purge-modal-input:focus {
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+.purge-modal-error {
+  font-size: 0.78rem;
+  color: #f87171;
+  margin: 0.6rem 0 0;
+}
+
+.purge-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  margin-top: 1.25rem;
+}
+
+.purge-cancel-btn {
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.45rem 1rem;
+  border-radius: 4px;
+  border: 1px solid var(--color-brand-border);
+  background: transparent;
+  color: var(--color-brand-muted);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.purge-cancel-btn:hover:not(:disabled) {
+  color: var(--color-brand-light);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.purge-confirm-btn {
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.45rem 1.1rem;
+  border-radius: 4px;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  background: rgba(239, 68, 68, 0.1);
+  color: #f87171;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.purge-confirm-btn:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.18);
+  border-color: rgba(239, 68, 68, 0.6);
+}
+
+.purge-confirm-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}

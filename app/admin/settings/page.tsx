@@ -11,6 +11,7 @@ import {
 } from "@/lib/actions/settings";
 import { SaveButton } from "./settings-save-button";
 import { SecurityForm } from "./settings-security-form";
+import { SecurityPoliciesForm } from "./settings-security-policies-form";
 import type { Metadata } from "next";
 import "./settings.css";
 
@@ -238,11 +239,24 @@ export default async function SettingsPage() {
         </div>
       </form>
 
-      {/* ── 6. Security — client component for error feedback ── */}
+      {/* ── 6. Security — auth providers ── */}
       <SecurityForm
         allowGoogleSignIn={s.allowGoogleSignIn}
         allowCredentialsSignIn={s.allowCredentialsSignIn}
         allowNewRegistrations={s.allowNewRegistrations}
+      />
+
+      {/* ── 7. Security Policies — throttle + device + notifications ── */}
+      <SecurityPoliciesForm
+        failedLoginWindowMinutes={s.failedLoginWindowMinutes}
+        failedLoginMaxAttempts={s.failedLoginMaxAttempts}
+        loginCooldownMinutes={s.loginCooldownMinutes}
+        notifyUserOnNewDevice={s.notifyUserOnNewDevice}
+        notifyUserOnNewLocation={s.notifyUserOnNewLocation}
+        notifyAdminOnSuspiciousAdminLogin={s.notifyAdminOnSuspiciousAdminLogin}
+        allowUserDeviceTrust={s.allowUserDeviceTrust}
+        requireReauthForSensitiveActions={s.requireReauthForSensitiveActions}
+        allowHardPurgeForSuperAdmin={s.allowHardPurgeForSuperAdmin}
       />
 
       {/* ── Footer ── */}

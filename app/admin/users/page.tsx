@@ -38,8 +38,9 @@ function buildWhere(
   if (via === "email")  { where.password = { not: null }; where.accounts = { none: { provider: "google" } }; }
   if (via === "multi")  { where.password = { not: null }; where.accounts = { some: { provider: "google" } }; }
 
-  if (status === "ACTIVE")    where.status = "ACTIVE";
-  if (status === "SUSPENDED") where.status = "SUSPENDED";
+  if (status === "ACTIVE")      where.status = "ACTIVE";
+  if (status === "SUSPENDED")   where.status = "SUSPENDED";
+  if (status === "DEACTIVATED") where.status = "DEACTIVATED";
 
   return where;
 }
@@ -129,6 +130,8 @@ export default async function AdminUsersPage({
         password: true,      // used as boolean only — hash never passed to client
         status: true,
         suspendedAt: true,
+        lastLoginAt: true,
+        lastLoginProvider: true,
         createdAt: true,
         accounts: { select: { provider: true } },
         _count: { select: { savedWorks: true, progress: true } },
@@ -140,21 +143,35 @@ export default async function AdminUsersPage({
   const totalPages  = Math.ceil(filteredTotal / PAGE_SIZE);
   const isFiltered  = !!(q || role || via || status);
 
+  // Device counts — UserDevice.userId is a plain string (no FK), so we group separately
+  const userIds = users.map((u) => u.id);
+  const deviceGroups = userIds.length > 0
+    ? await prisma.userDevice.groupBy({
+        by: ["userId"],
+        where: { userId: { in: userIds } },
+        _count: { id: true },
+      })
+    : [];
+  const deviceCountMap = Object.fromEntries(deviceGroups.map((d) => [d.userId, d._count.id]));
+
   // Compute UserRow[] — serializable shape for the client component
   // Password hash is used as a boolean check here and never forwarded.
   const rows: UserRow[] = users.map((u) => ({
-    id:             u.id,
-    name:           u.name,
-    email:          u.email,
-    role:           u.role,
-    hasPassword:    !!u.password,
-    loginMethod:    loginMethod(!!u.password, u.accounts.map((a) => a.provider)),
-    status:         u.status,
-    suspendedAt:    u.suspendedAt?.toISOString() ?? null,
-    savedWorksCount: u._count.savedWorks,
-    progressCount:  u._count.progress,
-    createdAt:      u.createdAt.toISOString(),
-    isSelf:         u.id === actorId,
+    id:                u.id,
+    name:              u.name,
+    email:             u.email,
+    role:              u.role,
+    hasPassword:       !!u.password,
+    loginMethod:       loginMethod(!!u.password, u.accounts.map((a) => a.provider)),
+    status:            u.status,
+    suspendedAt:       u.suspendedAt?.toISOString() ?? null,
+    lastLoginAt:       u.lastLoginAt?.toISOString() ?? null,
+    lastLoginProvider: u.lastLoginProvider ?? null,
+    deviceCount:       deviceCountMap[u.id] ?? 0,
+    savedWorksCount:   u._count.savedWorks,
+    progressCount:     u._count.progress,
+    createdAt:         u.createdAt.toISOString(),
+    isSelf:            u.id === actorId,
   }));
 
   return (

@@ -94,6 +94,7 @@ export async function savePlaybackSettings(formData: FormData) {
 }
 
 // ── Section 6: Security / Auth ────────────────────────────────
+
 export async function saveSecuritySettings(
   formData: FormData
 ): Promise<{ ok: boolean; error?: string }> {
@@ -111,6 +112,35 @@ export async function saveSecuritySettings(
     allowGoogleSignIn:      allowGoogle,
     allowCredentialsSignIn: allowCredentials,
     allowNewRegistrations:  formData.get("allowNewRegistrations") === "true",
+  });
+
+  return { ok: true };
+}
+
+// ── Section 7: Security Policies ─────────────────────────────
+export async function saveSecurityPolicySettings(
+  formData: FormData
+): Promise<{ ok: boolean; error?: string }> {
+  await requireAdmin();
+
+  const windowMins   = parseInt(formData.get("failedLoginWindowMinutes") as string, 10);
+  const maxAttempts  = parseInt(formData.get("failedLoginMaxAttempts") as string, 10);
+  const cooldownMins = parseInt(formData.get("loginCooldownMinutes") as string, 10);
+
+  if (!windowMins || windowMins < 1 || maxAttempts < 1 || cooldownMins < 1) {
+    return { ok: false, error: "Throttle values must be positive numbers." };
+  }
+
+  await upsert({
+    failedLoginWindowMinutes:          windowMins,
+    failedLoginMaxAttempts:            maxAttempts,
+    loginCooldownMinutes:              cooldownMins,
+    notifyUserOnNewDevice:             formData.get("notifyUserOnNewDevice")             === "true",
+    notifyUserOnNewLocation:           formData.get("notifyUserOnNewLocation")           === "true",
+    notifyAdminOnSuspiciousAdminLogin: formData.get("notifyAdminOnSuspiciousAdminLogin") === "true",
+    allowUserDeviceTrust:              formData.get("allowUserDeviceTrust")              === "true",
+    requireReauthForSensitiveActions:  formData.get("requireReauthForSensitiveActions")  === "true",
+    allowHardPurgeForSuperAdmin:       formData.get("allowHardPurgeForSuperAdmin")       === "true",
   });
 
   return { ok: true };
