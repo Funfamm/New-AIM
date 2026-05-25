@@ -62,6 +62,14 @@ enum AnalyticsEventType {
   UNSAVE_WORK
   NOTIFICATION_OPEN
   SETTINGS_UPDATE
+  CTA_IMPRESSION
+  CTA_SIGNUP
+}
+
+enum CtaType {
+  RELEASE       // coming-soon — collect before release
+  MORE          // more episodes / more content expected
+  POST_RELEASE  // already out; notify on next project
 }
 
 enum DeviceType {
@@ -185,6 +193,7 @@ model Work {
   savedBy         SavedWork[]
   notifications   Notification[]
   analyticsEvents AnalyticsEvent[]
+  notifyMeCta     NotifyMeCta?
 
   @@map("works")
 }
@@ -526,4 +535,52 @@ model AdminSettings {
   updatedAt DateTime @updatedAt
 
   @@map("admin_settings")
+}
+
+// ─────────────────────────────────────────────
+// NOTIFY ME CTA
+// One CTA per work (V1). Admin-configured.
+// triggerSecondsFromEnd controls when the overlay fires during playback.
+// ─────────────────────────────────────────────
+
+model NotifyMeCta {
+  id                    String   @id @default(cuid())
+  workId                String   @unique   // one CTA per work in V1
+  type                  CtaType
+  isEnabled             Boolean  @default(true)
+  headline              String   @default("Stay in the Loop")
+  body                  String?
+  ctaLabel              String   @default("Notify Me")
+  triggerSecondsFromEnd Int      @default(30)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  work    Work             @relation(fields: [workId], references: [id], onDelete: Cascade)
+  signups NotifyMeSignup[]
+
+  @@map("notify_me_ctas")
+}
+
+// One row per email signup.
+// ctaId is nullable FK (SetNull) — signup record survives CTA deletion.
+// workId + workTitle are plain String snapshots so data is always recoverable.
+// ─────────────────────────────────────────────
+
+model NotifyMeSignup {
+  id        String      @id @default(cuid())
+  ctaId     String?                         // nullable FK — set to null if CTA deleted
+  workId    String                          // plain String snapshot — always preserved
+  workTitle String?                         // snapshot at time of signup
+  email     String
+  name      String?
+  createdAt DateTime    @default(now())
+
+  cta NotifyMeCta? @relation(fields: [ctaId], references: [id], onDelete: SetNull)
+
+  @@unique([ctaId, email])   // one signup per person per CTA (NULL-safe in Postgres)
+  @@index([ctaId])
+  @@index([workId])
+  @@index([email])
+  @@index([createdAt])
+  @@map("notify_me_signups")
 }

@@ -38,6 +38,12 @@
     border-right: none;
   }
 }
+/* watch-player-inner: wrapper rendered by VideoPlayer / EpisodePlayer
+   Must fill the player-wrap exactly so the CTA overlay positions correctly */
+.watch-player-inner {
+  position: absolute; inset: 0;
+}
+
 .watch-iframe, .watch-video {
   position: absolute; inset: 0; width: 100%; height: 100%;
   border: none; display: block;

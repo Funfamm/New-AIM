@@ -56,6 +56,14 @@ async function getWork(slug: string) {
           },
         },
       },
+      // Notify Me CTA — only enabled ones matter on the public side
+      notifyMeCta: {
+        select: {
+          id: true, type: true, isEnabled: true,
+          headline: true, body: true, ctaLabel: true,
+          triggerSecondsFromEnd: true,
+        },
+      },
     },
   });
 }
@@ -129,6 +137,35 @@ export default async function WatchPage({ params, searchParams }: Props) {
     ? await getWatchProgress(work.id)
     : 0;
   const isSaved = session?.user ? await isWorkSaved(work.id) : false;
+
+  // ── Notify Me CTA ─────────────────────────────────────────────────────────
+  // Only native video, not iframes, not trailer mode.
+  // Logged-in users: server-side signed-up check → CTA prop becomes null if they already signed up.
+  // Guest users: localStorage check happens client-side in the player component.
+  const rawCta = work.notifyMeCta?.isEnabled && !isEmbed && !isTrailer
+    ? work.notifyMeCta
+    : null;
+
+  const ctaAlreadySigned =
+    rawCta && session?.user?.email
+      ? await prisma.notifyMeSignup.findFirst({
+          where: { ctaId: rawCta.id, email: session.user.email.toLowerCase() },
+          select: { id: true },
+        })
+      : null;
+
+  const ctaProp = rawCta && !ctaAlreadySigned
+    ? ({
+        id:                    rawCta.id,
+        type:                  rawCta.type as string,
+        headline:              rawCta.headline,
+        body:                  rawCta.body,
+        ctaLabel:              rawCta.ctaLabel,
+        triggerSecondsFromEnd: rawCta.triggerSecondsFromEnd,
+        workId:                work.id,
+        workTitle:             work.title,
+      } satisfies import("@/components/notify-cta-overlay").CtaData)
+    : null;
 
   // Track TRAILER_CLICK after response — fires when the watch page loads in trailer mode
   if (isTrailer) {
@@ -211,6 +248,7 @@ export default async function WatchPage({ params, searchParams }: Props) {
                     workId={work.id}
                     initialSeconds={initialSeconds}
                     durationMinutes={work.duration ?? undefined}
+                    cta={ctaProp}
                   />
                 ) : isEpisode ? (
                   <EpisodePlayer
@@ -219,6 +257,7 @@ export default async function WatchPage({ params, searchParams }: Props) {
                     workId={work.id}
                     initialSeconds={initialSeconds}
                     durationMinutes={work.duration ?? undefined}
+                    cta={ctaProp}
                   />
                 ) : (
                   <VideoPlayer
@@ -227,6 +266,7 @@ export default async function WatchPage({ params, searchParams }: Props) {
                     workId={work.id}
                     initialSeconds={initialSeconds}
                     durationMinutes={work.duration ?? undefined}
+                    cta={ctaProp}
                   />
                 )
               ) : (

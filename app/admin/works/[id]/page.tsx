@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { createWork, updateWork } from "@/lib/actions/works";
 import WorkForm from "@/components/admin/work-form";
 import SeriesEpisodesPanel from "@/components/admin/series-episodes-panel";
+import NotifyMeCtaPanel from "@/components/admin/notify-me-cta-panel";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import type { WorkType } from "@prisma/client";
@@ -29,8 +30,8 @@ export default async function AdminWorkFormPage({ params, searchParams }: Props)
   const defaultType = defaultTypeRaw as WorkType | undefined;
   const isNew = id === "new";
 
-  // Fetch the work being edited (if any) and the full series list in parallel
-  const [work, seriesList] = await Promise.all([
+  // Fetch the work being edited (if any), the full series list, and CTA data in parallel
+  const [work, seriesList, ctaData] = await Promise.all([
     isNew
       ? Promise.resolve(null)
       : prisma.work.findUnique({ where: { id } }),
@@ -39,7 +40,30 @@ export default async function AdminWorkFormPage({ params, searchParams }: Props)
       select: { id: true, title: true },
       orderBy: { title: "asc" },
     }),
+    isNew
+      ? Promise.resolve(null)
+      : prisma.notifyMeCta.findUnique({
+          where: { workId: id },
+          select: {
+            id: true, type: true, isEnabled: true,
+            headline: true, body: true, ctaLabel: true,
+            triggerSecondsFromEnd: true,
+          },
+        }),
   ]);
+
+  // Fetch signup count + recent 10 if a CTA exists (separate query to keep main query lean)
+  const [signupCount, recentSignups] = ctaData
+    ? await Promise.all([
+        prisma.notifyMeSignup.count({ where: { ctaId: ctaData.id } }),
+        prisma.notifyMeSignup.findMany({
+          where:   { ctaId: ctaData.id },
+          orderBy: { createdAt: "desc" },
+          take:    10,
+          select:  { id: true, email: true, name: true, createdAt: true },
+        }),
+      ])
+    : [0, []];
 
   if (!isNew && !work) notFound();
 
@@ -74,6 +98,21 @@ export default async function AdminWorkFormPage({ params, searchParams }: Props)
       {/* Episodes panel — only rendered when editing a Series */}
       {!isNew && work?.type === "SERIES" && (
         <SeriesEpisodesPanel seriesId={id} episodes={episodes} />
+      )}
+
+      {/* Notify Me CTA panel — only for existing works with a native video */}
+      {!isNew && work && (
+        <NotifyMeCtaPanel
+          workId={id}
+          cta={ctaData
+            ? { ...ctaData, type: ctaData.type as string }
+            : null}
+          signupCount={signupCount}
+          recentSignups={recentSignups.map((s) => ({
+            ...s,
+            createdAt: s.createdAt.toISOString(),
+          }))}
+        />
       )}
     </>
   );
