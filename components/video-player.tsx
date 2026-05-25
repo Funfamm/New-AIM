@@ -12,14 +12,16 @@ type Props = {
   durationMinutes?: number;
 };
 
-const SAVE_INTERVAL_MS = 10_000;
+const SAVE_INTERVAL_MS   = 10_000;
+const BEACON_INTERVAL_MS = 30_000;
 
 export default function VideoPlayer({
   src, poster, workId, initialSeconds, durationMinutes,
 }: Props) {
-  const videoRef     = useRef<HTMLVideoElement>(null);
-  const lastSaveRef  = useRef<number>(0);
-  const hasStarted   = useRef(false); // fire WATCH_START only on first play
+  const videoRef       = useRef<HTMLVideoElement>(null);
+  const lastSaveRef    = useRef<number>(0);
+  const lastBeaconRef  = useRef<number>(0);
+  const hasStarted     = useRef(false); // fire WATCH_START only on first play
 
   function save(seconds: number) {
     void saveWatchProgress(workId, seconds, durationMinutes);
@@ -51,6 +53,12 @@ export default function VideoPlayer({
         if (now - lastSaveRef.current >= SAVE_INTERVAL_MS) {
           lastSaveRef.current = now;
           save(Math.floor(video.currentTime));
+        }
+        if (now - lastBeaconRef.current >= BEACON_INTERVAL_MS && video.duration > 0 && !isNaN(video.duration)) {
+          lastBeaconRef.current = now;
+          const seconds = Math.floor(video.currentTime);
+          const percent = Math.round((video.currentTime / video.duration) * 100);
+          beacon("WATCH_PROGRESS", { workId, metadata: { seconds, percent } });
         }
       }}
       onPause={() => {
