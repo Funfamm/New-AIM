@@ -4,6 +4,10 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Works — AIM Studio" };
 
+type Props = {
+  searchParams: Promise<{ collection?: string }>;
+};
+
 async function getWorks() {
   return prisma.work.findMany({
     where: { status: "PUBLISHED", type: { not: "EPISODE" } },
@@ -16,7 +20,10 @@ async function getWorks() {
   });
 }
 
-export default async function WorksPage() {
-  const works = await getWorks();
-  return <WorksClient works={works} />;
+export default async function WorksPage({ searchParams }: Props) {
+  const [works, { collection }] = await Promise.all([
+    getWorks(),
+    searchParams,
+  ]);
+  return <WorksClient works={works} collection={collection} />;
 }

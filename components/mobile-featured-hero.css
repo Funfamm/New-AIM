@@ -16,7 +16,7 @@
   overflow-x: auto;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
-  padding: 0.875rem 1rem 0.75rem;
+  padding: 0.5rem 1rem 0.625rem;
 }
 .mfh-pills-wrap::-webkit-scrollbar { display: none; }
 .mfh-pills {

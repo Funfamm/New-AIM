@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import FilmCard from "./film-card";
 import HeroRotator from "./hero-rotator";
 import "./works-client.css";
@@ -17,37 +17,83 @@ type Work = {
   type: string;
 };
 
-type Tab = "ALL" | "FILMS" | "SERIES" | "TRAILERS" | "COMMERCIAL" | "PORTFOLIO";
+type Tab =
+  | "ALL"
+  | "FILMS"
+  | "SERIES"
+  | "SHORTS"
+  | "COMMERCIAL"
+  | "BRANDING"
+  | "CAMPAIGNS"
+  | "TRAILERS"
+  | "CASE_STUDY";
 
 const TAB_LABELS: Record<Tab, string> = {
-  ALL: "All",
-  FILMS: "Films",
-  SERIES: "Series",
-  TRAILERS: "Trailers",
-  COMMERCIAL: "Commercial",
-  PORTFOLIO: "Portfolio",
+  ALL:       "All",
+  FILMS:     "Films",
+  SERIES:    "Series",
+  SHORTS:    "Shorts",
+  COMMERCIAL:"Commercial",
+  BRANDING:  "Branding",
+  CAMPAIGNS: "Campaigns",
+  TRAILERS:  "Trailers",
+  CASE_STUDY:"Case Studies",
 };
 
 const TAB_TYPES: Record<Tab, string[] | null> = {
-  ALL: null,
-  FILMS: ["SHORT_FILM", "FULL_FILM"],
-  SERIES: ["SERIES"],
-  TRAILERS: ["TRAILER"],
-  COMMERCIAL: ["COMMERCIAL"],
-  PORTFOLIO: ["BRANDING", "CAMPAIGN", "CASE_STUDY"],
+  ALL:       null,
+  FILMS:     ["SHORT_FILM", "FULL_FILM"],
+  SERIES:    ["SERIES"],
+  SHORTS:    ["SHORT_FILM"],
+  COMMERCIAL:["COMMERCIAL"],
+  BRANDING:  ["BRANDING"],
+  CAMPAIGNS: ["CAMPAIGN"],
+  TRAILERS:  ["TRAILER"],
+  CASE_STUDY:["CASE_STUDY"],
 };
 
+// Maps ?collection= URL param → Tab key
+const COLLECTION_TO_TAB: Record<string, Tab> = {
+  all:         "ALL",
+  films:       "FILMS",
+  series:      "SERIES",
+  shorts:      "SHORTS",
+  commercials: "COMMERCIAL",
+  branding:    "BRANDING",
+  campaigns:   "CAMPAIGNS",
+};
+
+// Rails shown in ALL view — SHORTS omitted (subset of FILMS)
 const RAILS: { key: Tab; title: string; eyebrow: string }[] = [
-  { key: "FILMS",      title: "Films",      eyebrow: "— Short & Feature" },
-  { key: "SERIES",     title: "Series",     eyebrow: "— Multi-Episode" },
-  { key: "TRAILERS",   title: "Trailers",   eyebrow: "— Previews & Promos" },
-  { key: "COMMERCIAL", title: "Commercial", eyebrow: "— Branded Content" },
-  { key: "PORTFOLIO",  title: "Portfolio",  eyebrow: "— Brand & Strategy" },
+  { key: "FILMS",      title: "Films",        eyebrow: "— Short & Feature" },
+  { key: "SERIES",     title: "Series",       eyebrow: "— Multi-Episode" },
+  { key: "COMMERCIAL", title: "Commercial",   eyebrow: "— Branded Content" },
+  { key: "BRANDING",   title: "Branding",     eyebrow: "— Visual Identity" },
+  { key: "CAMPAIGNS",  title: "Campaigns",    eyebrow: "— Brand Campaigns" },
+  { key: "TRAILERS",   title: "Trailers",     eyebrow: "— Previews & Promos" },
+  { key: "CASE_STUDY", title: "Case Studies", eyebrow: "— Strategy & Insight" },
 ];
 
-export default function WorksClient({ works }: { works: Work[] }) {
-  const [tab, setTab] = useState<Tab>("ALL");
+type Props = {
+  works: Work[];
+  collection?: string;
+};
+
+export default function WorksClient({ works, collection }: Props) {
+  const [tab, setTab] = useState<Tab>(() => {
+    if (collection && COLLECTION_TO_TAB[collection]) return COLLECTION_TO_TAB[collection];
+    return "ALL";
+  });
   const [query, setQuery] = useState("");
+
+  // Sync URL collection param → tab on navigation
+  useEffect(() => {
+    const next =
+      collection && COLLECTION_TO_TAB[collection]
+        ? COLLECTION_TO_TAB[collection]
+        : "ALL";
+    setTab(next);
+  }, [collection]);
 
   // Up to 5 works with poster art for the hero backdrop rotation
   const heroItems = useMemo(
@@ -156,7 +202,7 @@ export default function WorksClient({ works }: { works: Work[] }) {
           <p>No works yet. Check back soon.</p>
         </div>
       ) : showRails ? (
-        <div className="wc-rails">
+        <div className="wc-rails wc-animate-in">
           {RAILS.map(({ key, title, eyebrow }) => {
             const types = TAB_TYPES[key]!;
             const railWorks = works.filter((w) => types.includes(w.type));
@@ -181,7 +227,7 @@ export default function WorksClient({ works }: { works: Work[] }) {
           })}
         </div>
       ) : (
-        <div className="container-app wc-grid-wrap">
+        <div className="container-app wc-grid-wrap wc-animate-in">
           {filtered.length === 0 ? (
             <div className="wc-empty">
               <p>No works match your search.</p>

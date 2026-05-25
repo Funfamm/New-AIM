@@ -18,22 +18,24 @@ export type MobileHeroItem = {
   type: string;
 };
 
-const PILLS: { label: string; href: string }[] = [
-  { label: "All",        href: "/works" },
-  { label: "Films",      href: "/works" },
-  { label: "Series",     href: "/works" },
-  { label: "Shorts",     href: "/works" },
-  { label: "Commercial", href: "/works" },
-  { label: "New",        href: "/works" },
+// Pill definitions: shown only if at least one requiredType has published content
+const PILL_DEFS: { label: string; collection: string; requiredTypes: string[] }[] = [
+  { label: "Films",      collection: "films",       requiredTypes: ["SHORT_FILM", "FULL_FILM"] },
+  { label: "Series",     collection: "series",      requiredTypes: ["SERIES"] },
+  { label: "Shorts",     collection: "shorts",      requiredTypes: ["SHORT_FILM"] },
+  { label: "Commercial", collection: "commercials", requiredTypes: ["COMMERCIAL"] },
+  { label: "Branding",   collection: "branding",    requiredTypes: ["BRANDING"] },
+  { label: "Campaigns",  collection: "campaigns",   requiredTypes: ["CAMPAIGN"] },
 ];
 
 type Props = {
   items: MobileHeroItem[];
   isLoggedIn: boolean;
   savedIds: string[];
+  availableTypes: string[];
 };
 
-export default function MobileFeaturedHero({ items, isLoggedIn, savedIds }: Props) {
+export default function MobileFeaturedHero({ items, isLoggedIn, savedIds, availableTypes }: Props) {
   const [active, setActive] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -56,11 +58,18 @@ export default function MobileFeaturedHero({ items, isLoggedIn, savedIds }: Prop
       {/* ── Category pills ── */}
       <div className="mfh-pills-wrap">
         <div className="mfh-pills">
-          {PILLS.map((p) => (
-            <Link key={p.label} href={p.href} className="mfh-pill">
-              {p.label}
-            </Link>
-          ))}
+          {/* "All" pill — always shown */}
+          <Link href="/works" className="mfh-pill">All</Link>
+
+          {/* Category pills — only if at least one requiredType has published content */}
+          {PILL_DEFS
+            .filter((p) => p.requiredTypes.some((t) => availableTypes.includes(t)))
+            .map((p) => (
+              <Link key={p.label} href={`/works?collection=${p.collection}`} className="mfh-pill">
+                {p.label}
+              </Link>
+            ))
+          }
         </div>
       </div>
 

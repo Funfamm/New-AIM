@@ -32,6 +32,15 @@ async function getHomeWorks() {
   return { featured, newReleases };
 }
 
+async function getPublishedTypes(): Promise<string[]> {
+  const rows = await prisma.work.findMany({
+    where: { status: "PUBLISHED", type: { not: "EPISODE" } },
+    select: { type: true },
+    distinct: ["type"],
+  });
+  return rows.map((r) => r.type as string);
+}
+
 async function getSavedIds(userId: string): Promise<string[]> {
   const saved = await prisma.savedWork.findMany({
     where: { userId },
@@ -66,12 +75,13 @@ export default async function HomePage() {
   const session = await auth();
   const userId = session?.user?.id ?? null;
 
-  const [{ featured, newReleases }, continueWatching, savedIds] = await Promise.all([
+  const [{ featured, newReleases }, continueWatching, savedIds, availableTypes] = await Promise.all([
     getHomeWorks(),
     userId
       ? getContinueWatching(userId)
       : Promise.resolve([] as Awaited<ReturnType<typeof getContinueWatching>>),
     userId ? getSavedIds(userId) : Promise.resolve<string[]>([]),
+    getPublishedTypes(),
   ]);
 
   const featuredWithPosters = featured.filter((w) => w.posterUrl != null).slice(0, 5);
@@ -104,6 +114,7 @@ export default async function HomePage() {
         items={mobileHeroItems}
         isLoggedIn={!!userId}
         savedIds={savedIds}
+        availableTypes={availableTypes}
       />
 
       {/* ── Desktop cinematic hero (≥768px) ──────────── */}

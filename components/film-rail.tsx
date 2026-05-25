@@ -30,7 +30,7 @@ export default function FilmRail({
   if (films.length === 0) return null;
 
   return (
-    <section className="pt-12 md:pt-16 lg:pt-24">
+    <section className="pt-8 md:pt-10 lg:pt-14">
       <div className="container-app">
         <div className="mb-6">
           {label && (
