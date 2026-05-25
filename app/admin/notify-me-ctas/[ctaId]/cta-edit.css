@@ -193,3 +193,69 @@
   padding: 0.75rem 1rem; margin: 0;
   border-top: 1px solid var(--color-brand-border);
 }
+
+/* ── Work selector (shown when "+ New CTA" clicked without workId) ── */
+.cta-work-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid var(--color-brand-border);
+  border-radius: 6px;
+  overflow: hidden;
+  margin-top: 1.25rem;
+}
+
+.cta-work-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 1rem;
+  border-bottom: 1px solid var(--color-brand-border);
+  background: var(--color-brand-dark);
+  text-decoration: none;
+  transition: background 0.15s;
+}
+
+.cta-work-option:last-child {
+  border-bottom: none;
+}
+
+.cta-work-option:hover {
+  background: var(--color-brand-surface);
+}
+
+.cta-work-option-title {
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-brand-white);
+}
+
+.cta-work-option-type {
+  font-family: var(--font-body);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-brand-muted);
+  background: rgba(107, 114, 128, 0.1);
+  padding: 0.15rem 0.5rem;
+  border-radius: 2px;
+  white-space: nowrap;
+}
+
+.cta-work-empty {
+  margin-top: 1.25rem;
+  padding: 1.5rem;
+  background: var(--color-brand-dark);
+  border: 1px solid var(--color-brand-border);
+  border-radius: 6px;
+}
+
+.cta-work-empty p {
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  color: var(--color-brand-muted);
+  margin: 0 0 1rem;
+}

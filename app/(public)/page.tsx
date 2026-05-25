@@ -176,15 +176,51 @@ export default async function HomePage() {
         </div>
       )}
 
-      {/* ── Studio Statement ────────────────────────── */}
-      <section className="studio-statement">
+      {/* ── Studio Identity ─────────────────────────── */}
+      <section className="studio-identity">
         <div className="container-app">
-          <blockquote className="statement-quote">
-            Films that couldn&apos;t exist before now.
-          </blockquote>
-          <Link href="/about" className="statement-link">
-            Our Story <ChevronRight size={14} />
-          </Link>
+          <div className="si-grid">
+
+            {/* Left — headline + copy + CTAs */}
+            <div className="si-left">
+              <span className="si-eyebrow">Why AIM Studio</span>
+              <h2 className="si-headline">
+                Films that couldn&apos;t exist before now.
+              </h2>
+              <p className="si-body">
+                AIM Studio creates films, series, and visual stories powered by AI —
+                built around emotion, memory, sacrifice, and the moments people refuse to look away from.
+              </p>
+              <div className="si-ctas">
+                <Link href="/works?collection=all" className="si-cta-primary">
+                  <Play size={14} fill="currentColor" /> Explore Works
+                </Link>
+                <Link href="/about" className="si-cta-ghost">
+                  Our Story <ChevronRight size={13} />
+                </Link>
+              </div>
+            </div>
+
+            {/* Right — 3 value cards */}
+            <div className="si-right">
+              <div className="si-card">
+                <span className="si-card-num">01</span>
+                <h3 className="si-card-title">Stories That Matter</h3>
+                <p className="si-card-desc">Human stories with emotional weight — not entertainment, evidence.</p>
+              </div>
+              <div className="si-card">
+                <span className="si-card-num">02</span>
+                <h3 className="si-card-title">No Story Too Small</h3>
+                <p className="si-card-desc">Every idea deserves a cinematic life. We build the tools to give it one.</p>
+              </div>
+              <div className="si-card">
+                <span className="si-card-num">03</span>
+                <h3 className="si-card-title">Every Frame, On Purpose</h3>
+                <p className="si-card-desc">AI helps us move faster, but the story always leads.</p>
+              </div>
+            </div>
+
+          </div>
         </div>
       </section>
 

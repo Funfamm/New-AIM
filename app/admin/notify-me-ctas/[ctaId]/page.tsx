@@ -26,9 +26,60 @@ export default async function CtaEditPage({ params, searchParams }: Props) {
   const isNew = ctaId === "new";
 
   if (isNew) {
-    // Must have a workId from query param
-    if (!qWorkId) redirect("/admin/notify-me-ctas");
+    // Step 1 — no workId: show published work selector
+    if (!qWorkId) {
+      // Fetch published works that don't already have a CTA
+      const [publishedWorks, existingCtaWorkIds] = await Promise.all([
+        prisma.work.findMany({
+          where: { status: "PUBLISHED", type: { not: "EPISODE" } },
+          orderBy: { title: "asc" },
+          select: { id: true, title: true, type: true },
+        }),
+        prisma.notifyMeCta.findMany({
+          select: { workId: true },
+        }),
+      ]);
 
+      const takenIds = new Set(existingCtaWorkIds.map((c) => c.workId));
+      const available = publishedWorks.filter((w) => !takenIds.has(w.id));
+
+      return (
+        <div className="cta-edit-page">
+          <Link href="/admin/notify-me-ctas" className="cta-edit-back">
+            <ChevronLeft size={14} /> All CTAs
+          </Link>
+          <div className="cta-edit-head">
+            <BellRing size={16} />
+            <h1>New Notify Me CTA</h1>
+          </div>
+          <p className="cta-edit-sub">Select a published work to attach a Notify Me CTA to.</p>
+
+          {available.length === 0 ? (
+            <div className="cta-work-empty">
+              <p>All published works already have a CTA.</p>
+              <Link href="/admin/notify-me-ctas" className="cta-edit-back">
+                ← Back to CTAs
+              </Link>
+            </div>
+          ) : (
+            <div className="cta-work-selector">
+              {available.map((w) => (
+                <Link
+                  key={w.id}
+                  href={`/admin/notify-me-ctas/new?workId=${w.id}`}
+                  className="cta-work-option"
+                >
+                  <span className="cta-work-option-title">{w.title}</span>
+                  <span className="cta-work-option-type">{w.type.replace(/_/g, " ")}</span>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // Step 2 — workId provided: validate and show create form
     const work = await prisma.work.findUnique({
       where: { id: qWorkId },
       select: { id: true, title: true, type: true, videoUrl: true, trailerUrl: true, status: true },
@@ -44,8 +95,8 @@ export default async function CtaEditPage({ params, searchParams }: Props) {
 
     return (
       <div className="cta-edit-page">
-        <Link href="/admin/notify-me-ctas" className="cta-edit-back">
-          <ChevronLeft size={14} /> All CTAs
+        <Link href="/admin/notify-me-ctas/new" className="cta-edit-back">
+          <ChevronLeft size={14} /> Choose a Different Work
         </Link>
         <div className="cta-edit-head">
           <BellRing size={16} />
