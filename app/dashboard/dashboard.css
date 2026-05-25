@@ -57,3 +57,23 @@
   color: var(--color-brand-black); background: var(--color-brand-accent);
   padding: 0.65rem 1.5rem; border-radius: 2px; text-decoration: none;
 }
+
+/* ── Watchlist ── */
+.watchlist-grid { display: flex; flex-direction: column; gap: 0.75rem; }
+.watchlist-card {
+  display: flex; align-items: center; gap: 1rem;
+  background: var(--color-brand-dark); border: 1px solid var(--color-brand-border);
+  border-radius: 4px; padding: 0.75rem; transition: border-color 0.2s;
+}
+.watchlist-card:hover { border-color: var(--color-brand-muted); }
+.watchlist-link {
+  display: flex; align-items: center; gap: 1rem;
+  flex: 1; min-width: 0; text-decoration: none;
+}
+.watchlist-remove-btn {
+  background: none; border: none;
+  color: var(--color-brand-muted); cursor: pointer;
+  padding: 0.4rem; flex-shrink: 0; border-radius: 2px;
+  transition: color 0.2s; display: flex; align-items: center;
+}
+.watchlist-remove-btn:hover { color: var(--color-brand-white); }

@@ -7,6 +7,8 @@ import Image from "next/image";
 import { Play, Clock, Calendar, ChevronLeft, Lock } from "lucide-react";
 import type { Metadata } from "next";
 import SynopsisToggle from "@/components/synopsis-toggle";
+import SaveButton from "@/components/save-button";
+import { isWorkSaved } from "@/lib/actions/watchlist";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -67,6 +69,7 @@ export default async function WorkDetailPage({ params }: Props) {
 
   const isGuest = !session?.user;
   const locked = work.requiresAuth && isGuest;
+  const isSaved = !isGuest ? await isWorkSaved(work.id) : false;
   const firstEp = work.type === "SERIES" ? work.episodes[0] ?? null : null;
   const episodeCount = work.type === "SERIES" ? work.episodes.length : null;
 
@@ -202,6 +205,11 @@ export default async function WorkDetailPage({ params }: Props) {
                   )
                 )}
               </div>
+
+              {/* Save to watchlist — logged-in users only */}
+              {!isGuest && (
+                <SaveButton workId={work.id} initialSaved={isSaved} />
+              )}
 
               {/* Guest note — only shown when content is gated */}
               {work.requiresAuth && isGuest && (

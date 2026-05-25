@@ -37,6 +37,12 @@ enum WorkStatus {
   PRIVATE
 }
 
+enum NotificationType {
+  NEW_RELEASE
+  ACCOUNT
+  SYSTEM
+}
+
 // ─────────────────────────────────────────────
 // USER
 // ─────────────────────────────────────────────
@@ -52,9 +58,12 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  progress WatchProgress[]
-  accounts Account[]
-  sessions Session[]
+  progress      WatchProgress[]
+  accounts      Account[]
+  sessions      Session[]
+  savedWorks    SavedWork[]
+  preferences   UserPreferences?
+  notifications Notification[]
 
   @@map("users")
 }
@@ -107,7 +116,9 @@ model Work {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  progress WatchProgress[]
+  progress      WatchProgress[]
+  savedBy       SavedWork[]
+  notifications Notification[]
 
   @@map("works")
 }
@@ -186,4 +197,65 @@ model PasswordResetToken {
   createdAt DateTime @default(now())
 
   @@map("password_reset_tokens")
+}
+
+// ─────────────────────────────────────────────
+// WATCHLIST
+// ─────────────────────────────────────────────
+
+model SavedWork {
+  id        String   @id @default(cuid())
+  userId    String
+  workId    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  work Work @relation(fields: [workId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, workId])
+  @@map("saved_works")
+}
+
+// ─────────────────────────────────────────────
+// USER PREFERENCES
+// ─────────────────────────────────────────────
+
+model UserPreferences {
+  id     String @id @default(cuid())
+  userId String @unique
+
+  // Notification preferences
+  emailNewReleases   Boolean @default(true)
+  emailAccountAlerts Boolean @default(true)
+
+  // Playback preferences
+  autoplay       Boolean @default(true)
+  defaultQuality String  @default("auto") // "auto" | "1080p" | "720p" | "480p"
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_preferences")
+}
+
+// ─────────────────────────────────────────────
+// NOTIFICATIONS
+// ─────────────────────────────────────────────
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String?
+  workId    String?
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  work Work? @relation(fields: [workId], references: [id], onDelete: SetNull)
+
+  @@map("notifications")
 }

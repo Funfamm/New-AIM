@@ -8,6 +8,8 @@ import type { Metadata } from "next";
 import EpisodePlayer from "@/components/episode-player";
 import VideoPlayer from "@/components/video-player";
 import { getWatchProgress } from "@/lib/actions/progress";
+import SaveButton from "@/components/save-button";
+import { isWorkSaved } from "@/lib/actions/watchlist";
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -111,6 +113,7 @@ export default async function WatchPage({ params, searchParams }: Props) {
   const initialSeconds = session?.user && !isEmbed && work.id
     ? await getWatchProgress(work.id)
     : 0;
+  const isSaved = session?.user ? await isWorkSaved(work.id) : false;
 
   // Episode navigation
   const siblings = work.parent?.episodes ?? [];
@@ -197,6 +200,14 @@ export default async function WatchPage({ params, searchParams }: Props) {
             <div className="watch-info">
               <h1 className="watch-title">{work.title}</h1>
               {work.description && <p className="watch-desc">{work.description}</p>}
+
+              {session?.user && (
+                <SaveButton
+                  workId={work.id}
+                  initialSaved={isSaved}
+                  className="save-btn save-btn--sm"
+                />
+              )}
 
               {/* Next Episode button */}
               {isEpisode && nextEp && (
