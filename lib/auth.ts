@@ -19,8 +19,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
 
   providers: [
-    // Reads AUTH_GOOGLE_ID and AUTH_GOOGLE_SECRET from env automatically
-    Google,
+    // allowDangerousEmailAccountLinking: when a Google email matches an existing
+    // credentials user, the adapter links the Google account to that user instead
+    // of blocking. Google verifies email ownership, so this is safe.
+    Google({ allowDangerousEmailAccountLinking: true }),
     Credentials({
       name: "credentials",
       credentials: {
@@ -54,32 +56,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
 
   callbacks: {
-    // Guard: block Google sign-in if a credentials-only account exists with the same email
-    async signIn({ user, account }) {
-      if (account?.provider === "google" && user.email) {
-        const existing = await prisma.user.findUnique({
-          where: { email: user.email },
-          select: {
-            password: true,
-            accounts: {
-              where: { provider: "google" },
-              select: { provider: true },
-            },
-          },
-        });
-        // Has a password but no Google account linked — do not auto-link
-        if (existing?.password && existing.accounts.length === 0) {
-          return (
-            "/login?error=" +
-            encodeURIComponent(
-              "This email is registered with a password. Please sign in with your email and password."
-            )
-          );
-        }
-      }
-      return true;
-    },
-
     // Attach role and id to the JWT token
     async jwt({ token, user, account }) {
       if (user) {

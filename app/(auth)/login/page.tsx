@@ -35,6 +35,18 @@ export default async function LoginPage({
           <div className="auth-error">{params.error}</div>
         )}
 
+        <form action={signInWithGoogle}>
+          {params?.from && (
+            <input type="hidden" name="redirectTo" value={params.from} />
+          )}
+          <button type="submit" className="auth-btn-google">
+            <GoogleIcon />
+            Continue with Google
+          </button>
+        </form>
+
+        <div className="auth-divider"><span>or sign in with email</span></div>
+
         <form action={loginUser} className="auth-form">
           {params?.from && (
             <input type="hidden" name="from" value={params.from} />
@@ -65,18 +77,6 @@ export default async function LoginPage({
             <Link href="/forgot-password">Forgot password?</Link>
           </div>
           <button type="submit" className="auth-btn">Sign In</button>
-        </form>
-
-        <div className="auth-divider"><span>or</span></div>
-
-        <form action={signInWithGoogle}>
-          {params?.from && (
-            <input type="hidden" name="redirectTo" value={params.from} />
-          )}
-          <button type="submit" className="auth-btn-google">
-            <GoogleIcon />
-            Continue with Google
-          </button>
         </form>
 
         <p className="auth-switch">
