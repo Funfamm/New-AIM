@@ -29,7 +29,7 @@ type WorkData = {
   posterUrl: string | null; heroMobileUrl: string | null;
   heroDesktopUrl: string | null; thumbnailUrl: string | null;
   videoUrl: string | null; trailerUrl: string | null; teaserUrl: string | null;
-  year: number | null; duration: number | null; director: string | null; genre: string | null;
+  year: number | null; duration: number | null; director: string | null; genres: string[];
   clientName: string | null; industry: string | null; projectGoal: string | null;
   deliverables: string | null; caseStudy: string | null; galleryUrls: string[];
   requiresAuth: boolean; featured: boolean; showOnHome: boolean; order: number;
@@ -45,6 +45,12 @@ type Props = {
 };
 
 const CLIENT_TYPES: WorkType[] = ["COMMERCIAL", "BRANDING", "CAMPAIGN", "CASE_STUDY"];
+
+const GENRES = [
+  "Drama", "Action", "Horror", "Thriller", "Documentary",
+  "Comedy", "Romance", "Family", "Faith", "Mystery",
+  "Survival", "Commercial", "Branding", "Campaign",
+];
 
 export default function WorkForm({ work, workTitle, action, seriesList, error }: Props) {
   const [type, setType] = useState<WorkType>(work?.type ?? "SHORT_FILM");
@@ -145,14 +151,28 @@ export default function WorkForm({ work, workTitle, action, seriesList, error }:
             defaultValue={work?.description ?? ""} placeholder="Short description…" />
         </div>
 
+        {/* Genres */}
+        <div className="form-group">
+          <label className="form-label">Genres</label>
+          <div className="form-check-grid">
+            {GENRES.map((g) => (
+              <label key={g} className="form-check">
+                <input
+                  type="checkbox"
+                  name="genres"
+                  value={g}
+                  defaultChecked={work?.genres?.includes(g) ?? false}
+                />
+                <span>{g}</span>
+              </label>
+            ))}
+          </div>
+          <span className="form-hint">Select all that apply. Episodes inherit parent series genres if none selected.</span>
+        </div>
+
         {/* Film metadata */}
         {showFilmMeta && (
           <div className="form-row">
-            <div className="form-group">
-              <label className="form-label">Genre</label>
-              <input type="text" name="genre" className="form-input"
-                defaultValue={work?.genre ?? ""} placeholder="Drama, Sci-Fi…" />
-            </div>
             <div className="form-group">
               <label className="form-label">Year</label>
               <input type="number" name="year" className="form-input"

@@ -17,7 +17,7 @@
 .watch-layout { display: flex; flex-direction: column; gap: 2rem; }
 @media (min-width: 1024px) {
   .watch-layout { flex-direction: row; align-items: flex-start; gap: 2rem; }
-  .watch-main { flex: 1; min-width: 0; }
+  .watch-main { flex: 1; min-width: 0; max-width: 900px; }
   .watch-ep-sidebar { width: 272px; flex-shrink: 0; position: sticky; top: 88px; max-height: calc(100vh - 100px); overflow: hidden; display: flex; flex-direction: column; }
 }
 

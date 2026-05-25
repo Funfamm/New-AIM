@@ -22,6 +22,7 @@ type FilmCardProps = {
   requiresAuth?: boolean;
   type?: string;
   priority?: boolean;
+  watchHref?: string;
 };
 
 export default function FilmCard({
@@ -32,11 +33,12 @@ export default function FilmCard({
   requiresAuth,
   type,
   priority = false,
+  watchHref,
 }: FilmCardProps) {
   return (
     <Link
-      href={`/works/${slug}`}
-      aria-label={`View details for ${title}`}
+      href={watchHref ?? `/works/${slug}`}
+      aria-label={`View ${watchHref ? "film" : "details for"} ${title}`}
       className="group relative block rounded cursor-pointer transition-[transform,box-shadow] duration-200 ease-out hover:scale-[1.04] hover:shadow-[0_8px_32px_rgba(0,0,0,0.6)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-accent"
       style={{ touchAction: "manipulation" }}
     >

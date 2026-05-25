@@ -64,3 +64,10 @@ select.form-input { cursor: pointer; }
   font-family: var(--font-body); font-size: 0.75rem;
   color: var(--color-brand-muted); line-height: 1.4;
 }
+.form-check-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.6rem;
+  margin-top: 0.4rem;
+}
+@media (min-width: 480px) {
+  .form-check-grid { grid-template-columns: repeat(3, 1fr); }
+}

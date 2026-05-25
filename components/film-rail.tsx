@@ -9,6 +9,7 @@ export type RailFilm = {
   posterUrl?: string | null;
   genre?: string | null;
   requiresAuth?: boolean;
+  watchHref?: string;
 };
 
 type FilmRailProps = {

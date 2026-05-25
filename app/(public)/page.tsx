@@ -4,13 +4,14 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import FilmRail from "@/components/film-rail";
 import HeroRotator from "@/components/hero-rotator";
+import MobileFeaturedHero from "@/components/mobile-featured-hero";
 import { Play, ChevronRight } from "lucide-react";
 import "./home.css";
 
 const HOME_SELECT = {
   id: true, slug: true, title: true, posterUrl: true,
   heroMobileUrl: true, heroDesktopUrl: true,
-  genre: true, requiresAuth: true, type: true,
+  genre: true, genres: true, requiresAuth: true, type: true,
 } as const;
 
 async function getHomeWorks() {
@@ -31,48 +32,81 @@ async function getHomeWorks() {
   return { featured, newReleases };
 }
 
+async function getSavedIds(userId: string): Promise<string[]> {
+  const saved = await prisma.savedWork.findMany({
+    where: { userId },
+    select: { workId: true },
+    take: 100,
+  });
+  return saved.map((s) => s.workId);
+}
+
 async function getContinueWatching(userId: string) {
   const progress = await prisma.watchProgress.findMany({
     where: {
       userId,
       completed: false,
       seconds: { gt: 0 },
-      work: { status: "PUBLISHED" },
+      work: { status: "PUBLISHED", type: { not: "TRAILER" } },
     },
     select: { work: { select: HOME_SELECT } },
     orderBy: { updatedAt: "desc" },
     take: 8,
   });
-  return progress.map((p) => p.work);
+  return progress.map((p) => ({
+    ...p.work,
+    watchHref:
+      p.work.type === "EPISODE" || p.work.type === "SERIES"
+        ? `/watch/${p.work.slug}`
+        : `/watch/${p.work.slug}?full=1`,
+  }));
 }
 
 export default async function HomePage() {
   const session = await auth();
   const userId = session?.user?.id ?? null;
 
-  const [{ featured, newReleases }, continueWatching] = await Promise.all([
+  const [{ featured, newReleases }, continueWatching, savedIds] = await Promise.all([
     getHomeWorks(),
     userId
       ? getContinueWatching(userId)
       : Promise.resolve([] as Awaited<ReturnType<typeof getContinueWatching>>),
+    userId ? getSavedIds(userId) : Promise.resolve<string[]>([]),
   ]);
 
-  const heroItems = featured
-    .filter((w) => w.posterUrl != null)
-    .slice(0, 5)
-    .map((w) => ({
-      posterUrl: w.posterUrl!,
-      title: w.title,
-      slug: w.slug,
-      heroMobileUrl: w.heroMobileUrl,
-      heroDesktopUrl: w.heroDesktopUrl,
-    }));
+  const featuredWithPosters = featured.filter((w) => w.posterUrl != null).slice(0, 5);
+
+  const heroItems = featuredWithPosters.map((w) => ({
+    posterUrl: w.posterUrl!,
+    title: w.title,
+    slug: w.slug,
+    heroMobileUrl: w.heroMobileUrl,
+    heroDesktopUrl: w.heroDesktopUrl,
+  }));
+
+  const mobileHeroItems = featuredWithPosters.map((w) => ({
+    id: w.id,
+    slug: w.slug,
+    title: w.title,
+    posterUrl: w.posterUrl!,
+    heroMobileUrl: w.heroMobileUrl,
+    requiresAuth: w.requiresAuth,
+    genres: w.genres,
+    type: w.type,
+  }));
 
   const isEmpty = featured.length === 0 && newReleases.length === 0;
 
   return (
     <main>
-      {/* ── Hero ─────────────────────────────────────── */}
+      {/* ── Mobile streaming-style hero (<768px) ─────── */}
+      <MobileFeaturedHero
+        items={mobileHeroItems}
+        isLoggedIn={!!userId}
+        savedIds={savedIds}
+      />
+
+      {/* ── Desktop cinematic hero (≥768px) ──────────── */}
       <section className="hero">
         <div className="hero-bg">
           <HeroRotator items={heroItems} />

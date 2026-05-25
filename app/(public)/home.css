@@ -1,9 +1,14 @@
 /* ── Hero ── */
+/* Desktop cinematic hero — hidden on mobile (MobileFeaturedHero renders instead) */
 .hero {
+  display: none;
   position: relative;
   min-height: 95dvh;
   overflow: hidden;
   background-color: var(--color-brand-dark);
+}
+@media (min-width: 768px) {
+  .hero { display: block; }
 }
 .hero-bg { position: absolute; inset: 0; z-index: 0; }
 .hero-bg-gradient {

@@ -37,7 +37,7 @@ function parseFormData(formData: FormData) {
     year:        formData.get("year")     ? Number(formData.get("year"))     : null,
     duration:    formData.get("duration") ? Number(formData.get("duration")) : null,
     director:    (formData.get("director") as string)    || null,
-    genre:       (formData.get("genre") as string)       || null,
+    genres:      (formData.getAll("genres") as string[]).filter(Boolean),
     clientName:  (formData.get("clientName") as string)  || null,
     industry:    (formData.get("industry") as string)    || null,
     projectGoal: (formData.get("projectGoal") as string) || null,

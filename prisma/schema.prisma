@@ -94,6 +94,7 @@ model Work {
   duration    Int?      // minutes
   director    String?
   genre       String?
+  genres      String[]  @default([])
 
   // Client/portfolio metadata
   clientName  String?
