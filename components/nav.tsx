@@ -3,8 +3,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Menu, X, User, LayoutDashboard } from "lucide-react";
-
+import { Menu, X, User, LayoutDashboard, Bell } from "lucide-react";
 
 const links = [
   { href: "/", label: "Home" },
@@ -15,12 +14,15 @@ const links = [
 
 type NavProps = {
   user?: { name?: string | null; email?: string | null; role?: string } | null;
+  unreadCount?: number;
 };
 
-export default function Nav({ user }: NavProps) {
+export default function Nav({ user, unreadCount = 0 }: NavProps) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const isAdmin = user?.role === "ADMIN";
+  const hasUnread = user && unreadCount > 0;
+  const badgeLabel = unreadCount > 9 ? "9+" : String(unreadCount);
 
   return (
     <header className="nav-header">
@@ -37,7 +39,7 @@ export default function Nav({ user }: NavProps) {
           AIM<span>Studio</span>
         </Link>
 
-        {/* Desktop */}
+        {/* Desktop links */}
         <nav className="nav-links-desktop">
           {links.map((l) => (
             <Link key={l.href} href={l.href}
@@ -51,18 +53,46 @@ export default function Nav({ user }: NavProps) {
             </Link>
           )}
           {user ? (
-            <Link href="/dashboard" className="nav-cta">
-              <User size={13} /> {user.name?.split(" ")[0] ?? "Account"}
-            </Link>
+            <>
+              {/* Bell — desktop */}
+              <Link
+                href="/dashboard/notifications"
+                className="nav-bell"
+                aria-label={hasUnread ? `${unreadCount} unread notification${unreadCount !== 1 ? "s" : ""}` : "Notifications"}
+              >
+                <Bell size={16} />
+                {hasUnread && (
+                  <span className="nav-bell-badge" aria-hidden="true">{badgeLabel}</span>
+                )}
+              </Link>
+              <Link href="/dashboard" className="nav-cta">
+                <User size={13} /> {user.name?.split(" ")[0] ?? "Account"}
+              </Link>
+            </>
           ) : (
             <Link href="/login" className="nav-cta">Sign In</Link>
           )}
         </nav>
 
-        {/* Mobile burger */}
-        <button className="nav-burger" onClick={() => setOpen(!open)} aria-label="Toggle menu">
-          {open ? <X size={22} /> : <Menu size={22} />}
-        </button>
+        {/* Mobile right-side cluster: bell (if logged in) + burger */}
+        <div className="nav-mobile-actions">
+          {user && (
+            <Link
+              href="/dashboard/notifications"
+              className="nav-bell"
+              aria-label={hasUnread ? `${unreadCount} unread notification${unreadCount !== 1 ? "s" : ""}` : "Notifications"}
+              onClick={() => setOpen(false)}
+            >
+              <Bell size={20} />
+              {hasUnread && (
+                <span className="nav-bell-badge" aria-hidden="true">{badgeLabel}</span>
+              )}
+            </Link>
+          )}
+          <button className="nav-burger" onClick={() => setOpen(!open)} aria-label="Toggle menu">
+            {open ? <X size={22} /> : <Menu size={22} />}
+          </button>
+        </div>
       </div>
 
       {/* Mobile drawer */}

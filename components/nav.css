@@ -68,3 +68,28 @@
   padding: 0.75rem 1.5rem; border-radius: 2px; text-decoration: none; text-align: center;
   transition: border-color 0.2s;
 }
+
+/* ── Bell icon ── */
+.nav-bell {
+  position: relative;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--color-brand-muted); text-decoration: none;
+  padding: 0.25rem; transition: color 0.2s;
+}
+.nav-bell:hover { color: var(--color-brand-white); }
+
+/* Unread count badge */
+.nav-bell-badge {
+  position: absolute; top: -2px; right: -4px;
+  min-width: 16px; height: 16px; padding: 0 3px;
+  background: var(--color-brand-accent); color: var(--color-brand-black);
+  font-family: var(--font-body); font-size: 10px; font-weight: 700;
+  line-height: 16px; border-radius: 8px; text-align: center;
+  pointer-events: none; white-space: nowrap;
+}
+
+/* Mobile right cluster: bell + burger side-by-side */
+.nav-mobile-actions {
+  display: flex; align-items: center; gap: 0.25rem;
+}
+@media (min-width: 768px) { .nav-mobile-actions { display: none; } }
