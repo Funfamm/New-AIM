@@ -72,6 +72,29 @@ enum DeviceType {
   UNKNOWN
 }
 
+enum EmailType {
+  PASSWORD_RESET
+  WELCOME
+  ACCOUNT
+  NOTIFICATION
+  NEW_RELEASE
+  NEW_EPISODE
+  ADMIN_ALERT
+  FUTURE_CAMPAIGN
+}
+
+enum EmailProvider {
+  GRAPH
+  SMTP
+  DEV_LOG
+}
+
+enum EmailStatus {
+  SENT
+  FAILED
+  SUPPRESSED
+}
+
 // ─────────────────────────────────────────────
 // USER
 // ─────────────────────────────────────────────
@@ -372,4 +395,47 @@ model AnalyticsEvent {
   @@index([workId])
   @@index([createdAt])
   @@map("analytics_events")
+}
+
+// ─────────────────────────────────────────────
+// EMAIL LOG
+// One row per send attempt — success or failure.
+// Raw tokens are never stored here.
+// ─────────────────────────────────────────────
+
+model EmailLog {
+  id        String        @id @default(cuid())
+  to        String
+  from      String
+  subject   String
+  type      EmailType
+  provider  EmailProvider
+  status    EmailStatus
+  error     String?       // error message on failure, null on success
+  metadata  Json?         // optional extra context
+  createdAt DateTime      @default(now())
+  sentAt    DateTime?     // set when status = SENT
+
+  @@index([to])
+  @@index([type])
+  @@index([status])
+  @@index([createdAt])
+  @@map("email_logs")
+}
+
+// ─────────────────────────────────────────────
+// EMAIL SUPPRESSION
+// Emails that must not receive further sends.
+// ─────────────────────────────────────────────
+
+model EmailSuppression {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  reason    String?  // free-text: "bounce", "complaint", "unsubscribe", "manual"
+  source    String?  // where it came from: "admin", "system", "user"
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@map("email_suppressions")
 }

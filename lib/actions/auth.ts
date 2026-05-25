@@ -9,7 +9,7 @@ import { redirect } from "next/navigation";
 import { AuthError } from "next-auth";
 import { randomBytes, createHash } from "crypto";
 import { cookies } from "next/headers";
-import { sendPasswordResetEmail } from "@/lib/email";
+import { sendPasswordResetEmail, sendWelcomeEmail } from "@/lib/email";
 import { trackEvent, getOrCreateSession } from "@/lib/analytics";
 
 // ── Register ──────────────────────────────────────────────────
@@ -58,6 +58,9 @@ export async function registerUser(formData: FormData) {
       }
     } catch { /* analytics must never break registration */ }
   })();
+
+  // Welcome email — fire-and-forget, never blocks registration or login
+  void sendWelcomeEmail(email, newUser.name).catch(() => {});
 
   // Auto-login after register
   await signIn("credentials", { email, password, redirectTo: "/" });
