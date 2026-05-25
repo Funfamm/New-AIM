@@ -4,12 +4,13 @@
 
 import { prisma } from "@/lib/prisma";
 import { signIn, signOut } from "@/lib/auth";
-import { slugify } from "@/lib/utils";
 import bcrypt from "bcryptjs";
 import { redirect } from "next/navigation";
 import { AuthError } from "next-auth";
 import { randomBytes, createHash } from "crypto";
+import { cookies } from "next/headers";
 import { sendPasswordResetEmail } from "@/lib/email";
+import { trackEvent, getOrCreateSession } from "@/lib/analytics";
 
 // ── Register ──────────────────────────────────────────────────
 export async function registerUser(formData: FormData) {
@@ -31,7 +32,7 @@ export async function registerUser(formData: FormData) {
   // Hash password — 12 rounds is secure without being slow
   const hashed = await bcrypt.hash(password, 12);
 
-  await prisma.user.create({
+  const newUser = await prisma.user.create({
     data: {
       name: name?.trim() || null,
       email,
@@ -39,6 +40,24 @@ export async function registerUser(formData: FormData) {
       role: "USER",
     },
   });
+
+  // Track sign-up event — fire-and-forget, never throws
+  void (async () => {
+    try {
+      const jar = await cookies();
+      const visitorId = jar.get("aim-vid")?.value;
+      if (visitorId) {
+        const sessionId = await getOrCreateSession({ visitorId }).catch(() => undefined);
+        await trackEvent({
+          visitorId,
+          userId: newUser.id,
+          sessionId,
+          type: "SIGN_UP",
+          metadata: { method: "credentials" } as Record<string, string>,
+        });
+      }
+    } catch { /* analytics must never break registration */ }
+  })();
 
   // Auto-login after register
   await signIn("credentials", { email, password, redirectTo: "/" });
@@ -67,6 +86,17 @@ export async function loginUser(formData: FormData) {
 
 // ── Logout ────────────────────────────────────────────────────
 export async function logoutUser() {
+  // Track sign-out before the session is destroyed — fire-and-forget
+  void (async () => {
+    try {
+      const jar = await cookies();
+      const visitorId = jar.get("aim-vid")?.value;
+      if (visitorId) {
+        await trackEvent({ visitorId, type: "SIGN_OUT" });
+      }
+    } catch { /* analytics must never block logout */ }
+  })();
+
   await signOut({ redirectTo: "/" });
 }
 

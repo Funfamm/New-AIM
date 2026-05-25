@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Manrope } from "next/font/google";
+import AnalyticsBeacon from "@/components/analytics-beacon";
 import "./globals.css";
 
 const cormorant = Cormorant_Garamond({
@@ -43,7 +44,10 @@ export default function RootLayout({
       className={`${cormorant.variable} ${manrope.variable}`}
       suppressHydrationWarning
     >
-      <body>{children}</body>
+      <body>
+        {children}
+        <AnalyticsBeacon />
+      </body>
     </html>
   );
 }

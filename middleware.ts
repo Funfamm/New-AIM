@@ -1,5 +1,6 @@
 // Route protection middleware
-// Runs on every request BEFORE the page renders
+// Runs on every request BEFORE the page renders.
+// Also sets the anonymous visitor cookie (aim-vid) used by analytics.
 
 import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
@@ -11,35 +12,48 @@ export default auth((req) => {
 
   const path = nextUrl.pathname;
 
-  // ── Admin routes: must be ADMIN ──────────────────────────
+  // ── Route guards — compute response first ───────────────────
+  let response: NextResponse;
+
   if (path.startsWith("/admin")) {
     if (!isLoggedIn) {
-      return NextResponse.redirect(new URL("/login?from=admin", nextUrl));
+      response = NextResponse.redirect(new URL("/login?from=admin", nextUrl));
+    } else if (!isAdmin) {
+      response = NextResponse.redirect(new URL("/", nextUrl));
+    } else {
+      response = NextResponse.next();
     }
-    if (!isAdmin) {
-      // Logged in but not admin — send to home
-      return NextResponse.redirect(new URL("/", nextUrl));
-    }
-    return NextResponse.next();
-  }
-
-  // ── User dashboard: must be logged in ────────────────────
-  if (path.startsWith("/dashboard")) {
+  } else if (path.startsWith("/dashboard")) {
     if (!isLoggedIn) {
-      return NextResponse.redirect(new URL(`/login?from=${path}`, nextUrl));
+      response = NextResponse.redirect(new URL(`/login?from=${path}`, nextUrl));
+    } else {
+      response = NextResponse.next();
     }
-    return NextResponse.next();
-  }
-
-  // ── Auth pages: redirect if already logged in ─────────────
-  if (path === "/login" || path === "/register") {
+  } else if (path === "/login" || path === "/register") {
     if (isLoggedIn) {
-      return NextResponse.redirect(new URL("/", nextUrl));
+      response = NextResponse.redirect(new URL("/", nextUrl));
+    } else {
+      response = NextResponse.next();
     }
-    return NextResponse.next();
+  } else {
+    response = NextResponse.next();
   }
 
-  return NextResponse.next();
+  // ── Anonymous visitor cookie ─────────────────────────────────
+  // Set once per browser, survives 1 year. HttpOnly — JS cannot read it;
+  // the server reads it from the request cookie on every /api/analytics call.
+  // crypto.randomUUID() is available in the Edge Runtime.
+  if (!req.cookies.get("aim-vid")) {
+    response.cookies.set("aim-vid", crypto.randomUUID(), {
+      httpOnly: true,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 365, // 1 year
+      secure: process.env.NODE_ENV === "production",
+    });
+  }
+
+  return response;
 });
 
 export const config = {
