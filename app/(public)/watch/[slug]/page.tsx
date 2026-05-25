@@ -139,13 +139,31 @@ export default async function WatchPage({ params, searchParams }: Props) {
     : 0;
   const isSaved = session?.user ? await isWorkSaved(work.id) : false;
 
-  // ── Notify Me CTA ─────────────────────────────────────────────────────────
-  // Only native video, not iframes, not trailer mode.
-  // Logged-in users: server-side signed-up check → CTA prop becomes null if they already signed up.
-  // Guest users: localStorage check happens client-side in the player component.
-  const rawCta = work.notifyMeCta?.isEnabled && !isEmbed && !isTrailer
-    ? work.notifyMeCta
+  // ── Episode navigation (computed before CTA so we can detect last episode) ──
+  const siblings = work.parent?.episodes ?? [];
+  const currentIdx = siblings.findIndex((ep) => ep.slug === slug);
+  const nextEp = currentIdx >= 0 && currentIdx < siblings.length - 1
+    ? siblings[currentIdx + 1]
     : null;
+  const isLastEpisode = isEpisode && siblings.length > 0 && currentIdx === siblings.length - 1;
+
+  // ── Notify Me CTA ─────────────────────────────────────────────────────────
+  // Shown on native video (not embeds). Trailers now also eligible (guest use case).
+  // For last episode of a series: fall back to the parent series CTA.
+  let rawCta = work.notifyMeCta?.isEnabled && !isEmbed ? work.notifyMeCta : null;
+
+  if (!rawCta && isLastEpisode && work.parent?.id) {
+    // Fetch series CTA — only runs on the last episode, one extra query
+    const seriesCta = await prisma.notifyMeCta.findUnique({
+      where: { workId: work.parent.id },
+      select: {
+        id: true, type: true, isEnabled: true,
+        headline: true, body: true, ctaLabel: true,
+        triggerSecondsFromEnd: true,
+      },
+    });
+    if (seriesCta?.isEnabled) rawCta = seriesCta;
+  }
 
   const ctaAlreadySigned =
     rawCta && session?.user?.email
@@ -168,7 +186,6 @@ export default async function WatchPage({ params, searchParams }: Props) {
       } satisfies import("@/components/notify-cta-overlay").CtaData)
     : null;
 
-  // Logged-in user info for the CTA overlay (skips the email/name form)
   const ctaUser = session?.user?.email
     ? { email: session.user.email, name: session.user.name ?? null }
     : undefined;
@@ -196,13 +213,6 @@ export default async function WatchPage({ params, searchParams }: Props) {
       } catch { /* never block watch page */ }
     });
   }
-
-  // Episode navigation
-  const siblings = work.parent?.episodes ?? [];
-  const currentIdx = siblings.findIndex((ep) => ep.slug === slug);
-  const nextEp = currentIdx >= 0 && currentIdx < siblings.length - 1
-    ? siblings[currentIdx + 1]
-    : null;
 
   // Episode label (e.g. "S1 E2")
   const epLabel =

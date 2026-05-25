@@ -61,6 +61,36 @@ function revalidateAll() {
   revalidatePath("/");
 }
 
+/**
+ * Generate a slug for an episode: {parent-slug}-s{season}-e{episode}-{title-slug}
+ * Returns a safe slug that doesn't conflict with existing works (appends suffix if needed).
+ * @param excludeId  When editing, the current work's id is excluded from conflict checks.
+ */
+async function buildEpisodeSlug(
+  parentId: string,
+  seasonNumber: number | null,
+  episodeNumber: number | null,
+  title: string,
+  excludeId?: string
+): Promise<string> {
+  const parent = await prisma.work.findUnique({
+    where: { id: parentId },
+    select: { slug: true },
+  });
+  const parentSlug = parent?.slug ?? "series";
+  const s = seasonNumber ?? 1;
+  const e = episodeNumber ?? 0;
+  const candidate = `${parentSlug}-s${s}-e${e}-${slugify(title)}`;
+
+  // Resolve collision with any OTHER work
+  const conflict = await prisma.work.findFirst({
+    where: { slug: candidate, ...(excludeId ? { NOT: { id: excludeId } } : {}) },
+    select: { id: true },
+  });
+
+  return conflict ? `${candidate}-${Date.now().toString(36)}` : candidate;
+}
+
 // ── Create ────────────────────────────────────────────────────
 export async function createWork(formData: FormData) {
   await requireAdmin();
@@ -70,24 +100,66 @@ export async function createWork(formData: FormData) {
     redirect("/admin/works/new?error=" + encodeURIComponent("Title is required."));
   }
 
+  // ── EPISODE path ──────────────────────────────────────────
+  if (data.type === "EPISODE") {
+    if (!data.parentId) {
+      redirect("/admin/works/new?type=EPISODE&error=" + encodeURIComponent("An episode must belong to a parent series."));
+    }
+
+    // Validate uniqueness by parentId + seasonNumber + episodeNumber (not by title)
+    if (data.seasonNumber != null && data.episodeNumber != null) {
+      const dup = await prisma.work.findFirst({
+        where: {
+          parentId: data.parentId,
+          seasonNumber: data.seasonNumber,
+          episodeNumber: data.episodeNumber,
+        },
+        select: { id: true, title: true },
+      });
+      if (dup) {
+        const errMsg = `Season ${data.seasonNumber} Episode ${data.episodeNumber} already exists under this series.`;
+        redirect(
+          `/admin/works/new?parentId=${data.parentId}&type=EPISODE&error=` +
+            encodeURIComponent(errMsg)
+        );
+      }
+    }
+
+    const slug = await buildEpisodeSlug(
+      data.parentId,
+      data.seasonNumber,
+      data.episodeNumber,
+      data.title
+    );
+
+    // Episodes inherit featured/showOnHome/genres/order/access from parent — never stored on episode
+    await prisma.work.create({
+      data: {
+        ...data,
+        slug,
+        genres: [],
+        featured: false,
+        showOnHome: false,
+        order: 0,
+        requiresAuth: false,
+        requiresLoginToViewTrailer: false,
+      },
+    });
+
+    revalidateAll();
+    redirect(`/admin/works/${data.parentId}`);
+  }
+
+  // ── Non-episode path ──────────────────────────────────────
   const slug = slugify(data.title);
   const existing = await prisma.work.findUnique({ where: { slug } });
   if (existing) {
     redirect("/admin/works/new?error=" + encodeURIComponent("A work with this title already exists."));
   }
 
-  // Episodes inherit access from parent Series — never store a lock on the episode itself
-  const createData = data.type === "EPISODE"
-    ? { ...data, slug, requiresAuth: false, requiresLoginToViewTrailer: false }
-    : { ...data, slug };
-
-  await prisma.work.create({ data: createData });
+  await prisma.work.create({ data: { ...data, slug } });
 
   revalidateAll();
-  // After creating an episode, return to the parent series edit page
-  if (data.type === "EPISODE" && data.parentId) {
-    redirect(`/admin/works/${data.parentId}`);
-  }
   redirect("/admin/works");
 }
 
@@ -97,15 +169,63 @@ export async function updateWork(id: string, formData: FormData) {
 
   const data = parseFormData(formData);
 
-  // Episodes must never carry their own lock — clear it on every save
-  const updateData = data.type === "EPISODE"
-    ? { ...data, requiresAuth: false, requiresLoginToViewTrailer: false }
-    : data;
+  // ── EPISODE path ──────────────────────────────────────────
+  if (data.type === "EPISODE") {
+    // Validate S+E uniqueness within parent, excluding the current episode
+    if (data.parentId && data.seasonNumber != null && data.episodeNumber != null) {
+      const dup = await prisma.work.findFirst({
+        where: {
+          parentId: data.parentId,
+          seasonNumber: data.seasonNumber,
+          episodeNumber: data.episodeNumber,
+          NOT: { id },
+        },
+        select: { id: true },
+      });
+      if (dup) {
+        const errMsg = `Season ${data.seasonNumber} Episode ${data.episodeNumber} already exists under this series.`;
+        redirect(`/admin/works/${id}?error=` + encodeURIComponent(errMsg));
+      }
+    }
 
-  await prisma.work.update({ where: { id }, data: updateData });
+    // Regenerate episode slug when parent/season/episode/title changes
+    let newSlug: string | undefined;
+    if (data.parentId) {
+      const current = await prisma.work.findUnique({ where: { id }, select: { slug: true } });
+      const candidate = await buildEpisodeSlug(
+        data.parentId,
+        data.seasonNumber,
+        data.episodeNumber,
+        data.title,
+        id
+      );
+      // Only write slug if it actually changed
+      if (current?.slug !== candidate) newSlug = candidate;
+    }
+
+    await prisma.work.update({
+      where: { id },
+      data: {
+        ...data,
+        ...(newSlug ? { slug: newSlug } : {}),
+        // Episodes must never carry these — enforce server-side regardless of form
+        genres: [],
+        featured: false,
+        showOnHome: false,
+        order: 0,
+        requiresAuth: false,
+        requiresLoginToViewTrailer: false,
+      },
+    });
+
+    revalidateAll();
+    redirect(`/admin/works/${id}`);
+  }
+
+  // ── Non-episode path ──────────────────────────────────────
+  await prisma.work.update({ where: { id }, data });
 
   revalidateAll();
-  // Stay on the edit page so admins can immediately see the episodes panel after saving
   redirect(`/admin/works/${id}`);
 }
 

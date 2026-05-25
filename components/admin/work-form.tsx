@@ -156,24 +156,26 @@ export default function WorkForm({ work, workTitle, action, seriesList, error, d
             defaultValue={work?.description ?? ""} placeholder="Short description…" />
         </div>
 
-        {/* Genres */}
-        <div className="form-group">
-          <label className="form-label">Genres</label>
-          <div className="form-check-grid">
-            {GENRES.map((g) => (
-              <label key={g} className="form-check">
-                <input
-                  type="checkbox"
-                  name="genres"
-                  value={g}
-                  defaultChecked={work?.genres?.includes(g) ?? false}
-                />
-                <span>{g}</span>
-              </label>
-            ))}
+        {/* Genres — hidden for episodes (inherited from parent series) */}
+        {!isEpisode && (
+          <div className="form-group">
+            <label className="form-label">Genres</label>
+            <div className="form-check-grid">
+              {GENRES.map((g) => (
+                <label key={g} className="form-check">
+                  <input
+                    type="checkbox"
+                    name="genres"
+                    value={g}
+                    defaultChecked={work?.genres?.includes(g) ?? false}
+                  />
+                  <span>{g}</span>
+                </label>
+              ))}
+            </div>
+            <span className="form-hint">Select all that apply.</span>
           </div>
-          <span className="form-hint">Select all that apply. Episodes inherit parent series genres if none selected.</span>
-        </div>
+        )}
 
         {/* Film metadata */}
         {showFilmMeta && (
@@ -322,22 +324,26 @@ export default function WorkForm({ work, workTitle, action, seriesList, error, d
           </div>
         )}
 
-        {/* Display controls */}
-        <div className="form-divider" />
-        <div className="form-row form-row--checks">
-          <label className="form-check">
-            <input type="hidden" name="featured" value="false" />
-            <input type="checkbox" name="featured" value="true"
-              defaultChecked={work?.featured ?? false} />
-            <span>Featured</span>
-          </label>
-          <label className="form-check">
-            <input type="hidden" name="showOnHome" value="false" />
-            <input type="checkbox" name="showOnHome" value="true"
-              defaultChecked={work?.showOnHome ?? false} />
-            <span>Show on Home page</span>
-          </label>
-        </div>
+        {/* Display controls — hidden for episodes (parent series controls these) */}
+        {!isEpisode && (
+          <>
+            <div className="form-divider" />
+            <div className="form-row form-row--checks">
+              <label className="form-check">
+                <input type="hidden" name="featured" value="false" />
+                <input type="checkbox" name="featured" value="true"
+                  defaultChecked={work?.featured ?? false} />
+                <span>Featured</span>
+              </label>
+              <label className="form-check">
+                <input type="hidden" name="showOnHome" value="false" />
+                <input type="checkbox" name="showOnHome" value="true"
+                  defaultChecked={work?.showOnHome ?? false} />
+                <span>Show on Home page</span>
+              </label>
+            </div>
+          </>
+        )}
 
         {/* Access control — type-specific */}
         <div className="form-divider" />
@@ -375,13 +381,16 @@ export default function WorkForm({ work, workTitle, action, seriesList, error, d
           </div>
         )}
 
-        <div className="form-row">
-          <div className="form-group">
-            <label className="form-label">Sort Order</label>
-            <input type="number" name="order" className="form-input"
-              defaultValue={work?.order ?? 0} min={0} />
+        {/* Sort Order — hidden for episodes (order is season/episode number) */}
+        {!isEpisode && (
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">Sort Order</label>
+              <input type="number" name="order" className="form-input"
+                defaultValue={work?.order ?? 0} min={0} />
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="form-actions">
           <Link href="/admin/works" className="form-cancel">Cancel</Link>

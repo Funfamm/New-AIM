@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
-import { Plus, Clapperboard, Users } from "lucide-react";
+import { Activity, Users, Eye, Shield, MonitorPlay } from "lucide-react";
 import type { Metadata } from "next";
 import "./admin-overview.css";
 
@@ -16,15 +16,35 @@ function getGreeting(): string {
 }
 
 async function getStats() {
-  const monthStart = new Date();
-  monthStart.setDate(1);
-  monthStart.setHours(0, 0, 0, 0);
+  const now       = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const dayStart   = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const onlineCut  = new Date(now.getTime() - 2 * 60_000); // 2-min online window
 
-  const [totalWorks, publishedWorks, totalUsers, newThisMonth, recentUsers] = await Promise.all([
+  const [
+    totalWorks, publishedWorks, totalUsers, newThisMonth,
+    onlineCount, onlineMembers,
+    viewsToday, watchStartsToday,
+    openAlerts,
+    recentUsers,
+  ] = await Promise.all([
     prisma.work.count({ where: { type: { not: "EPISODE" } } }),
     prisma.work.count({ where: { status: "PUBLISHED", type: { not: "EPISODE" } } }),
     prisma.user.count(),
     prisma.user.count({ where: { createdAt: { gte: monthStart } } }),
+
+    // Live visitor counts
+    prisma.visitorSession.count({ where: { isBot: false, lastSeenAt: { gte: onlineCut } } }),
+    prisma.visitorSession.count({ where: { isBot: false, lastSeenAt: { gte: onlineCut }, userId: { not: null } } }),
+
+    // Today's activity
+    prisma.analyticsEvent.count({ where: { type: "PAGE_VIEW",    createdAt: { gte: dayStart } } }),
+    prisma.analyticsEvent.count({ where: { type: "WATCH_START",  createdAt: { gte: dayStart } } }),
+
+    // Security
+    prisma.securityAlert.count({ where: { status: "OPEN" } }),
+
+    // Recent members
     prisma.user.findMany({
       orderBy: { createdAt: "desc" },
       take: 6,
@@ -32,11 +52,24 @@ async function getStats() {
     }),
   ]);
 
-  return { totalWorks, publishedWorks, totalUsers, newThisMonth, recentUsers };
+  return {
+    totalWorks, publishedWorks, totalUsers, newThisMonth,
+    onlineCount, onlineGuests: onlineCount - onlineMembers, onlineMembers,
+    viewsToday, watchStartsToday,
+    openAlerts,
+    recentUsers,
+  };
 }
 
 export default async function AdminOverviewPage() {
-  const { totalWorks, publishedWorks, totalUsers, newThisMonth, recentUsers } = await getStats();
+  const {
+    totalWorks, publishedWorks, totalUsers, newThisMonth,
+    onlineCount, onlineGuests, onlineMembers,
+    viewsToday, watchStartsToday,
+    openAlerts,
+    recentUsers,
+  } = await getStats();
+
   const greeting = getGreeting();
 
   const stats = [
@@ -55,17 +88,42 @@ export default async function AdminOverviewPage() {
           <p className="cmd-greeting">{greeting}, Director.</p>
           <h1 className="cmd-title">Studio Command Center</h1>
         </div>
-        <div className="cmd-actions">
-          <Link href="/admin/works/new" className="admin-add-btn">
-            <Plus size={13} /> New Work
-          </Link>
-          <Link href="/admin/works" className="admin-ghost-btn">
-            <Clapperboard size={13} /> Works
-          </Link>
-          <Link href="/admin/users" className="admin-ghost-btn">
-            <Users size={13} /> Users
-          </Link>
+      </div>
+
+      {/* ── Live intelligence pills ── */}
+      <div className="cmd-live-bar">
+        <Link href="/admin/analytics/visitors" className="cmd-live-pill cmd-live-pill--online">
+          <span className="cmd-live-dot" />
+          <span className="cmd-live-val">{onlineCount}</span>
+          <span className="cmd-live-lbl">Online Now</span>
+        </Link>
+        <div className="cmd-live-pill">
+          <Users size={12} />
+          <span className="cmd-live-val">{onlineMembers}</span>
+          <span className="cmd-live-lbl">Members Online</span>
         </div>
+        <div className="cmd-live-pill">
+          <Eye size={12} />
+          <span className="cmd-live-val">{onlineGuests}</span>
+          <span className="cmd-live-lbl">Guests Online</span>
+        </div>
+        <div className="cmd-live-pill">
+          <Activity size={12} />
+          <span className="cmd-live-val">{viewsToday}</span>
+          <span className="cmd-live-lbl">Views Today</span>
+        </div>
+        <div className="cmd-live-pill">
+          <MonitorPlay size={12} />
+          <span className="cmd-live-val">{watchStartsToday}</span>
+          <span className="cmd-live-lbl">Watch Starts</span>
+        </div>
+        {openAlerts > 0 && (
+          <Link href="/admin/security" className="cmd-live-pill cmd-live-pill--alert">
+            <Shield size={12} />
+            <span className="cmd-live-val">{openAlerts}</span>
+            <span className="cmd-live-lbl">Open Alerts</span>
+          </Link>
+        )}
       </div>
 
       {/* ── Stat cards ── */}

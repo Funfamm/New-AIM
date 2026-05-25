@@ -16,7 +16,7 @@ const DEVICE_LABELS: Record<string, string> = {
 export default async function VisitorsPage() {
   const now        = new Date();
   const weekStart  = new Date(now.getTime() - 7 * 86400_000);
-  const onlineCut  = new Date(now.getTime() - 10 * 60_000); // 10 min = "online"
+  const onlineCut  = new Date(now.getTime() - 2 * 60_000);  // 2 min = "online" (players beacon every 30s)
 
   const [
     totalSessions,
