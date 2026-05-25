@@ -134,7 +134,8 @@ model Work {
   galleryUrls String[]  @default([])
 
   // Display controls
-  requiresAuth Boolean  @default(false)
+  requiresAuth               Boolean @default(false)
+  requiresLoginToViewTrailer Boolean @default(false)
   featured     Boolean  @default(false)
   showOnHome   Boolean  @default(false)
   order        Int      @default(0)

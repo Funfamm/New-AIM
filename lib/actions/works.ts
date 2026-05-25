@@ -44,7 +44,8 @@ function parseFormData(formData: FormData) {
     deliverables:(formData.get("deliverables") as string)|| null,
     caseStudy:   (formData.get("caseStudy") as string)   || null,
     galleryUrls,
-    requiresAuth: formData.getAll("requiresAuth").includes("true"),
+    requiresAuth:               formData.getAll("requiresAuth").includes("true"),
+    requiresLoginToViewTrailer: formData.getAll("requiresLoginToViewTrailer").includes("true"),
     featured:     formData.getAll("featured").includes("true"),
     showOnHome:   formData.getAll("showOnHome").includes("true"),
     order:        formData.get("order") ? Number(formData.get("order")) : 0,
@@ -75,7 +76,12 @@ export async function createWork(formData: FormData) {
     redirect("/admin/works/new?error=" + encodeURIComponent("A work with this title already exists."));
   }
 
-  await prisma.work.create({ data: { ...data, slug } });
+  // Episodes inherit access from parent Series — never store a lock on the episode itself
+  const createData = data.type === "EPISODE"
+    ? { ...data, slug, requiresAuth: false, requiresLoginToViewTrailer: false }
+    : { ...data, slug };
+
+  await prisma.work.create({ data: createData });
 
   revalidateAll();
   // After creating an episode, return to the parent series edit page
@@ -91,7 +97,12 @@ export async function updateWork(id: string, formData: FormData) {
 
   const data = parseFormData(formData);
 
-  await prisma.work.update({ where: { id }, data });
+  // Episodes must never carry their own lock — clear it on every save
+  const updateData = data.type === "EPISODE"
+    ? { ...data, requiresAuth: false, requiresLoginToViewTrailer: false }
+    : data;
+
+  await prisma.work.update({ where: { id }, data: updateData });
 
   revalidateAll();
   // Stay on the edit page so admins can immediately see the episodes panel after saving

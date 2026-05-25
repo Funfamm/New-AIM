@@ -32,7 +32,8 @@ type WorkData = {
   year: number | null; duration: number | null; director: string | null; genres: string[];
   clientName: string | null; industry: string | null; projectGoal: string | null;
   deliverables: string | null; caseStudy: string | null; galleryUrls: string[];
-  requiresAuth: boolean; featured: boolean; showOnHome: boolean; order: number;
+  requiresAuth: boolean; requiresLoginToViewTrailer: boolean;
+  featured: boolean; showOnHome: boolean; order: number;
   parentId: string | null; episodeNumber: number | null; seasonNumber: number | null;
 };
 
@@ -336,13 +337,43 @@ export default function WorkForm({ work, workTitle, action, seriesList, error, d
               defaultChecked={work?.showOnHome ?? false} />
             <span>Show on Home page</span>
           </label>
-          <label className="form-check">
-            <input type="hidden" name="requiresAuth" value="false" />
-            <input type="checkbox" name="requiresAuth" value="true"
-              defaultChecked={work?.requiresAuth ?? false} />
-            <span>Requires login to watch</span>
-          </label>
         </div>
+
+        {/* Access control — type-specific */}
+        <div className="form-divider" />
+
+        {isEpisode ? (
+          /* Episodes inherit from parent Series — no editable lock */
+          <div className="form-episode-access-note">
+            <span className="form-hint">
+              🔒 Episode access is controlled by the parent series. Set login requirements on the series itself.
+            </span>
+          </div>
+        ) : (
+          <div className="form-row form-row--checks">
+            {/* Main content lock — label varies by type */}
+            <label className="form-check">
+              <input type="hidden" name="requiresAuth" value="false" />
+              <input type="checkbox" name="requiresAuth" value="true"
+                defaultChecked={work?.requiresAuth ?? false} />
+              <span>
+                {type === "SERIES"
+                  ? "Requires login to watch series & episodes"
+                  : "Requires login to watch"}
+              </span>
+            </label>
+
+            {/* Trailer lock — only for types that have a trailerUrl */}
+            {showTrailerUrl && (
+              <label className="form-check">
+                <input type="hidden" name="requiresLoginToViewTrailer" value="false" />
+                <input type="checkbox" name="requiresLoginToViewTrailer" value="true"
+                  defaultChecked={work?.requiresLoginToViewTrailer ?? false} />
+                <span>Requires login to watch trailer</span>
+              </label>
+            )}
+          </div>
+        )}
 
         <div className="form-row">
           <div className="form-group">

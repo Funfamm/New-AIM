@@ -43,7 +43,7 @@ async function getWork(slug: string) {
       id: true, slug: true, title: true, type: true, status: true,
       description: true, posterUrl: true, trailerUrl: true, videoUrl: true,
       year: true, duration: true, genre: true, director: true,
-      requiresAuth: true,
+      requiresAuth: true, requiresLoginToViewTrailer: true,
       episodes: {
         where: { status: "PUBLISHED" },
         orderBy: [{ seasonNumber: "asc" }, { episodeNumber: "asc" }, { order: "asc" }],
@@ -51,7 +51,6 @@ async function getWork(slug: string) {
           id: true, slug: true, title: true,
           description: true, posterUrl: true, videoUrl: true,
           duration: true, seasonNumber: true, episodeNumber: true,
-          requiresAuth: true,
         },
       },
     },
@@ -92,8 +91,9 @@ export default async function WorkDetailPage({ params }: Props) {
     } catch { /* analytics must never break the page */ }
   });
 
-  const isGuest = !session?.user;
-  const locked = work.requiresAuth && isGuest;
+  const isGuest        = !session?.user;
+  const locked         = work.requiresAuth && isGuest;               // main content lock
+  const trailerLocked  = work.requiresLoginToViewTrailer && isGuest; // trailer lock (independent)
   const isSaved = !isGuest ? await isWorkSaved(work.id) : false;
   const firstEp = work.type === "SERIES" ? work.episodes[0] ?? null : null;
   const episodeCount = work.type === "SERIES" ? work.episodes.length : null;
@@ -184,12 +184,21 @@ export default async function WorkDetailPage({ params }: Props) {
               <div className="detail-actions">
                 {/* Trailer button — ghost unless it's the only content */}
                 {work.trailerUrl && (
-                  <Link
-                    href={`/watch/${work.slug}`}
-                    className={hasMainContent ? "detail-btn-ghost" : "detail-btn-primary"}
-                  >
-                    <Play size={14} fill="currentColor" /> Watch Trailer
-                  </Link>
+                  trailerLocked ? (
+                    <Link
+                      href={`/login?from=/watch/${work.slug}`}
+                      className={hasMainContent ? "detail-btn-ghost" : "detail-btn-primary"}
+                    >
+                      <Lock size={14} /> Sign In to Watch Trailer
+                    </Link>
+                  ) : (
+                    <Link
+                      href={`/watch/${work.slug}`}
+                      className={hasMainContent ? "detail-btn-ghost" : "detail-btn-primary"}
+                    >
+                      <Play size={14} fill="currentColor" /> Watch Trailer
+                    </Link>
+                  )
                 )}
 
                 {/* SERIES → episode 1 */}
@@ -275,7 +284,8 @@ export default async function WorkDetailPage({ params }: Props) {
                       ? `E${ep.episodeNumber}`
                       : null;
 
-                  const epLocked = (ep.requiresAuth || work.requiresAuth) && isGuest;
+                  // Episode access is controlled by the parent Series only
+                  const epLocked = work.requiresAuth && isGuest;
 
                   return (
                     <li key={ep.id}>

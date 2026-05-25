@@ -31,7 +31,8 @@ async function getWork(slug: string) {
     select: {
       id: true, slug: true, title: true, status: true, type: true,
       trailerUrl: true, videoUrl: true,
-      requiresAuth: true, posterUrl: true, description: true,
+      requiresAuth: true, requiresLoginToViewTrailer: true,
+      posterUrl: true, description: true,
       episodeNumber: true, seasonNumber: true, duration: true,
       // SERIES: need first episode slug for redirect
       episodes: {
@@ -89,14 +90,24 @@ export default async function WatchPage({ params, searchParams }: Props) {
 
   const session = await auth();
   const isEpisode = work.type === "EPISODE";
+  const wantFull  = isEpisode ? true : full === "1";
 
-  // Access control — episode inherits parent series requiresAuth
-  const parentRequiresAuth = isEpisode && (work.parent?.requiresAuth ?? false);
-  const requiresAuth = work.requiresAuth || parentRequiresAuth;
-  const wantFull = isEpisode ? true : full === "1";
+  // ── Access control ────────────────────────────────────────────
+  // Episodes: inherit requiresAuth from parent Series (episodes never carry their own lock)
+  const mainRequiresAuth =
+    isEpisode
+      ? (work.parent?.requiresAuth ?? false)
+      : work.requiresAuth;
 
-  if (wantFull && requiresAuth && !session?.user) {
-    const from = isEpisode ? `/watch/${slug}` : `/watch/${slug}?full=1`;
+  // Trailers: governed by requiresLoginToViewTrailer, independent of main content lock
+  const trailerRequiresAuth = work.requiresLoginToViewTrailer;
+
+  // Determine which guard applies to this visit
+  const isTrailerVisit = !isEpisode && !wantFull; // not full=1 and not an episode → trailer mode
+  const requiresAuth   = isTrailerVisit ? trailerRequiresAuth : mainRequiresAuth;
+
+  if (requiresAuth && !session?.user) {
+    const from = isEpisode ? `/watch/${slug}` : `/watch/${slug}${wantFull ? "?full=1" : ""}`;
     redirect(`/login?from=${from}`);
   }
 
@@ -247,7 +258,7 @@ export default async function WatchPage({ params, searchParams }: Props) {
               {/* Trailer → Full Film upsell */}
               {isTrailer && work.videoUrl && (
                 <div className="watch-upsell">
-                  {requiresAuth && !session?.user ? (
+                  {mainRequiresAuth && !session?.user ? (
                     <>
                       <Lock size={14} />
                       <span>
