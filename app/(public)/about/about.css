@@ -22,31 +22,39 @@
 /* 1. Hero */
 .ab-hero {
   position: relative; overflow: hidden;
-  padding: 7rem 0 6rem;
+  padding: 5rem 0 4.5rem;
   border-bottom: 1px solid var(--color-brand-border);
 }
-@media (min-width: 768px) { .ab-hero { padding: 9rem 0 7rem; } }
+@media (min-width: 768px) { .ab-hero { padding: 7rem 0 6rem; } }
 .ab-hero::before {
   content: ""; position: absolute; top: -15%; right: -8%;
   width: 65vw; max-width: 680px; height: 65vw; max-height: 680px;
-  background: radial-gradient(circle, rgba(232,201,126,0.11) 0%, rgba(232,201,126,0.04) 40%, transparent 68%);
+  background: radial-gradient(circle, rgba(232,201,126,0.07) 0%, rgba(232,201,126,0.02) 40%, transparent 68%);
   pointer-events: none; z-index: 0;
 }
 .ab-hero::after {
   content: ""; position: absolute; bottom: -20%; left: -6%;
   width: 45vw; max-width: 420px; height: 45vw; max-height: 420px;
-  background: radial-gradient(circle, rgba(232,201,126,0.05) 0%, transparent 65%);
+  background: radial-gradient(circle, rgba(232,201,126,0.03) 0%, transparent 65%);
   pointer-events: none; z-index: 0;
 }
-.ab-hero-inner { position: relative; z-index: 1; max-width: 900px; }
+.ab-hero-inner { position: relative; z-index: 1; max-width: 880px; }
 .ab-hero-title {
   font-family: var(--font-display);
-  font-size: clamp(3rem, 8vw, 6.5rem);
-  font-weight: 700; letter-spacing: -0.035em; line-height: 1.04;
-  color: var(--color-brand-white); margin: 0;
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  font-weight: 700; letter-spacing: -0.03em; line-height: 1.1;
+  color: var(--color-brand-white); margin: 0 0 1.75rem;
 }
 .ab-hero-accent { font-style: italic; color: var(--color-brand-accent); }
-.ab-hero-rule { width: 56px; height: 2px; background: var(--color-brand-accent); margin-top: 2.5rem; }
+.ab-hero-desc {
+  font-family: var(--font-body); font-size: 1rem;
+  color: var(--color-brand-light); line-height: 1.75; opacity: 0.82;
+  max-width: 620px; margin: 0 0 1.25rem;
+}
+.ab-hero-secondary {
+  font-family: var(--font-body); font-size: 0.8125rem; font-weight: 500;
+  letter-spacing: 0.04em; color: var(--color-brand-muted); margin: 0;
+}
 
 /* 2. Manifesto */
 .ab-manifesto-sect {

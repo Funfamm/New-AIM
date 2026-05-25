@@ -16,11 +16,13 @@ export default function AboutPage() {
         <div className="container-app ab-hero-inner">
           <span className="ab-eyebrow">Who We Are</span>
           <h1 className="ab-hero-title">
-            We make films about
-            <br />
+            We make films about<br />
             <em className="ab-hero-accent">what we almost lost.</em>
           </h1>
-          <div className="ab-hero-rule" aria-hidden="true" />
+          <p className="ab-hero-desc">
+            AIM Studio tells stories about sacrifice, regret, memory, and the people who refuse to look away.
+          </p>
+          <p className="ab-hero-secondary">AI is the tool. The feeling is the reason.</p>
         </div>
       </section>
 
