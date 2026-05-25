@@ -40,6 +40,7 @@ export async function upsertCta(
   });
 
   revalidatePath(`/admin/works/${workId}`);
+  revalidatePath("/admin/notify-me-ctas");
   return { ok: true };
 }
 
@@ -52,9 +53,27 @@ export async function deleteCta(
   try {
     await prisma.notifyMeCta.delete({ where: { id: ctaId } });
     revalidatePath(`/admin/works/${workId}`);
+    revalidatePath("/admin/notify-me-ctas");
     return { ok: true };
   } catch {
     return { ok: false, error: "Could not remove CTA." };
+  }
+}
+
+// ── Admin: toggle enabled/disabled ───────────────────────────────────────────
+export async function toggleCtaEnabled(
+  ctaId: string
+): Promise<{ ok: boolean; error?: string }> {
+  await requireAdmin();
+  try {
+    const cta = await prisma.notifyMeCta.findUnique({ where: { id: ctaId }, select: { isEnabled: true, workId: true } });
+    if (!cta) return { ok: false, error: "CTA not found." };
+    await prisma.notifyMeCta.update({ where: { id: ctaId }, data: { isEnabled: !cta.isEnabled } });
+    revalidatePath("/admin/notify-me-ctas");
+    revalidatePath(`/admin/works/${cta.workId}`);
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Could not toggle CTA." };
   }
 }
 

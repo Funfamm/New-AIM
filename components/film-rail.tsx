@@ -18,6 +18,7 @@ type FilmRailProps = {
   href?: string;
   films: RailFilm[];
   priority?: boolean;
+  isLoggedIn?: boolean;
 };
 
 export default function FilmRail({
@@ -26,6 +27,7 @@ export default function FilmRail({
   href,
   films,
   priority = false,
+  isLoggedIn = false,
 }: FilmRailProps) {
   if (films.length === 0) return null;
 
@@ -55,7 +57,7 @@ export default function FilmRail({
         <div className="rail-track">
           {films.map((film, i) => (
             <div key={film.id} className="rail-card">
-              <FilmCard {...film} priority={priority && i < 4} />
+              <FilmCard {...film} priority={priority && i < 4} isLoggedIn={isLoggedIn} />
             </div>
           ))}
         </div>

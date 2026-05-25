@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
 import WorksClient from "@/components/works-client";
 import type { Metadata } from "next";
 
@@ -21,9 +22,10 @@ async function getWorks() {
 }
 
 export default async function WorksPage({ searchParams }: Props) {
-  const [works, { collection }] = await Promise.all([
+  const [works, { collection }, session] = await Promise.all([
     getWorks(),
     searchParams,
+    auth(),
   ]);
-  return <WorksClient works={works} collection={collection} />;
+  return <WorksClient works={works} collection={collection} isLoggedIn={!!session?.user} />;
 }

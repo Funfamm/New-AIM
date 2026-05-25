@@ -1,0 +1,147 @@
+import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
+import { notFound, redirect } from "next/navigation";
+import Link from "next/link";
+import { ChevronLeft, BellRing } from "lucide-react";
+import CtaForm from "./cta-form";
+import type { Metadata } from "next";
+import "./cta-edit.css";
+
+type Props = {
+  params: Promise<{ ctaId: string }>;
+  searchParams: Promise<{ workId?: string }>;
+};
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { ctaId } = await params;
+  return { title: ctaId === "new" ? "Admin — New CTA" : "Admin — Edit CTA" };
+}
+
+export default async function CtaEditPage({ params, searchParams }: Props) {
+  const session = await auth();
+  if (!session?.user || session.user.role !== "ADMIN") redirect("/login");
+
+  const { ctaId } = await params;
+  const { workId: qWorkId } = await searchParams;
+  const isNew = ctaId === "new";
+
+  if (isNew) {
+    // Must have a workId from query param
+    if (!qWorkId) redirect("/admin/notify-me-ctas");
+
+    const work = await prisma.work.findUnique({
+      where: { id: qWorkId },
+      select: { id: true, title: true, type: true, videoUrl: true, trailerUrl: true, status: true },
+    });
+    if (!work || work.status !== "PUBLISHED") redirect("/admin/notify-me-ctas");
+
+    // If a CTA already exists for this work, redirect to the edit page
+    const existing = await prisma.notifyMeCta.findUnique({
+      where: { workId: qWorkId },
+      select: { id: true },
+    });
+    if (existing) redirect(`/admin/notify-me-ctas/${existing.id}`);
+
+    return (
+      <div className="cta-edit-page">
+        <Link href="/admin/notify-me-ctas" className="cta-edit-back">
+          <ChevronLeft size={14} /> All CTAs
+        </Link>
+        <div className="cta-edit-head">
+          <BellRing size={16} />
+          <h1>New Notify Me CTA</h1>
+        </div>
+        <p className="cta-edit-sub">
+          For: <strong>{work.title}</strong>
+        </p>
+        <CtaForm workId={work.id} workTitle={work.title} cta={null} />
+      </div>
+    );
+  }
+
+  // Edit mode — fetch by ctaId
+  const [cta, signupCount, recentSignups] = await Promise.all([
+    prisma.notifyMeCta.findUnique({
+      where: { id: ctaId },
+      select: {
+        id: true, type: true, isEnabled: true,
+        headline: true, body: true, ctaLabel: true,
+        triggerSecondsFromEnd: true,
+        work: { select: { id: true, title: true, type: true } },
+      },
+    }),
+    prisma.notifyMeSignup.count({ where: { ctaId } }),
+    prisma.notifyMeSignup.findMany({
+      where: { ctaId },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+      select: { id: true, email: true, name: true, createdAt: true },
+    }),
+  ]);
+
+  if (!cta) notFound();
+
+  return (
+    <div className="cta-edit-page">
+      <Link href="/admin/notify-me-ctas" className="cta-edit-back">
+        <ChevronLeft size={14} /> All CTAs
+      </Link>
+
+      <div className="cta-edit-head">
+        <BellRing size={16} />
+        <h1>Edit Notify Me CTA</h1>
+      </div>
+      <p className="cta-edit-sub">
+        For: <strong>{cta.work.title}</strong>
+      </p>
+
+      <CtaForm
+        workId={cta.work.id}
+        workTitle={cta.work.title}
+        cta={{ ...cta, type: cta.type as string }}
+      />
+
+      {/* Signups table */}
+      <div className="cta-signups">
+        <div className="cta-signups-head">
+          <h2 className="cta-signups-title">Signups</h2>
+          <span className="cta-signups-count">{signupCount} total</span>
+        </div>
+
+        {recentSignups.length === 0 ? (
+          <p className="cta-signups-empty">No signups yet.</p>
+        ) : (
+          <div className="cta-table-wrap">
+            <table className="cta-table">
+              <thead>
+                <tr>
+                  <th>Email</th>
+                  <th>Name</th>
+                  <th>Signed Up</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentSignups.map((s) => (
+                  <tr key={s.id}>
+                    <td>{s.email}</td>
+                    <td>{s.name ?? <span style={{ color: "var(--color-brand-muted)" }}>—</span>}</td>
+                    <td style={{ whiteSpace: "nowrap" }}>
+                      {new Date(s.createdAt).toLocaleDateString("en-US", {
+                        month: "short", day: "numeric", year: "numeric",
+                      })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {signupCount > 20 && (
+              <p className="cta-table-more">
+                Showing 20 of {signupCount}. Export from Prisma Studio for full list.
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

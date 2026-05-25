@@ -12,13 +12,14 @@ type Props = {
   initialSeconds: number;
   durationMinutes?: number;
   cta?: CtaData | null;
+  ctaUser?: { email: string; name: string | null };
 };
 
 const SAVE_INTERVAL_MS   = 10_000;
 const BEACON_INTERVAL_MS = 30_000;
 
 export default function VideoPlayer({
-  src, poster, workId, initialSeconds, durationMinutes, cta,
+  src, poster, workId, initialSeconds, durationMinutes, cta, ctaUser,
 }: Props) {
   const videoRef      = useRef<HTMLVideoElement>(null);
   const lastSaveRef   = useRef<number>(0);
@@ -117,7 +118,7 @@ export default function VideoPlayer({
         }}
       />
       {cta && ctaVisible && (
-        <NotifyMeCtaOverlay cta={cta} onDismiss={handleDismiss} />
+        <NotifyMeCtaOverlay cta={cta} onDismiss={handleDismiss} ctaUser={ctaUser} />
       )}
     </div>
   );

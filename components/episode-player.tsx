@@ -14,13 +14,14 @@ type Props = {
   initialSeconds: number;
   durationMinutes?: number;
   cta?: CtaData | null;
+  ctaUser?: { email: string; name: string | null };
 };
 
 const SAVE_INTERVAL_MS   = 10_000;
 const BEACON_INTERVAL_MS = 30_000;
 
 export default function EpisodePlayer({
-  src, poster, nextSlug, workId, initialSeconds, durationMinutes, cta,
+  src, poster, nextSlug, workId, initialSeconds, durationMinutes, cta, ctaUser,
 }: Props) {
   const router        = useRouter();
   const videoRef      = useRef<HTMLVideoElement>(null);
@@ -116,7 +117,7 @@ export default function EpisodePlayer({
         }}
       />
       {cta && ctaVisible && (
-        <NotifyMeCtaOverlay cta={cta} onDismiss={handleDismiss} />
+        <NotifyMeCtaOverlay cta={cta} onDismiss={handleDismiss} ctaUser={ctaUser} />
       )}
     </div>
   );

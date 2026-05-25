@@ -12,6 +12,7 @@ import SynopsisToggle from "@/components/synopsis-toggle";
 import SaveButton from "@/components/save-button";
 import { isWorkSaved } from "@/lib/actions/watchlist";
 import { getOrCreateSession, trackEvent } from "@/lib/analytics";
+import SeriesTrailerPlayer from "@/components/series-trailer-player";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -91,24 +92,45 @@ export default async function WorkDetailPage({ params }: Props) {
     } catch { /* analytics must never break the page */ }
   });
 
-  const isGuest        = !session?.user;
-  const locked         = work.requiresAuth && isGuest;               // main content lock
-  const trailerLocked  = work.requiresLoginToViewTrailer && isGuest; // trailer lock (independent)
-  const isSaved = !isGuest ? await isWorkSaved(work.id) : false;
-  const firstEp = work.type === "SERIES" ? work.episodes[0] ?? null : null;
-  const episodeCount = work.type === "SERIES" ? work.episodes.length : null;
+  const isGuest       = !session?.user;
+  const locked        = work.requiresAuth && isGuest;
+  const trailerLocked = work.requiresLoginToViewTrailer && isGuest;
+  const isSaved       = !isGuest ? await isWorkSaved(work.id) : false;
 
-  // Determine if there is a watchable main feature (series ep1 or full film)
-  const hasMainContent = (work.type === "SERIES" && firstEp != null) ||
-    (work.type !== "SERIES" && !!work.videoUrl);
+  const firstEp      = work.type === "SERIES" ? work.episodes[0] ?? null : null;
+  const episodeCount = work.type === "SERIES" ? work.episodes.length : null;
+  const isSeries     = work.type === "SERIES";
+
+  const hasMainContent =
+    (isSeries && firstEp != null) ||
+    (!isSeries && !!work.videoUrl);
+
+  // Trailer href — series needs ?trailer=1 to bypass the series→ep1 redirect on watch page
+  const trailerHref = isSeries
+    ? `/watch/${work.slug}?trailer=1`
+    : `/watch/${work.slug}`;
+  const trailerLoginHref = isSeries
+    ? `/login?from=/watch/${work.slug}?trailer=1`
+    : `/login?from=/watch/${work.slug}`;
 
   return (
     <main className="detail-page">
 
+      {/* ── Mobile sticky 16:9 player (series only) ──────────────
+          Hidden on desktop via CSS. Shows poster; plays trailer inline on tap.
+          Renders before the hero so it sticks under the fixed nav (top: 68px).  */}
+      {isSeries && (
+        <SeriesTrailerPlayer
+          posterUrl={work.posterUrl}
+          trailerUrl={work.trailerUrl}
+          title={work.title}
+        />
+      )}
+
       {/* ── Hero ──────────────────────────────────────── */}
       <section className="detail-hero">
 
-        {/* Ambient backdrop — blurred, faint, scoped to section only */}
+        {/* Ambient backdrop */}
         {work.posterUrl && (
           <div className="detail-backdrop" aria-hidden="true">
             <img src={work.posterUrl} alt="" className="detail-backdrop-img" />
@@ -123,8 +145,8 @@ export default async function WorkDetailPage({ params }: Props) {
 
           <div className="detail-layout">
 
-            {/* Poster */}
-            <div className="detail-poster-wrap">
+            {/* Portrait poster — hidden on mobile for series (replaced by sticky player) */}
+            <div className={`detail-poster-wrap${isSeries ? " detail-poster-wrap--mobile-hide" : ""}`}>
               {work.posterUrl ? (
                 <Image
                   src={work.posterUrl}
@@ -145,14 +167,13 @@ export default async function WorkDetailPage({ params }: Props) {
             {/* Info */}
             <div className="detail-info">
 
-              {/* Genre eyebrow */}
               {work.genre && (
                 <span className="detail-genre">{work.genre}</span>
               )}
 
               <h1 className="detail-title">{work.title}</h1>
 
-              {/* Metadata row */}
+              {/* Metadata */}
               <div className="detail-meta">
                 {work.type && TYPE_LABEL[work.type] && (
                   <span className="detail-meta-chip">{TYPE_LABEL[work.type]}</span>
@@ -177,75 +198,67 @@ export default async function WorkDetailPage({ params }: Props) {
                 )}
               </div>
 
-              {/* Synopsis — 2-line clamp with More/Less */}
               {work.description && <SynopsisToggle text={work.description} />}
 
               {/* CTAs */}
               <div className="detail-actions">
-                {/* Trailer button — ghost unless it's the only content */}
+
+                {/* Watch Trailer — ghost button
+                    On mobile series: hidden (trailer plays in the sticky player above).
+                    On desktop series: links to /watch/[slug]?trailer=1 */}
                 {work.trailerUrl && (
-                  trailerLocked ? (
-                    <Link
-                      href={`/login?from=/watch/${work.slug}`}
-                      className={hasMainContent ? "detail-btn-ghost" : "detail-btn-primary"}
-                    >
-                      <Lock size={14} /> Sign In to Watch Trailer
-                    </Link>
-                  ) : (
-                    <Link
-                      href={`/watch/${work.slug}`}
-                      className={hasMainContent ? "detail-btn-ghost" : "detail-btn-primary"}
-                    >
-                      <Play size={14} fill="currentColor" /> Watch Trailer
-                    </Link>
-                  )
+                  <div className={isSeries ? "detail-trailer-desktop-only" : undefined}>
+                    {trailerLocked ? (
+                      <Link
+                        href={trailerLoginHref}
+                        className={hasMainContent ? "detail-btn-ghost" : "detail-btn-primary"}
+                      >
+                        <Lock size={14} /> Sign In to Watch Trailer
+                      </Link>
+                    ) : (
+                      <Link
+                        href={trailerHref}
+                        className={hasMainContent ? "detail-btn-ghost" : "detail-btn-primary"}
+                      >
+                        <Play size={14} fill="currentColor" /> Watch Trailer
+                      </Link>
+                    )}
+                  </div>
                 )}
 
-                {/* SERIES → episode 1 */}
-                {work.type === "SERIES" && firstEp && (
+                {/* SERIES → Watch Series (ep 1) */}
+                {isSeries && firstEp && (
                   locked ? (
-                    <Link
-                      href={`/login?from=/watch/${firstEp.slug}`}
-                      className="detail-btn-primary"
-                    >
+                    <Link href={`/login?from=/watch/${firstEp.slug}`} className="detail-btn-primary">
                       <Lock size={14} /> Sign In to Watch
                     </Link>
                   ) : (
-                    <Link
-                      href={`/watch/${firstEp.slug}`}
-                      className="detail-btn-primary"
-                    >
+                    <Link href={`/watch/${firstEp.slug}`} className="detail-btn-primary">
                       <Play size={14} fill="currentColor" /> Watch Series
                     </Link>
                   )
                 )}
 
                 {/* Film / short / other → full video */}
-                {work.type !== "SERIES" && work.videoUrl && (
+                {!isSeries && work.videoUrl && (
                   locked ? (
-                    <Link
-                      href={`/login?from=/watch/${work.slug}?full=1`}
-                      className="detail-btn-primary"
-                    >
+                    <Link href={`/login?from=/watch/${work.slug}?full=1`} className="detail-btn-primary">
                       <Lock size={14} /> Sign In to Watch
                     </Link>
                   ) : (
-                    <Link
-                      href={`/watch/${work.slug}?full=1`}
-                      className="detail-btn-primary"
-                    >
+                    <Link href={`/watch/${work.slug}?full=1`} className="detail-btn-primary">
                       <Play size={14} fill="currentColor" /> Watch Full Film
                     </Link>
                   )
                 )}
               </div>
 
-              {/* Save to watchlist — logged-in users only */}
+              {/* Save — logged-in users only */}
               {!isGuest && (
                 <SaveButton workId={work.id} initialSaved={isSaved} />
               )}
 
-              {/* Guest note — only shown when content is gated */}
+              {/* Guest note — only when content is gated */}
               {work.requiresAuth && isGuest && (
                 <p className="detail-auth-note">
                   <Lock size={11} /> Members only.{" "}
@@ -258,8 +271,8 @@ export default async function WorkDetailPage({ params }: Props) {
         </div>
       </section>
 
-      {/* ── Episodes ──────────────────────────────────── */}
-      {work.type === "SERIES" && (
+      {/* ── Episodes (series only) ─────────────────────── */}
+      {isSeries && (
         <section className="episodes-section">
           <div className="container-app">
 
@@ -284,7 +297,7 @@ export default async function WorkDetailPage({ params }: Props) {
                       ? `E${ep.episodeNumber}`
                       : null;
 
-                  // Episode access is controlled by the parent Series only
+                  // Episode access inherits from parent Series — no separate lock per episode
                   const epLocked = work.requiresAuth && isGuest;
 
                   return (
@@ -301,6 +314,7 @@ export default async function WorkDetailPage({ params }: Props) {
                               sizes="(max-width: 640px) 100px, 160px"
                               className="ep-thumb-img"
                               quality={75}
+                              loading="lazy"
                             />
                           ) : (
                             <div className="ep-thumb-placeholder">
@@ -337,10 +351,7 @@ export default async function WorkDetailPage({ params }: Props) {
                                 <Lock size={11} /> Watch
                               </Link>
                             ) : (
-                              <Link
-                                href={`/watch/${ep.slug}`}
-                                className="ep-btn"
-                              >
+                              <Link href={`/watch/${ep.slug}`} className="ep-btn">
                                 <Play size={11} fill="currentColor" /> Watch
                               </Link>
                             )

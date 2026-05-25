@@ -20,6 +20,7 @@ type FilmCardProps = {
   posterUrl?: string | null;
   genre?: string | null;
   requiresAuth?: boolean;
+  isLoggedIn?: boolean;
   type?: string;
   priority?: boolean;
   watchHref?: string;
@@ -31,6 +32,7 @@ export default function FilmCard({
   posterUrl,
   genre,
   requiresAuth,
+  isLoggedIn = false,
   type,
   priority = false,
   watchHref,
@@ -116,8 +118,8 @@ export default function FilmCard({
           </div>
         )}
 
-        {/* Lock badge — top-right */}
-        {requiresAuth && (
+        {/* Lock badge — top-right (guests only) */}
+        {requiresAuth && !isLoggedIn && (
           <div
             className="absolute right-3 top-3 flex items-center rounded p-1 text-brand-accent"
             style={{ background: "rgba(0,0,0,0.72)" }}

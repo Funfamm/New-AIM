@@ -77,9 +77,10 @@ const RAILS: { key: Tab; title: string; eyebrow: string }[] = [
 type Props = {
   works: Work[];
   collection?: string;
+  isLoggedIn?: boolean;
 };
 
-export default function WorksClient({ works, collection }: Props) {
+export default function WorksClient({ works, collection, isLoggedIn = false }: Props) {
   const [tab, setTab] = useState<Tab>(() => {
     if (collection && COLLECTION_TO_TAB[collection]) return COLLECTION_TO_TAB[collection];
     return "ALL";
@@ -217,7 +218,7 @@ export default function WorksClient({ works, collection }: Props) {
                   <div className="rail-track">
                     {railWorks.map((w, i) => (
                       <div key={w.id} className="rail-card">
-                        <FilmCard {...w} priority={key === firstRailKey && i < 4} />
+                        <FilmCard {...w} priority={key === firstRailKey && i < 4} isLoggedIn={isLoggedIn} />
                       </div>
                     ))}
                   </div>
@@ -236,7 +237,7 @@ export default function WorksClient({ works, collection }: Props) {
             <div className="wc-grid">
               {filtered.map((w, i) => (
                 <div key={w.id} className="wc-grid-item">
-                  <FilmCard {...w} priority={i < 4} />
+                  <FilmCard {...w} priority={i < 4} isLoggedIn={isLoggedIn} />
                 </div>
               ))}
             </div>

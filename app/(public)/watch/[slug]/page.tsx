@@ -16,7 +16,7 @@ import { getOrCreateSession, trackEvent } from "@/lib/analytics";
 
 type Props = {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ full?: string }>;
+  searchParams: Promise<{ full?: string; trailer?: string }>;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -86,13 +86,14 @@ function toEmbedUrl(url: string): string {
 
 export default async function WatchPage({ params, searchParams }: Props) {
   const { slug } = await params;
-  const { full } = await searchParams;
+  const { full, trailer } = await searchParams;
   const work = await getWork(slug);
 
   if (!work || work.status !== "PUBLISHED") notFound();
 
   // SERIES with episodes → redirect to episode 1
-  if (work.type === "SERIES" && work.episodes.length > 0) {
+  // Skip redirect when ?trailer=1 so the series trailer can play on the watch page
+  if (work.type === "SERIES" && work.episodes.length > 0 && !trailer) {
     redirect(`/watch/${work.episodes[0].slug}`);
   }
 
@@ -166,6 +167,11 @@ export default async function WatchPage({ params, searchParams }: Props) {
         workTitle:             work.title,
       } satisfies import("@/components/notify-cta-overlay").CtaData)
     : null;
+
+  // Logged-in user info for the CTA overlay (skips the email/name form)
+  const ctaUser = session?.user?.email
+    ? { email: session.user.email, name: session.user.name ?? null }
+    : undefined;
 
   // Track TRAILER_CLICK after response — fires when the watch page loads in trailer mode
   if (isTrailer) {
@@ -249,6 +255,7 @@ export default async function WatchPage({ params, searchParams }: Props) {
                     initialSeconds={initialSeconds}
                     durationMinutes={work.duration ?? undefined}
                     cta={ctaProp}
+                    ctaUser={ctaUser}
                   />
                 ) : isEpisode ? (
                   <EpisodePlayer
@@ -258,6 +265,7 @@ export default async function WatchPage({ params, searchParams }: Props) {
                     initialSeconds={initialSeconds}
                     durationMinutes={work.duration ?? undefined}
                     cta={ctaProp}
+                    ctaUser={ctaUser}
                   />
                 ) : (
                   <VideoPlayer
@@ -267,6 +275,7 @@ export default async function WatchPage({ params, searchParams }: Props) {
                     initialSeconds={initialSeconds}
                     durationMinutes={work.duration ?? undefined}
                     cta={ctaProp}
+                    ctaUser={ctaUser}
                   />
                 )
               ) : (

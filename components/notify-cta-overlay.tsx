@@ -20,6 +20,8 @@ export type CtaData = {
 type Props = {
   cta: CtaData;
   onDismiss: () => void;
+  /** If provided, the user is logged in — skip email/name form, show one-click confirm */
+  ctaUser?: { email: string; name: string | null };
 };
 
 const TYPE_BADGE: Record<string, string> = {
@@ -28,31 +30,40 @@ const TYPE_BADGE: Record<string, string> = {
   POST_RELEASE: "What's Next",
 };
 
-export default function NotifyMeCtaOverlay({ cta, onDismiss }: Props) {
-  const [email, setEmail] = useState("");
-  const [name, setName]   = useState("");
-  const [done, setDone]   = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, start]  = useTransition();
+export default function NotifyMeCtaOverlay({ cta, onDismiss, ctaUser }: Props) {
+  const [email, setEmail]   = useState("");
+  const [name, setName]     = useState("");
+  const [done, setDone]     = useState(false);
+  const [error, setError]   = useState<string | null>(null);
+  const [pending, start]    = useTransition();
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
+  const isLoggedIn = !!ctaUser;
+
+  function fireSignup(submittedEmail: string, submittedName?: string) {
     start(async () => {
       const res = await notifyMeSignup(
-        cta.id, cta.workId, cta.workTitle, email, name || undefined
+        cta.id, cta.workId, cta.workTitle, submittedEmail, submittedName
       );
       if (!res.ok) {
         setError(res.error ?? "Something went wrong.");
         return;
       }
-      // Persist signed-up flag in localStorage — prevents CTA reappearing in this browser
       try { localStorage.setItem(`aim_cta_signed_${cta.id}`, "1"); } catch {}
       beacon("CTA_SIGNUP", { workId: cta.workId, metadata: { ctaId: cta.id } });
       setDone(true);
-      // Auto-dismiss after showing the thank-you state
       setTimeout(onDismiss, 2400);
     });
+  }
+
+  function handleGuestSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    fireSignup(email, name || undefined);
+  }
+
+  function handleLoggedInClick() {
+    setError(null);
+    fireSignup(ctaUser!.email, ctaUser!.name ?? undefined);
   }
 
   return (
@@ -67,12 +78,27 @@ export default function NotifyMeCtaOverlay({ cta, onDismiss }: Props) {
         <div className="ncta-done">
           <p className="ncta-done-msg">You&apos;re on the list.</p>
         </div>
+      ) : isLoggedIn ? (
+        /* ── Logged-in: one-click confirm — no form fields ── */
+        <>
+          <p className="ncta-headline">{cta.headline}</p>
+          {cta.body && <p className="ncta-body">{cta.body}</p>}
+          {error && <p className="ncta-error">{error}</p>}
+          <button
+            className="ncta-btn"
+            onClick={handleLoggedInClick}
+            disabled={pending}
+          >
+            {pending ? "…" : cta.ctaLabel}
+          </button>
+        </>
       ) : (
+        /* ── Guest: email + optional name form ── */
         <>
           <p className="ncta-headline">{cta.headline}</p>
           {cta.body && <p className="ncta-body">{cta.body}</p>}
 
-          <form className="ncta-form" onSubmit={handleSubmit}>
+          <form className="ncta-form" onSubmit={handleGuestSubmit}>
             <input
               className="ncta-input"
               type="text"

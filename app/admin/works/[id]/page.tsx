@@ -2,8 +2,9 @@ import { prisma } from "@/lib/prisma";
 import { createWork, updateWork } from "@/lib/actions/works";
 import WorkForm from "@/components/admin/work-form";
 import SeriesEpisodesPanel from "@/components/admin/series-episodes-panel";
-import NotifyMeCtaPanel from "@/components/admin/notify-me-cta-panel";
 import { notFound } from "next/navigation";
+import Link from "next/link";
+import { BellRing } from "lucide-react";
 import type { Metadata } from "next";
 import type { WorkType } from "@prisma/client";
 
@@ -30,8 +31,8 @@ export default async function AdminWorkFormPage({ params, searchParams }: Props)
   const defaultType = defaultTypeRaw as WorkType | undefined;
   const isNew = id === "new";
 
-  // Fetch the work being edited (if any), the full series list, and CTA data in parallel
-  const [work, seriesList, ctaData] = await Promise.all([
+  // Fetch the work being edited (if any), the full series list, and lean CTA id in parallel
+  const [work, seriesList, ctaRow] = await Promise.all([
     isNew
       ? Promise.resolve(null)
       : prisma.work.findUnique({ where: { id } }),
@@ -44,26 +45,9 @@ export default async function AdminWorkFormPage({ params, searchParams }: Props)
       ? Promise.resolve(null)
       : prisma.notifyMeCta.findUnique({
           where: { workId: id },
-          select: {
-            id: true, type: true, isEnabled: true,
-            headline: true, body: true, ctaLabel: true,
-            triggerSecondsFromEnd: true,
-          },
+          select: { id: true, isEnabled: true },
         }),
   ]);
-
-  // Fetch signup count + recent 10 if a CTA exists (separate query to keep main query lean)
-  const [signupCount, recentSignups] = ctaData
-    ? await Promise.all([
-        prisma.notifyMeSignup.count({ where: { ctaId: ctaData.id } }),
-        prisma.notifyMeSignup.findMany({
-          where:   { ctaId: ctaData.id },
-          orderBy: { createdAt: "desc" },
-          take:    10,
-          select:  { id: true, email: true, name: true, createdAt: true },
-        }),
-      ])
-    : [0, []];
 
   if (!isNew && !work) notFound();
 
@@ -100,19 +84,18 @@ export default async function AdminWorkFormPage({ params, searchParams }: Props)
         <SeriesEpisodesPanel seriesId={id} episodes={episodes} />
       )}
 
-      {/* Notify Me CTA panel — only for existing works with a native video */}
+      {/* Notify Me CTA — link to dedicated CTA management page */}
       {!isNew && work && (
-        <NotifyMeCtaPanel
-          workId={id}
-          cta={ctaData
-            ? { ...ctaData, type: ctaData.type as string }
-            : null}
-          signupCount={signupCount}
-          recentSignups={recentSignups.map((s) => ({
-            ...s,
-            createdAt: s.createdAt.toISOString(),
-          }))}
-        />
+        <div style={{ marginTop: "2rem", padding: "1.25rem 1.5rem", background: "var(--color-brand-dark)", border: "1px solid var(--color-brand-border)", borderRadius: 4 }}>
+          <p style={{ fontFamily: "var(--font-body)", fontSize: "0.8125rem", color: "var(--color-brand-muted)", margin: "0 0 0.75rem" }}>Notify Me CTA</p>
+          <Link
+            href={ctaRow ? `/admin/notify-me-ctas/${ctaRow.id}` : `/admin/notify-me-ctas/new?workId=${id}`}
+            style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", fontFamily: "var(--font-body)", fontSize: "0.875rem", fontWeight: 600, color: "var(--color-brand-accent)", textDecoration: "none" }}
+          >
+            <BellRing size={14} />
+            {ctaRow ? `Manage CTA${ctaRow.isEnabled ? " (Active)" : " (Disabled)"}` : "Set Up Notify Me CTA"}
+          </Link>
+        </div>
       )}
     </>
   );

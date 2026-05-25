@@ -140,7 +140,7 @@ export default async function HomePage() {
 
       {/* ── Continue Watching ───────────────────────── */}
       {continueWatching.length > 0 && (
-        <FilmRail title="Continue Watching" films={continueWatching.map(w => ({ ...w, requiresAuth: false }))} />
+        <FilmRail title="Continue Watching" films={continueWatching.map(w => ({ ...w, requiresAuth: false }))} isLoggedIn={!!userId} />
       )}
 
       {/* ── Featured Works ──────────────────────────── */}
@@ -150,10 +150,11 @@ export default async function HomePage() {
         href="/works"
         films={featured}
         priority
+        isLoggedIn={!!userId}
       />
 
       {/* ── New Releases ────────────────────────────── */}
-      <FilmRail title="New Releases" label="— Latest Work" href="/works" films={newReleases} />
+      <FilmRail title="New Releases" label="— Latest Work" href="/works" films={newReleases} isLoggedIn={!!userId} />
 
       {/* ── Empty state ─────────────────────────────── */}
       {isEmpty && (
