@@ -53,3 +53,22 @@ export async function getSavedWorks() {
     },
   });
 }
+
+/** Dashboard-only variant — max 8 items to keep the page lightweight. */
+export async function getDashboardSavedWorks() {
+  const userId = await requireUser();
+  return prisma.savedWork.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+    take: 8,
+    select: {
+      id: true,
+      work: {
+        select: {
+          id: true, slug: true, title: true, type: true,
+          posterUrl: true, year: true, genre: true,
+        },
+      },
+    },
+  });
+}

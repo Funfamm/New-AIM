@@ -57,5 +57,6 @@ export async function getAllWatchProgress() {
       },
     },
     orderBy: { updatedAt: "desc" },
+    take: 8,
   });
 }

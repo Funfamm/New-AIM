@@ -39,6 +39,9 @@ enum WorkStatus {
 
 enum NotificationType {
   NEW_RELEASE
+  NEW_EPISODE
+  ANNOUNCEMENT
+  WATCH_PROGRESS
   ACCOUNT
   SYSTEM
 }
@@ -236,6 +239,19 @@ model UserPreferences {
   autoplay       Boolean @default(true)
   defaultQuality String  @default("auto") // "auto" | "1080p" | "720p" | "480p"
 
+  // Granular notification preferences (V1 dashboard)
+  inAppNotifications        Boolean @default(true)
+  emailNotifications        Boolean @default(false)
+  newReleaseNotifications   Boolean @default(true)
+  newEpisodeNotifications   Boolean @default(true)
+  announcementNotifications Boolean @default(true)
+  studioUpdates             Boolean @default(true)
+
+  // Granular playback preferences (V1 dashboard)
+  autoplayNextEpisode Boolean @default(true)
+  resumePlayback      Boolean @default(true)
+  reducedMotion       Boolean @default(false)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -254,8 +270,10 @@ model Notification {
   type      NotificationType
   title     String
   body      String?
+  href      String?
   workId    String?
   read      Boolean          @default(false)
+  expiresAt DateTime?
   createdAt DateTime         @default(now())
 
   user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
