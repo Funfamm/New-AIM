@@ -238,6 +238,42 @@ export async function sendPasswordResetEmail(to: string, rawToken: string): Prom
   });
 }
 
+// ── Security alert email ───────────────────────────────────────
+
+export async function sendSecurityAlertEmail(opts: {
+  to: string;
+  title: string;
+  body: string;
+  actionUrl?: string;
+  actionLabel?: string;
+}): Promise<void> {
+  const resetUrl = `${APP_URL}/forgot-password`;
+
+  const actionHtml = opts.actionUrl
+    ? `<a href="${opts.actionUrl}"
+         style="display:inline-block;background:#e8c97e;color:#0a0a0a;font-size:14px;font-weight:600;
+                text-decoration:none;padding:12px 28px;border-radius:6px;margin-top:20px;">
+        ${opts.actionLabel ?? "Take Action"}
+       </a>`
+    : "";
+
+  const html = `
+    <p style="margin:0 0 16px;font-size:14px;color:#6b7280;line-height:1.6;">${opts.body}</p>
+    ${actionHtml}
+    <p style="margin:24px 0 0;font-size:12px;color:#6b7280;line-height:1.6;">
+      If this was you, no action is needed.<br>
+      If this was not you,
+      <a href="${resetUrl}" style="color:#e8c97e;">reset your password immediately</a>.
+    </p>`;
+
+  await sendEmail({
+    to:      opts.to,
+    subject: `Security alert for your AIM Studio account`,
+    html:    baseTemplate(opts.title, html),
+    type:    "SECURITY_ALERT",
+  });
+}
+
 // ── Welcome email ──────────────────────────────────────────────
 
 export async function sendWelcomeEmail(to: string, name?: string | null): Promise<void> {

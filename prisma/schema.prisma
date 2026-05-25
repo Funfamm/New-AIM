@@ -44,6 +44,7 @@ enum NotificationType {
   WATCH_PROGRESS
   ACCOUNT
   SYSTEM
+  SECURITY       // NEW — security alerts surfaced in-app
 }
 
 enum AnalyticsEventType {
@@ -80,9 +81,12 @@ enum DeviceType {
   UNKNOWN
 }
 
+// ── UserStatus — extended for soft-delete and purge lifecycle ──
 enum UserStatus {
   ACTIVE
-  SUSPENDED
+  SUSPENDED     // blocked temporarily; records intact; admin can restore
+  DEACTIVATED   // soft-deleted by admin; cannot log in; records intact
+  DELETED       // marker after purge or self-delete; PII removed
 }
 
 enum EmailType {
@@ -93,6 +97,7 @@ enum EmailType {
   NEW_RELEASE
   NEW_EPISODE
   ADMIN_ALERT
+  SECURITY_ALERT  // NEW — sent on suspicious events
   FUTURE_CAMPAIGN
 }
 
@@ -108,19 +113,70 @@ enum EmailStatus {
   SUPPRESSED
 }
 
+// ── Security enums ─────────────────────────────────────────────
+
+enum SecurityEventType {
+  LOGIN_SUCCESS
+  LOGIN_FAILED
+  LOGIN_BLOCKED           // attempt blocked due to rate limit
+  NEW_DEVICE_LOGIN        // first login from this device fingerprint
+  NEW_LOCATION_LOGIN      // first login from this country/region
+  PASSWORD_RESET_REQUESTED
+  PASSWORD_RESET_COMPLETED
+  PASSWORD_CHANGED
+  GOOGLE_SIGN_IN
+  CREDENTIALS_SIGN_IN
+  USER_SUSPENDED
+  USER_UNSUSPENDED
+  USER_DEACTIVATED
+  USER_RESTORED
+  USER_PURGED
+  ROLE_CHANGED
+  ADMIN_SETTING_CHANGED
+  EMAIL_SETTING_CHANGED
+  SECURITY_ALERT_SENT
+  SESSION_REVOKED
+}
+
+enum SecuritySeverity {
+  INFO      // routine successful events
+  LOW       // minor anomaly, no action needed
+  MEDIUM    // something to watch — alert user
+  HIGH      // probable attack or compromised account
+  CRITICAL  // immediate admin attention required
+}
+
+enum SecurityAlertStatus {
+  OPEN
+  READ
+  RESOLVED
+  DISMISSED
+}
+
 // ─────────────────────────────────────────────
 // USER
 // ─────────────────────────────────────────────
 
 model User {
-  id            String    @id @default(cuid())
+  id            String     @id @default(cuid())
   name          String?
-  email         String    @unique
+  email         String     @unique
   password      String?
   role          Role       @default(USER)
   status        UserStatus @default(ACTIVE)
+
+  // Suspension tracking
   suspendedAt   DateTime?
   suspendedBy   String?    // admin userId — plain String, not FK
+
+  // Soft-delete / deactivation tracking
+  deletedAt     DateTime?
+  deletedById   String?    // admin userId — plain String, not FK
+
+  // Login tracking — updated on every successful sign-in
+  lastLoginAt       DateTime?
+  lastLoginProvider String?  // "credentials" | "google"
+
   emailVerified DateTime?
   image         String?
   createdAt     DateTime   @default(now())
@@ -483,7 +539,6 @@ model AdminAuditLog {
 // ─────────────────────────────────────────────
 // ADMIN SETTINGS
 // Singleton row (id = "singleton") — upserted on every save.
-// Feature flag fields are stored now; wired when features ship.
 // ─────────────────────────────────────────────
 
 model AdminSettings {
@@ -532,9 +587,148 @@ model AdminSettings {
   allowCredentialsSignIn Boolean @default(true)
   allowNewRegistrations  Boolean @default(true)
 
+  // ── Security Policies (new) ────────────────
+  // Login throttling
+  failedLoginWindowMinutes Int @default(15)  // rolling window for counting failures
+  failedLoginMaxAttempts   Int @default(5)   // failures before soft cooldown
+  loginCooldownMinutes     Int @default(15)  // how long the cooldown lasts
+
+  // User alerts
+  notifyUserOnNewDevice             Boolean @default(true)
+  notifyUserOnNewLocation           Boolean @default(true)
+  notifyAdminOnSuspiciousAdminLogin Boolean @default(true)
+
+  // Device trust
+  allowUserDeviceTrust Boolean @default(true)
+
+  // Sensitive action re-auth
+  requireReauthForSensitiveActions Boolean @default(true)
+
+  // Purge
+  allowHardPurgeForSuperAdmin Boolean @default(true)
+
   updatedAt DateTime @updatedAt
 
   @@map("admin_settings")
+}
+
+// ─────────────────────────────────────────────
+// LOGIN ATTEMPT
+// One row per login attempt (success or failure).
+// Used for rate limiting and brute-force detection.
+// Raw IP is NEVER stored — only a SHA-256 hash.
+// Rows older than 30 days can be pruned safely.
+// ─────────────────────────────────────────────
+
+model LoginAttempt {
+  id                    String   @id @default(cuid())
+  email                 String   // normalized lowercase
+  userId                String?  // if user was found — plain String, not FK
+  provider              String   // "credentials" | "google"
+  success               Boolean
+  failureReason         String?  // "INVALID_PASSWORD" | "USER_NOT_FOUND" | "SUSPENDED" | "BLOCKED" | "DEACTIVATED"
+  ipHash                String?  // SHA-256(raw IP) — never raw IP
+  userAgentHash         String?  // SHA-256(user-agent string)
+  country               String?  // from Vercel edge header
+  region                String?
+  city                  String?
+  createdAt             DateTime @default(now())
+
+  @@index([email])
+  @@index([ipHash])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("login_attempts")
+}
+
+// ─────────────────────────────────────────────
+// SECURITY EVENT
+// Central log for all security-relevant events.
+// userId stored as plain String — survives account deletion.
+// Never stores raw IP. Never stores passwords or tokens.
+// ─────────────────────────────────────────────
+
+model SecurityEvent {
+  id                    String            @id @default(cuid())
+  userId                String?           // plain — not a FK; null for pre-auth events
+  actorUserId           String?           // admin who triggered the event, if applicable
+  type                  SecurityEventType
+  severity              SecuritySeverity
+  email                 String?           // snapshot — for pre-auth events where userId is null
+  ipHash                String?           // SHA-256(IP)
+  userAgentHash         String?           // SHA-256(UA)
+  deviceFingerprintHash String?           // matches UserDevice.fingerprintHash
+  provider              String?           // "credentials" | "google"
+  path                  String?
+  country               String?
+  region                String?
+  city                  String?
+  metadata              Json?             // extra context; never contains secrets
+  createdAt             DateTime          @default(now())
+
+  @@index([userId])
+  @@index([type])
+  @@index([severity])
+  @@index([email])
+  @@index([createdAt])
+  @@map("security_events")
+}
+
+// ─────────────────────────────────────────────
+// SECURITY ALERT
+// Actionable alerts surfaced to users and admins.
+// userId stored as plain String — survives account deletion.
+// ─────────────────────────────────────────────
+
+model SecurityAlert {
+  id          String              @id @default(cuid())
+  userId      String?             // plain — not a FK; null = admin-level alert
+  severity    SecuritySeverity
+  type        String              // mirrors SecurityEventType values
+  title       String
+  message     String
+  status      SecurityAlertStatus @default(OPEN)
+  metadata    Json?
+  createdAt   DateTime            @default(now())
+  readAt      DateTime?
+  resolvedAt  DateTime?
+
+  @@index([userId])
+  @@index([status])
+  @@index([severity])
+  @@index([createdAt])
+  @@map("security_alerts")
+}
+
+// ─────────────────────────────────────────────
+// USER DEVICE
+// Tracks known devices per user for new-device detection.
+// Fingerprint is a SHA-256 hash of UA + Accept-Language + country.
+// No raw user-agent stored. No cookies. No device serial.
+// userId stored as plain String — records survive account soft-delete.
+// ─────────────────────────────────────────────
+
+model UserDevice {
+  id               String     @id @default(cuid())
+  userId           String     // plain — not a FK; survives soft-delete
+  fingerprintHash  String     // SHA-256(ua + accept-language + country)
+  deviceType       DeviceType @default(UNKNOWN)
+  browser          String?    // e.g. "Chrome 124"
+  os               String?    // e.g. "Windows 11"
+  country          String?    // from Vercel edge header
+  region           String?
+  city             String?
+  firstSeenAt      DateTime   @default(now())
+  lastSeenAt       DateTime   @default(now())
+  trustedAt        DateTime?  // set when user marks this device as trusted
+  revokedAt        DateTime?  // set when user/admin revokes trust
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  @@unique([userId, fingerprintHash])
+  @@index([userId])
+  @@index([fingerprintHash])
+  @@map("user_devices")
 }
 
 // ─────────────────────────────────────────────

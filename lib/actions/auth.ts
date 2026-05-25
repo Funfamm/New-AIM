@@ -9,8 +9,9 @@ import { redirect } from "next/navigation";
 import { AuthError } from "next-auth";
 import { randomBytes, createHash } from "crypto";
 import { cookies } from "next/headers";
-import { sendPasswordResetEmail, sendWelcomeEmail } from "@/lib/email";
+import { sendPasswordResetEmail, sendWelcomeEmail, sendSecurityAlertEmail } from "@/lib/email";
 import { trackEvent, getOrCreateSession } from "@/lib/analytics";
+import { writeSecurityEvent, createSecurityAlert } from "@/lib/security";
 
 // ── Register ──────────────────────────────────────────────────
 export async function registerUser(formData: FormData) {
@@ -146,6 +147,12 @@ export async function forgotPassword(formData: FormData) {
     sendPasswordResetEmail(email, rawToken).catch(() => {
       // Swallow silently — neutral response regardless
     });
+
+    // Security event — fire-and-forget
+    void writeSecurityEvent({
+      userId: user.id, type: "PASSWORD_RESET_REQUESTED", severity: "LOW",
+      email,
+    });
   }
 
   // Always redirect to the same success page
@@ -222,6 +229,25 @@ export async function resetPassword(formData: FormData) {
       data: { used: true },
     }),
   ]);
+
+  // Security events + user alert — fire-and-forget
+  void writeSecurityEvent({
+    userId: user.id, type: "PASSWORD_RESET_COMPLETED", severity: "MEDIUM",
+    email: record.email,
+  });
+  void createSecurityAlert({
+    userId: user.id, severity: "MEDIUM",
+    type: "PASSWORD_RESET_COMPLETED",
+    title: "Your password was changed",
+    message: "Your AIM Studio password was successfully reset. If you did not make this change, contact support immediately.",
+  });
+  void sendSecurityAlertEmail({
+    to:    record.email,
+    title: "Your password was changed",
+    body:  "Your AIM Studio password was successfully reset. If you did not make this change, reset your password again immediately.",
+    actionUrl:   `${process.env.NEXT_PUBLIC_APP_URL}/forgot-password`,
+    actionLabel: "Reset Again",
+  }).catch(() => {});
 
   redirect("/login?error=" + encodeURIComponent("Password updated. Please sign in with your new password."));
 }

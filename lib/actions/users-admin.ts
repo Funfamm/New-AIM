@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { randomBytes, createHash } from "crypto";
 import { sendPasswordResetEmail } from "@/lib/email";
 import { writeAudit } from "@/lib/audit";
+import { writeSecurityEvent, createSecurityAlert } from "@/lib/security";
 import type { Role } from "@prisma/client";
 
 async function requireAdmin() {
@@ -50,6 +51,12 @@ export async function changeUserRole(
     action:     "ROLE_CHANGE",
     detail:     `${target.role} → ${newRole}`,
   });
+  void writeSecurityEvent({
+    userId: userId, actorUserId: actor.id,
+    type: "ROLE_CHANGED", severity: "HIGH",
+    email: target.email,
+    metadata: { from: target.role, to: newRole },
+  });
 
   revalidatePath("/admin/users");
   return { ok: true };
@@ -87,6 +94,17 @@ export async function suspendUser(
     targetEmail: target.email,
     action:      "SUSPEND",
   });
+  void writeSecurityEvent({
+    userId: userId, actorUserId: actor.id,
+    type: "USER_SUSPENDED", severity: "MEDIUM",
+    email: target.email,
+  });
+  void createSecurityAlert({
+    userId, severity: "MEDIUM",
+    type: "USER_SUSPENDED",
+    title: "Your account has been suspended",
+    message: "Your AIM Studio account has been temporarily suspended. Contact support if you believe this is an error.",
+  });
 
   revalidatePath("/admin/users");
   return { ok: true };
@@ -114,6 +132,11 @@ export async function unsuspendUser(
     targetId:    userId,
     targetEmail: target?.email,
     action:      "UNSUSPEND",
+  });
+  void writeSecurityEvent({
+    userId: userId, actorUserId: actor.id,
+    type: "USER_UNSUSPENDED", severity: "INFO",
+    email: target?.email,
   });
 
   revalidatePath("/admin/users");
@@ -220,4 +243,175 @@ export async function sendPasswordResetToUser(
   } catch {
     return { ok: false, message: "Failed to send email. Check email config." };
   }
+}
+
+// ── Deactivate (soft-delete) ──────────────────────────────────
+// Status → DEACTIVATED. Records preserved. Admin can restore.
+export async function deactivateUser(
+  userId: string
+): Promise<{ ok: boolean; error?: string }> {
+  const actor = await requireAdmin();
+
+  if (userId === actor.id) return { ok: false, error: "You cannot deactivate your own account." };
+
+  const target = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true, status: true, email: true },
+  });
+  if (!target) return { ok: false, error: "User not found." };
+  if (target.status === "DEACTIVATED") return { ok: false, error: "User is already deactivated." };
+
+  if (target.role === "ADMIN") {
+    const activeAdminCount = await prisma.user.count({ where: { role: "ADMIN", status: "ACTIVE" } });
+    if (activeAdminCount <= 1) return { ok: false, error: "Cannot deactivate the last active admin." };
+  }
+
+  await prisma.user.update({
+    where: { id: userId },
+    data:  { status: "DEACTIVATED", deletedAt: new Date(), deletedById: actor.id },
+  });
+
+  void writeAudit({
+    actorId:     actor.id!,
+    actorEmail:  actor.email ?? "unknown",
+    targetId:    userId,
+    targetEmail: target.email,
+    action:      "DEACTIVATE",
+  });
+  void writeSecurityEvent({
+    userId: userId, actorUserId: actor.id,
+    type: "USER_DEACTIVATED", severity: "HIGH",
+    email: target.email,
+  });
+
+  revalidatePath("/admin/users");
+  return { ok: true };
+}
+
+// ── Restore deactivated user ──────────────────────────────────
+export async function restoreUser(
+  userId: string
+): Promise<{ ok: boolean; error?: string }> {
+  const actor = await requireAdmin();
+
+  const target = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { status: true, email: true },
+  });
+  if (!target) return { ok: false, error: "User not found." };
+  if (target.status !== "DEACTIVATED") return { ok: false, error: "User is not deactivated." };
+
+  await prisma.user.update({
+    where: { id: userId },
+    data:  { status: "ACTIVE", deletedAt: null, deletedById: null },
+  });
+
+  void writeAudit({
+    actorId:     actor.id!,
+    actorEmail:  actor.email ?? "unknown",
+    targetId:    userId,
+    targetEmail: target.email,
+    action:      "RESTORE",
+  });
+  void writeSecurityEvent({
+    userId: userId, actorUserId: actor.id,
+    type: "USER_RESTORED", severity: "INFO",
+    email: target.email,
+  });
+
+  revalidatePath("/admin/users");
+  return { ok: true };
+}
+
+// ── Purge user (hard delete) ──────────────────────────────────
+// Permanently removes or anonymizes all user data.
+// Requires: admin actor, confirmation phrase, cannot purge self or last admin.
+// Keeps a minimal SecurityEvent record for accountability.
+export async function purgeUser(
+  userId: string,
+  confirmationPhrase: string
+): Promise<{ ok: boolean; error?: string }> {
+  const actor = await requireAdmin();
+
+  if (confirmationPhrase !== "PURGE USER") {
+    return { ok: false, error: "Incorrect confirmation phrase. Type PURGE USER to confirm." };
+  }
+  if (userId === actor.id) {
+    return { ok: false, error: "You cannot purge your own account." };
+  }
+
+  const target = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true, email: true, status: true },
+  });
+  if (!target) return { ok: false, error: "User not found." };
+
+  // Guard: cannot purge the last admin
+  if (target.role === "ADMIN") {
+    const adminCount = await prisma.user.count({ where: { role: "ADMIN" } });
+    if (adminCount <= 1) return { ok: false, error: "Cannot purge the last admin account." };
+  }
+
+  const emailSnapshot = target.email; // capture before deletion
+
+  // ── Hard delete in dependency order ───────────────────────────
+  // Each delete is wrapped to allow partial success logging
+  await prisma.$transaction(async (tx) => {
+    // 1. Clear Auth.js linked accounts + sessions
+    await tx.account.deleteMany({ where: { userId } });
+    await tx.session.deleteMany({ where: { userId } });
+
+    // 2. Clear password reset tokens
+    await tx.passwordResetToken.deleteMany({ where: { email: emailSnapshot } });
+
+    // 3. Clear user content/activity
+    await tx.watchProgress.deleteMany({ where: { userId } });
+    await tx.savedWork.deleteMany({ where: { userId } });
+    await tx.notification.deleteMany({ where: { userId } });
+    await tx.userPreferences.deleteMany({ where: { userId } });
+
+    // 4. Anonymize analytics events — preserve counts, remove identity
+    // userId is plain string on AnalyticsEvent — update to null
+    await tx.analyticsEvent.updateMany({
+      where: { userId },
+      data:  { userId: null },
+    });
+    // VisitorSession.userId is also plain — anonymize
+    await tx.visitorSession.updateMany({
+      where: { userId },
+      data:  { userId: null },
+    });
+
+    // 5. Remove device records
+    await tx.userDevice.deleteMany({ where: { userId } });
+
+    // 6. Resolve open security alerts
+    await tx.securityAlert.updateMany({
+      where:  { userId, status: "OPEN" },
+      data:   { status: "RESOLVED", resolvedAt: new Date() },
+    });
+
+    // 7. Delete the user record
+    await tx.user.delete({ where: { id: userId } });
+  });
+
+  // Minimal immutable audit record — no PII, just accountability
+  void writeAudit({
+    actorId:    actor.id!,
+    actorEmail: actor.email ?? "unknown",
+    targetId:   userId,      // ID only — email removed
+    action:     "PURGE",
+    detail:     "User permanently purged. All PII removed.",
+  });
+
+  // Security event — uses email snapshot since user row is gone
+  void writeSecurityEvent({
+    actorUserId: actor.id,
+    type:        "USER_PURGED",
+    severity:    "CRITICAL",
+    metadata:    { targetId: userId, purgedBy: actor.id },
+  });
+
+  revalidatePath("/admin/users");
+  return { ok: true };
 }
