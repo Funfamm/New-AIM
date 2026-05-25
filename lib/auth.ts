@@ -45,6 +45,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         if (!passwordMatch) return null;
 
+        // Block suspended accounts from signing in
+        if (user.status === "SUSPENDED") return null;
+
         return {
           id: user.id,
           email: user.email,
@@ -56,6 +59,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
 
   callbacks: {
+    // Block suspended users from completing Google OAuth sign-in
+    async signIn({ user, account }) {
+      if (account?.provider === "google" && user.id) {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: user.id },
+          select: { status: true },
+        });
+        if (dbUser?.status === "SUSPENDED") return false;
+      }
+      return true;
+    },
+
     // Attach role and id to the JWT token
     async jwt({ token, user, account }) {
       if (user) {

@@ -220,6 +220,156 @@
 .ureset-ok  { font-size: 0.72rem; color: #4ade80; }
 .ureset-err { font-size: 0.72rem; color: var(--color-brand-red); }
 
+/* ── Status badges ── */
+.ustatus-badge {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.55rem;
+  border-radius: 2px;
+  white-space: nowrap;
+}
+
+.ustatus-badge--active {
+  background: rgba(74, 222, 128, 0.08);
+  color: #4ade80;
+}
+
+.ustatus-badge--suspended {
+  background: rgba(248, 113, 113, 0.1);
+  color: #f87171;
+}
+
+.ustat-val--warn { color: #f87171; }
+
+/* ── Suspended row ── */
+.urow--suspended td {
+  opacity: 0.55;
+}
+
+.urow--suspended .ucell-name {
+  text-decoration: line-through;
+  text-decoration-color: rgba(248, 113, 113, 0.4);
+}
+
+/* ── Bulk select checkbox ── */
+.ubulk-checkbox {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--color-brand-accent);
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+.ubulk-checkbox:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* ── Bulk action bar ── */
+.ubulk-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 1rem;
+  background: rgba(232, 201, 126, 0.06);
+  border: 1px solid rgba(232, 201, 126, 0.2);
+  border-bottom: none;
+  border-radius: 4px 4px 0 0;
+  margin-top: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.ubulk-count {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-brand-accent);
+  margin-right: 0.25rem;
+}
+
+.ubulk-btn {
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.3rem 0.8rem;
+  border-radius: 3px;
+  border: 1px solid var(--color-brand-border);
+  background: var(--color-brand-surface);
+  color: var(--color-brand-light);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.ubulk-btn:hover:not(:disabled) {
+  border-color: rgba(255,255,255,0.3);
+  color: var(--color-brand-white);
+}
+
+.ubulk-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.ubulk-btn--ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--color-brand-muted);
+}
+
+.ubulk-btn--ghost:hover:not(:disabled) {
+  border-color: var(--color-brand-border);
+  color: var(--color-brand-light);
+}
+
+.ubulk-btn--warn {
+  border-color: rgba(248, 113, 113, 0.3);
+  color: #f87171;
+}
+
+.ubulk-btn--warn:hover:not(:disabled) {
+  border-color: rgba(248, 113, 113, 0.6);
+  background: rgba(248, 113, 113, 0.08);
+}
+
+.ubulk-spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(232, 201, 126, 0.25);
+  border-top-color: var(--color-brand-accent);
+  border-radius: 50%;
+  animation: uspin 0.6s linear infinite;
+}
+
+@keyframes uspin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Table pending state ── */
+.utable--pending { opacity: 0.65; pointer-events: none; transition: opacity 0.15s; }
+
+/* ── Bulk error banner ── */
+.ubulk-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.6rem 1rem;
+  background: rgba(192, 57, 43, 0.1);
+  border: 1px solid rgba(192, 57, 43, 0.3);
+  border-radius: 4px;
+  font-size: 0.8rem;
+  color: #f87171;
+  margin-bottom: 0.75rem;
+}
+
+.ubulk-error-close {
+  background: none;
+  border: none;
+  color: #f87171;
+  cursor: pointer;
+  font-size: 0.75rem;
+  padding: 0;
+  opacity: 0.7;
+}
+
+.ubulk-error-close:hover { opacity: 1; }
+
 /* ── Pagination ── */
 .upagination {
   display: flex;

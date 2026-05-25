@@ -7,9 +7,10 @@ interface Props {
   role: string;
   via: string;
   sort: string;
+  status: string;
 }
 
-export function UsersFilters({ q, role, via, sort }: Props) {
+export function UsersFilters({ q, role, via, sort, status }: Props) {
   const formRef = useRef<HTMLFormElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -48,6 +49,11 @@ export function UsersFilters({ q, role, via, sort }: Props) {
         <option value="google">Google</option>
         <option value="email">Email / Password</option>
         <option value="multi">Multi</option>
+      </select>
+      <select name="status" defaultValue={status} onChange={submit} className="ufilter-select">
+        <option value="">All Statuses</option>
+        <option value="ACTIVE">Active</option>
+        <option value="SUSPENDED">Suspended</option>
       </select>
       <select name="sort" defaultValue={sort} onChange={submit} className="ufilter-select">
         <option value="newest">Newest First</option>

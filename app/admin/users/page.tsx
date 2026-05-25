@@ -1,6 +1,6 @@
 // Admin Users — command center
-// Server-rendered. Pagination, search, role filter, login-method filter.
-// Client components only for search debounce, role selector, and reset-email button.
+// Server-rendered page. Stat cards, search/filter/sort/paginate.
+// Interactive table (checkbox select, bulk suspend, role change) in UsersTable (client).
 
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
@@ -8,19 +8,19 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import type { Prisma } from "@prisma/client";
 import { UsersFilters } from "./users-filters";
-import { UserRoleForm } from "./user-role-form";
-import { UserResetBtn } from "./user-reset-btn";
+import { UsersTable, type UserRow } from "./users-table";
 import "./users.css";
 
 export const metadata: Metadata = { title: "Admin — Users" };
 
 const PAGE_SIZE = 25;
 
-// ── Build Prisma where clause from URL params ─────────────────
+// ── Prisma where clause from URL params ───────────────────────
 function buildWhere(
   q: string,
   role: string,
-  via: string
+  via: string,
+  status: string
 ): Prisma.UserWhereInput {
   const where: Prisma.UserWhereInput = {};
 
@@ -34,42 +34,41 @@ function buildWhere(
   if (role === "ADMIN") where.role = "ADMIN";
   if (role === "USER")  where.role = "USER";
 
-  if (via === "google") {
-    where.accounts = { some: { provider: "google" } };
-    where.password  = null;
-  }
-  if (via === "email") {
-    where.password  = { not: null };
-    where.accounts  = { none: { provider: "google" } };
-  }
-  if (via === "multi") {
-    where.password  = { not: null };
-    where.accounts  = { some: { provider: "google" } };
-  }
+  if (via === "google") { where.accounts = { some: { provider: "google" } }; where.password = null; }
+  if (via === "email")  { where.password = { not: null }; where.accounts = { none: { provider: "google" } }; }
+  if (via === "multi")  { where.password = { not: null }; where.accounts = { some: { provider: "google" } }; }
+
+  if (status === "ACTIVE")    where.status = "ACTIVE";
+  if (status === "SUSPENDED") where.status = "SUSPENDED";
 
   return where;
 }
 
-// ── Pagination URL builder ────────────────────────────────────
+// ── Pagination URL ────────────────────────────────────────────
 function pageUrl(
   p: number,
   q: string,
   role: string,
   via: string,
-  sort: string
+  sort: string,
+  status: string
 ): string {
   const sp = new URLSearchParams();
-  if (q)           sp.set("q",    q);
-  if (role)        sp.set("role", role);
-  if (via)         sp.set("via",  via);
+  if (q)              sp.set("q",      q);
+  if (role)           sp.set("role",   role);
+  if (via)            sp.set("via",    via);
   if (sort !== "newest") sp.set("sort", sort);
-  if (p > 1)       sp.set("page", String(p));
+  if (status)         sp.set("status", status);
+  if (p > 1)          sp.set("page",   String(p));
   const qs = sp.toString();
   return `/admin/users${qs ? `?${qs}` : ""}`;
 }
 
-// ── Login method helper ───────────────────────────────────────
-function loginMethod(hasPassword: boolean, providers: string[]): "google" | "email" | "multi" {
+// ── Login method ──────────────────────────────────────────────
+function loginMethod(
+  hasPassword: boolean,
+  providers: string[]
+): "google" | "email" | "multi" {
   const hasGoogle = providers.includes("google");
   if (hasGoogle && hasPassword) return "multi";
   if (hasGoogle)                return "google";
@@ -85,30 +84,33 @@ export default async function AdminUsersPage({
   const [session, sp] = await Promise.all([auth(), searchParams]);
   const actorId = session?.user?.id ?? "";
 
-  const q    = sp.q    ?? "";
-  const role = sp.role ?? "";
-  const via  = sp.via  ?? "";
-  const sort = sp.sort ?? "newest";
-  const page = Math.max(1, parseInt(sp.page ?? "1", 10));
+  const q      = sp.q      ?? "";
+  const role   = sp.role   ?? "";
+  const via    = sp.via    ?? "";
+  const sort   = sp.sort   ?? "newest";
+  const status = sp.status ?? "";
+  const page   = Math.max(1, parseInt(sp.page ?? "1", 10));
 
   const monthStart = new Date();
   monthStart.setDate(1);
   monthStart.setHours(0, 0, 0, 0);
 
-  const where = buildWhere(q, role, via);
+  const where = buildWhere(q, role, via, status);
 
   const [
     totalCount,
     adminCount,
-    googleCount,    // Google-linked (regardless of password)
-    credCount,      // has password (regardless of Google)
-    multiCount,     // has both
+    suspendedCount,
+    googleCount,
+    credCount,
+    multiCount,
     newThisMonth,
     filteredTotal,
     users,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { role: "ADMIN" } }),
+    prisma.user.count({ where: { status: "SUSPENDED" } }),
     prisma.user.count({ where: { accounts: { some: { provider: "google" } } } }),
     prisma.user.count({ where: { password: { not: null } } }),
     prisma.user.count({ where: { password: { not: null }, accounts: { some: { provider: "google" } } } }),
@@ -124,18 +126,36 @@ export default async function AdminUsersPage({
         name: true,
         email: true,
         role: true,
-        password: true,      // checked as boolean server-side only — hash never sent to client
-        emailVerified: true,
+        password: true,      // used as boolean only — hash never passed to client
+        status: true,
+        suspendedAt: true,
         createdAt: true,
-        accounts:  { select: { provider: true } },
-        _count:    { select: { savedWorks: true, progress: true } },
+        accounts: { select: { provider: true } },
+        _count: { select: { savedWorks: true, progress: true } },
       },
     }),
   ]);
 
   const memberCount = totalCount - adminCount;
   const totalPages  = Math.ceil(filteredTotal / PAGE_SIZE);
-  const isFiltered  = !!(q || role || via);
+  const isFiltered  = !!(q || role || via || status);
+
+  // Compute UserRow[] — serializable shape for the client component
+  // Password hash is used as a boolean check here and never forwarded.
+  const rows: UserRow[] = users.map((u) => ({
+    id:             u.id,
+    name:           u.name,
+    email:          u.email,
+    role:           u.role,
+    hasPassword:    !!u.password,
+    loginMethod:    loginMethod(!!u.password, u.accounts.map((a) => a.provider)),
+    status:         u.status,
+    suspendedAt:    u.suspendedAt?.toISOString() ?? null,
+    savedWorksCount: u._count.savedWorks,
+    progressCount:  u._count.progress,
+    createdAt:      u.createdAt.toISOString(),
+    isSelf:         u.id === actorId,
+  }));
 
   return (
     <div className="admin-page">
@@ -165,12 +185,18 @@ export default async function AdminUsersPage({
           <div className="ustat-lbl">Admins</div>
         </div>
         <div className="ustat-cell">
+          <div className={`ustat-val${suspendedCount > 0 ? " ustat-val--warn" : ""}`}>
+            {suspendedCount.toLocaleString()}
+          </div>
+          <div className="ustat-lbl">Suspended</div>
+        </div>
+        <div className="ustat-cell">
           <div className="ustat-val">{googleCount.toLocaleString()}</div>
-          <div className="ustat-lbl">Google Sign-in</div>
+          <div className="ustat-lbl">Google</div>
         </div>
         <div className="ustat-cell">
           <div className="ustat-val">{credCount.toLocaleString()}</div>
-          <div className="ustat-lbl">Email Sign-in</div>
+          <div className="ustat-lbl">Email</div>
         </div>
         <div className="ustat-cell">
           <div className="ustat-val">{multiCount.toLocaleString()}</div>
@@ -183,101 +209,16 @@ export default async function AdminUsersPage({
       </div>
 
       {/* ── Filters ── */}
-      <UsersFilters q={q} role={role} via={via} sort={sort} />
+      <UsersFilters q={q} role={role} via={via} sort={sort} status={status} />
 
-      {/* ── Table ── */}
-      <div className="admin-table-wrap" style={{ marginTop: "0.75rem" }}>
-        <table className="admin-table">
-          <thead>
-            <tr>
-              <th>User</th>
-              <th>Role</th>
-              <th>Via</th>
-              <th style={{ textAlign: "center" }}>Saved</th>
-              <th style={{ textAlign: "center" }}>Progress</th>
-              <th>Joined</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((u) => {
-              const providers = u.accounts.map((a) => a.provider);
-              const hasPassword = !!u.password;
-              const method = loginMethod(hasPassword, providers);
-              const isSelf = u.id === actorId;
-
-              return (
-                <tr key={u.id} className={isSelf ? "urow--self" : undefined}>
-                  {/* Name + email */}
-                  <td>
-                    <div className="ucell-name">
-                      {u.name ?? <span className="ucell-anon">No name</span>}
-                      {isSelf && <span className="uself-tag">you</span>}
-                    </div>
-                    <div className="ucell-email">{u.email}</div>
-                  </td>
-
-                  {/* Role — inline change dropdown */}
-                  <td>
-                    <UserRoleForm
-                      userId={u.id}
-                      currentRole={u.role}
-                      isSelf={isSelf}
-                    />
-                  </td>
-
-                  {/* Login method badge */}
-                  <td>
-                    <span className={`uvia-badge uvia-badge--${method}`}>
-                      {method === "google" ? "Google"
-                       : method === "email" ? "Email"
-                       : "Multi"}
-                    </span>
-                  </td>
-
-                  {/* Saved works */}
-                  <td style={{ textAlign: "center" }}>
-                    <span className="ucell-count">{u._count.savedWorks}</span>
-                  </td>
-
-                  {/* Watch progress */}
-                  <td style={{ textAlign: "center" }}>
-                    <span className="ucell-count">{u._count.progress}</span>
-                  </td>
-
-                  {/* Joined date */}
-                  <td className="ucell-date">
-                    {new Date(u.createdAt).toLocaleDateString("en-GB", {
-                      day: "2-digit", month: "short", year: "numeric",
-                    })}
-                  </td>
-
-                  {/* Actions */}
-                  <td>
-                    <div className="action-btns">
-                      {hasPassword && <UserResetBtn userId={u.id} />}
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-
-            {users.length === 0 && (
-              <tr>
-                <td colSpan={7} className="table-empty">
-                  {isFiltered ? "No users match your filters." : "No users yet."}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      {/* ── Interactive table (client component) ── */}
+      <UsersTable users={rows} isFiltered={isFiltered} />
 
       {/* ── Pagination ── */}
       {totalPages > 1 && (
         <div className="upagination">
           {page > 1 ? (
-            <Link href={pageUrl(page - 1, q, role, via, sort)} className="upag-btn">
+            <Link href={pageUrl(page - 1, q, role, via, sort, status)} className="upag-btn">
               ← Prev
             </Link>
           ) : (
@@ -285,10 +226,12 @@ export default async function AdminUsersPage({
           )}
           <span className="upag-info">
             Page {page} of {totalPages}
-            {isFiltered && <span className="upag-sub"> · {filteredTotal} matching</span>}
+            {isFiltered && (
+              <span className="upag-sub"> · {filteredTotal} matching</span>
+            )}
           </span>
           {page < totalPages ? (
-            <Link href={pageUrl(page + 1, q, role, via, sort)} className="upag-btn">
+            <Link href={pageUrl(page + 1, q, role, via, sort, status)} className="upag-btn">
               Next →
             </Link>
           ) : (
