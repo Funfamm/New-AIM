@@ -1,0 +1,170 @@
+/* Admin Analytics Page — isolated to /admin/analytics only */
+
+/* ── Time range selector ── */
+.arange {
+  display: flex;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+.arange-btn {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  color: var(--color-brand-muted);
+  border: 1px solid var(--color-brand-border);
+  background: none;
+  padding: 0.3rem 0.75rem;
+  border-radius: 2px;
+  text-decoration: none;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  white-space: nowrap;
+}
+.arange-btn:hover {
+  color: var(--color-brand-white);
+  border-color: rgba(255,255,255,0.25);
+}
+.arange-btn--active {
+  color: var(--color-brand-black);
+  background: var(--color-brand-accent);
+  border-color: var(--color-brand-accent);
+}
+.arange-btn--active:hover {
+  color: var(--color-brand-black);
+  filter: brightness(1.06);
+}
+
+/* ── Overview stat cards ── */
+.astats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-top: 0.25rem;
+}
+.astat {
+  background: var(--color-brand-dark);
+  border: 1px solid var(--color-brand-border);
+  border-radius: 4px;
+  padding: 1.25rem 1.5rem;
+}
+.astat-value {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--color-brand-white);
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+.astat-label {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-brand-muted);
+  margin-top: 0.4rem;
+}
+.astat-note {
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  color: var(--color-brand-border);
+  margin-top: 0.2rem;
+}
+
+/* ── Two-column breakdown row ── */
+.acols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+@media (max-width: 768px) {
+  .acols { grid-template-columns: 1fr; }
+}
+
+/* ── Section wrapper ── */
+.asection {
+  margin-top: 2rem;
+}
+.asection-title {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-brand-white);
+  margin: 0 0 1rem;
+  letter-spacing: -0.01em;
+}
+
+/* ── CSS bar chart ── */
+.achart {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  background: var(--color-brand-dark);
+  border: 1px solid var(--color-brand-border);
+  border-radius: 4px;
+  padding: 1.25rem;
+}
+.abar-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.abar-label {
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  color: var(--color-brand-light);
+  width: 80px;
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.abar-track {
+  flex: 1;
+  height: 5px;
+  background: var(--color-brand-surface);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.abar-fill {
+  height: 100%;
+  background: var(--color-brand-accent);
+  border-radius: 3px;
+  min-width: 2px;
+  transition: width 0.4s ease;
+}
+.abar-count {
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-brand-muted);
+  width: 42px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ── Table cell helpers ── */
+.a-primary {
+  font-weight: 500;
+  color: var(--color-brand-white);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+}
+.a-muted {
+  color: var(--color-brand-muted);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+}
+.a-num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Empty state ── */
+.aempty {
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  color: var(--color-brand-muted);
+  padding: 1.5rem 0;
+  margin: 0;
+}

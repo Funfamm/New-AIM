@@ -2,14 +2,15 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { LayoutDashboard, Clapperboard, Users, LogOut, Menu, X, ArrowLeft } from "lucide-react";
+import { LayoutDashboard, Clapperboard, Users, BarChart2, LogOut, Menu, X, ArrowLeft } from "lucide-react";
 import { logoutUser } from "@/lib/actions/auth";
 import "./admin-sidebar.css";
 
 const NAV = [
-  { href: "/admin",       label: "Overview", icon: LayoutDashboard, exact: true },
-  { href: "/admin/works", label: "Works",    icon: Clapperboard },
-  { href: "/admin/users", label: "Users",    icon: Users },
+  { href: "/admin",            label: "Overview",  icon: LayoutDashboard, exact: true },
+  { href: "/admin/works",      label: "Works",     icon: Clapperboard },
+  { href: "/admin/users",      label: "Users",     icon: Users },
+  { href: "/admin/analytics",  label: "Analytics", icon: BarChart2 },
 ];
 
 export default function AdminSidebar() {
