@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { LayoutDashboard, Clapperboard, Users, BarChart2, Mail, Settings, LogOut, Menu, X, ArrowLeft } from "lucide-react";
+import { LayoutDashboard, Clapperboard, Users, BarChart2, Mail, Settings, ScrollText, LogOut, Menu, X, ArrowLeft } from "lucide-react";
 import { logoutUser } from "@/lib/actions/auth";
 import "./admin-sidebar.css";
 
@@ -13,6 +13,7 @@ const NAV = [
   { href: "/admin/analytics",  label: "Analytics", icon: BarChart2 },
   { href: "/admin/email",      label: "Email",     icon: Mail },
   { href: "/admin/settings",  label: "Settings",  icon: Settings },
+  { href: "/admin/audit",     label: "Audit Log", icon: ScrollText },
 ];
 
 export default function AdminSidebar() {

@@ -449,6 +449,29 @@ model EmailSuppression {
 }
 
 // ─────────────────────────────────────────────
+// ADMIN AUDIT LOG
+// Immutable record of every admin action.
+// actorId / targetId stored as plain Strings so records survive user deletion.
+// ─────────────────────────────────────────────
+
+model AdminAuditLog {
+  id          String   @id @default(cuid())
+  actorId     String   // admin who performed the action — plain String, not FK
+  actorEmail  String   // snapshot at time of action
+  targetId    String?  // affected user id — plain String, not FK
+  targetEmail String?  // snapshot at time of action
+  action      String   // e.g. ROLE_CHANGE | SUSPEND | UNSUSPEND | BULK_SUSPEND | PASSWORD_RESET_SENT
+  detail      String?  // human-readable context e.g. "USER → ADMIN"
+  createdAt   DateTime @default(now())
+
+  @@index([actorId])
+  @@index([targetId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("admin_audit_logs")
+}
+
+// ─────────────────────────────────────────────
 // ADMIN SETTINGS
 // Singleton row (id = "singleton") — upserted on every save.
 // Feature flag fields are stored now; wired when features ship.
