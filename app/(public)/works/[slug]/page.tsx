@@ -105,7 +105,8 @@ export default async function WorkDetailPage({ params }: Props) {
                   height={720}
                   className="detail-poster"
                   priority
-                  sizes="(max-width: 640px) 280px, (max-width: 1024px) 220px, 260px"
+                  quality={90}
+                  sizes="(max-width: 767px) 260px, (max-width: 1023px) 220px, 260px"
                 />
               ) : (
                 <div className="detail-poster-placeholder">
