@@ -50,15 +50,16 @@
 
 /* ── Poster ── */
 .detail-poster-wrap {
-  flex-shrink: 0; width: 100%; max-width: 260px;
+  flex-shrink: 0;
+  position: relative;
+  width: 100%; max-width: 260px;
+  aspect-ratio: 2/3;
 }
 @media (min-width: 768px) { .detail-poster-wrap { width: 220px; } }
 @media (min-width: 1024px) { .detail-poster-wrap { width: 260px; } }
 .detail-poster {
-  width: 100%; height: auto; aspect-ratio: 2/3;
   object-fit: cover; border-radius: 4px;
   border: 1px solid var(--color-brand-border);
-  display: block;
 }
 .detail-poster-placeholder {
   width: 100%; aspect-ratio: 2/3;

@@ -101,8 +101,7 @@ export default async function WorkDetailPage({ params }: Props) {
                 <Image
                   src={work.posterUrl}
                   alt={work.title}
-                  width={480}
-                  height={720}
+                  fill
                   className="detail-poster"
                   priority
                   quality={90}
