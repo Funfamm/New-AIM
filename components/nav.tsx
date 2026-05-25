@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Menu, X, User, LayoutDashboard } from "lucide-react";
@@ -25,6 +26,14 @@ export default function Nav({ user }: NavProps) {
     <header className="nav-header">
       <div className="nav-inner container-app">
         <Link href="/" className="nav-logo" onClick={() => setOpen(false)}>
+          <Image
+            src="/images/SP_Logo.jpg"
+            alt="AIM Studio"
+            width={28}
+            height={28}
+            className="nav-logo-img"
+            priority
+          />
           AIM<span>Studio</span>
         </Link>
 
