@@ -10,43 +10,85 @@ async function requireUser() {
   return session.user.id;
 }
 
-/** Fetch up to 10 notifications for the current user (unread first, then recent). */
-export async function getUserNotifications() {
+type NotificationRow = {
+  id: string;
+  type: string;
+  title: string;
+  body: string | null;
+  href: string | null;
+  read: boolean;
+  createdAt: Date;
+};
+
+/**
+ * Fetch up to 10 notifications for the current user (unread first, then recent).
+ * Falls back to a schema-compatible query if new columns (href, expiresAt)
+ * are not yet in the database (i.e. before db:push).
+ */
+export async function getUserNotifications(): Promise<NotificationRow[]> {
   const userId = await requireUser();
   const now = new Date();
 
-  return prisma.notification.findMany({
-    where: {
-      userId,
-      OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-    },
-    select: {
-      id: true,
-      type: true,
-      title: true,
-      body: true,
-      href: true,
-      read: true,
-      createdAt: true,
-    },
-    orderBy: [{ read: "asc" }, { createdAt: "desc" }],
-    take: 10,
-  });
+  try {
+    // Full query — works after db:push adds href + expiresAt
+    return await prisma.notification.findMany({
+      where: {
+        userId,
+        OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+      },
+      select: {
+        id: true,
+        type: true,
+        title: true,
+        body: true,
+        href: true,
+        read: true,
+        createdAt: true,
+      },
+      orderBy: [{ read: "asc" }, { createdAt: "desc" }],
+      take: 10,
+    });
+  } catch {
+    // Fallback — safe against missing columns before db:push
+    const rows = await prisma.notification.findMany({
+      where: { userId },
+      select: {
+        id: true,
+        type: true,
+        title: true,
+        body: true,
+        read: true,
+        createdAt: true,
+      },
+      orderBy: [{ read: "asc" }, { createdAt: "desc" }],
+      take: 10,
+    });
+    return rows.map((r) => ({ ...r, href: null }));
+  }
 }
 
-/** Count unread notifications for the current user. */
+/**
+ * Count unread notifications for the current user.
+ * Falls back to a query without expiresAt if column doesn't exist yet.
+ */
 export async function getUnreadNotificationCount(): Promise<number> {
   const session = await auth();
   if (!session?.user?.id) return 0;
   const now = new Date();
 
-  return prisma.notification.count({
-    where: {
-      userId: session.user.id,
-      read: false,
-      OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-    },
-  });
+  try {
+    return await prisma.notification.count({
+      where: {
+        userId: session.user.id,
+        read: false,
+        OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+      },
+    });
+  } catch {
+    return prisma.notification.count({
+      where: { userId: session.user.id, read: false },
+    });
+  }
 }
 
 /** Mark a single notification as read. */

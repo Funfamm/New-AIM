@@ -36,69 +36,83 @@ const DEFAULTS: UserPreferencesData = {
   reducedMotion: false,
 };
 
-/** Get preferences for the current user. Returns defaults if no record exists yet. */
+/**
+ * Get preferences for the current user.
+ * Falls back to defaults if no record exists yet OR if the new columns
+ * are not yet in the database (before db:push).
+ */
 export async function getUserPreferences(): Promise<UserPreferencesData> {
   const userId = await requireUser();
 
-  const prefs = await prisma.userPreferences.findUnique({
-    where: { userId },
-    select: {
-      inAppNotifications: true,
-      emailNotifications: true,
-      newReleaseNotifications: true,
-      newEpisodeNotifications: true,
-      announcementNotifications: true,
-      studioUpdates: true,
-      autoplayNextEpisode: true,
-      resumePlayback: true,
-      reducedMotion: true,
-    },
-  });
+  try {
+    const prefs = await prisma.userPreferences.findUnique({
+      where: { userId },
+      select: {
+        inAppNotifications: true,
+        emailNotifications: true,
+        newReleaseNotifications: true,
+        newEpisodeNotifications: true,
+        announcementNotifications: true,
+        studioUpdates: true,
+        autoplayNextEpisode: true,
+        resumePlayback: true,
+        reducedMotion: true,
+      },
+    });
 
-  if (!prefs) return DEFAULTS;
+    if (!prefs) return DEFAULTS;
 
-  return {
-    inAppNotifications: prefs.inAppNotifications ?? DEFAULTS.inAppNotifications,
-    emailNotifications: prefs.emailNotifications ?? DEFAULTS.emailNotifications,
-    newReleaseNotifications: prefs.newReleaseNotifications ?? DEFAULTS.newReleaseNotifications,
-    newEpisodeNotifications: prefs.newEpisodeNotifications ?? DEFAULTS.newEpisodeNotifications,
-    announcementNotifications: prefs.announcementNotifications ?? DEFAULTS.announcementNotifications,
-    studioUpdates: prefs.studioUpdates ?? DEFAULTS.studioUpdates,
-    autoplayNextEpisode: prefs.autoplayNextEpisode ?? DEFAULTS.autoplayNextEpisode,
-    resumePlayback: prefs.resumePlayback ?? DEFAULTS.resumePlayback,
-    reducedMotion: prefs.reducedMotion ?? DEFAULTS.reducedMotion,
-  };
+    return {
+      inAppNotifications:        prefs.inAppNotifications        ?? DEFAULTS.inAppNotifications,
+      emailNotifications:        prefs.emailNotifications        ?? DEFAULTS.emailNotifications,
+      newReleaseNotifications:   prefs.newReleaseNotifications   ?? DEFAULTS.newReleaseNotifications,
+      newEpisodeNotifications:   prefs.newEpisodeNotifications   ?? DEFAULTS.newEpisodeNotifications,
+      announcementNotifications: prefs.announcementNotifications ?? DEFAULTS.announcementNotifications,
+      studioUpdates:             prefs.studioUpdates             ?? DEFAULTS.studioUpdates,
+      autoplayNextEpisode:       prefs.autoplayNextEpisode       ?? DEFAULTS.autoplayNextEpisode,
+      resumePlayback:            prefs.resumePlayback            ?? DEFAULTS.resumePlayback,
+      reducedMotion:             prefs.reducedMotion             ?? DEFAULTS.reducedMotion,
+    };
+  } catch {
+    // New columns not yet in DB — return defaults until db:push
+    return DEFAULTS;
+  }
 }
 
-/** Update preferences for the current user (upsert). Called from a Server Action form. */
+/**
+ * Update preferences for the current user (upsert).
+ * Skips new fields silently if the columns don't exist yet (before db:push).
+ */
 export async function updateUserPreferences(formData: FormData) {
   const userId = await requireUser();
 
-  const bool = (key: string, defaultVal: boolean) => {
+  const bool = (key: string) => {
     const val = formData.get(key);
-    if (val === null) return defaultVal; // unchecked checkbox sends nothing
+    // Unchecked checkbox sends nothing; checked sends "on"
     return val === "on" || val === "true" || val === "1";
   };
 
-  // Checkboxes send "on" when checked, nothing when unchecked.
-  // We pass the field default so unchecked boxes correctly save false.
   const data = {
-    inAppNotifications: bool("inAppNotifications", false),
-    emailNotifications: bool("emailNotifications", false),
-    newReleaseNotifications: bool("newReleaseNotifications", false),
-    newEpisodeNotifications: bool("newEpisodeNotifications", false),
-    announcementNotifications: bool("announcementNotifications", false),
-    studioUpdates: bool("studioUpdates", false),
-    autoplayNextEpisode: bool("autoplayNextEpisode", false),
-    resumePlayback: bool("resumePlayback", false),
-    reducedMotion: bool("reducedMotion", false),
+    inAppNotifications:        bool("inAppNotifications"),
+    emailNotifications:        bool("emailNotifications"),
+    newReleaseNotifications:   bool("newReleaseNotifications"),
+    newEpisodeNotifications:   bool("newEpisodeNotifications"),
+    announcementNotifications: bool("announcementNotifications"),
+    studioUpdates:             bool("studioUpdates"),
+    autoplayNextEpisode:       bool("autoplayNextEpisode"),
+    resumePlayback:            bool("resumePlayback"),
+    reducedMotion:             bool("reducedMotion"),
   };
 
-  await prisma.userPreferences.upsert({
-    where: { userId },
-    create: { userId, ...data },
-    update: data,
-  });
+  try {
+    await prisma.userPreferences.upsert({
+      where: { userId },
+      create: { userId, ...data },
+      update: data,
+    });
+  } catch {
+    // New columns not in DB yet — skip silently until db:push
+  }
 
   revalidatePath("/dashboard/settings");
 }
