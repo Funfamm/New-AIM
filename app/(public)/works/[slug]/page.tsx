@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { notFound } from "next/navigation";
+import { after } from "next/server";
+import { cookies } from "next/headers";
 import Link from "next/link";
 import "./detail.css";
 import Image from "next/image";
@@ -9,6 +11,7 @@ import type { Metadata } from "next";
 import SynopsisToggle from "@/components/synopsis-toggle";
 import SaveButton from "@/components/save-button";
 import { isWorkSaved } from "@/lib/actions/watchlist";
+import { getOrCreateSession, trackEvent } from "@/lib/analytics";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -66,6 +69,28 @@ export default async function WorkDetailPage({ params }: Props) {
   const [work, session] = await Promise.all([getWork(slug), auth()]);
 
   if (!work || work.status !== "PUBLISHED") notFound();
+
+  // Track WORK_VIEW after the response is sent — zero render latency
+  const jar = await cookies();
+  const _visitorId = jar.get("aim-vid")?.value;
+  const _userId    = session?.user?.id ?? undefined;
+  const _workId    = work.id;
+  const _path      = `/works/${slug}`;
+  after(async () => {
+    if (!_visitorId) return;
+    try {
+      const sessionId = await getOrCreateSession({ visitorId: _visitorId, landingPage: _path })
+        .catch(() => undefined);
+      await trackEvent({
+        visitorId: _visitorId,
+        userId: _userId,
+        sessionId,
+        type: "WORK_VIEW",
+        path: _path,
+        workId: _workId,
+      });
+    } catch { /* analytics must never break the page */ }
+  });
 
   const isGuest = !session?.user;
   const locked = work.requiresAuth && isGuest;

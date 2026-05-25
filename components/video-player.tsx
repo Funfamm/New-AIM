@@ -2,6 +2,7 @@
 
 import { useRef } from "react";
 import { saveWatchProgress } from "@/lib/actions/progress";
+import { beacon } from "@/lib/beacon";
 
 type Props = {
   src: string;
@@ -16,8 +17,9 @@ const SAVE_INTERVAL_MS = 10_000;
 export default function VideoPlayer({
   src, poster, workId, initialSeconds, durationMinutes,
 }: Props) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const lastSaveRef = useRef<number>(0);
+  const videoRef     = useRef<HTMLVideoElement>(null);
+  const lastSaveRef  = useRef<number>(0);
+  const hasStarted   = useRef(false); // fire WATCH_START only on first play
 
   function save(seconds: number) {
     void saveWatchProgress(workId, seconds, durationMinutes);
@@ -31,6 +33,12 @@ export default function VideoPlayer({
       controls
       playsInline
       poster={poster}
+      onPlay={() => {
+        if (!hasStarted.current) {
+          hasStarted.current = true;
+          beacon("WATCH_START", { workId });
+        }
+      }}
       onLoadedMetadata={() => {
         if (initialSeconds > 0 && videoRef.current) {
           videoRef.current.currentTime = initialSeconds;
@@ -52,6 +60,7 @@ export default function VideoPlayer({
       onEnded={() => {
         const video = videoRef.current;
         if (video) save(Math.floor(video.duration));
+        beacon("WATCH_COMPLETE", { workId });
       }}
     />
   );

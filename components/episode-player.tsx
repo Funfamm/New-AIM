@@ -3,6 +3,7 @@
 import { useRef } from "react";
 import { useRouter } from "next/navigation";
 import { saveWatchProgress } from "@/lib/actions/progress";
+import { beacon } from "@/lib/beacon";
 
 type Props = {
   src: string;
@@ -18,9 +19,10 @@ const SAVE_INTERVAL_MS = 10_000;
 export default function EpisodePlayer({
   src, poster, nextSlug, workId, initialSeconds, durationMinutes,
 }: Props) {
-  const router = useRouter();
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const router      = useRouter();
+  const videoRef    = useRef<HTMLVideoElement>(null);
   const lastSaveRef = useRef<number>(0);
+  const hasStarted  = useRef(false); // fire EPISODE_START only on first play
 
   function save(seconds: number) {
     void saveWatchProgress(workId, seconds, durationMinutes);
@@ -34,6 +36,12 @@ export default function EpisodePlayer({
       controls
       playsInline
       poster={poster}
+      onPlay={() => {
+        if (!hasStarted.current) {
+          hasStarted.current = true;
+          beacon("EPISODE_START", { workId });
+        }
+      }}
       onLoadedMetadata={() => {
         if (initialSeconds > 0 && videoRef.current) {
           videoRef.current.currentTime = initialSeconds;
@@ -55,6 +63,7 @@ export default function EpisodePlayer({
       onEnded={() => {
         const video = videoRef.current;
         if (video) save(Math.floor(video.duration));
+        beacon("EPISODE_COMPLETE", { workId });
         if (nextSlug) router.push(`/watch/${nextSlug}`);
       }}
     />

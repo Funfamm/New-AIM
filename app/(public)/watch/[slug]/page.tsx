@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { notFound, redirect } from "next/navigation";
+import { after } from "next/server";
+import { cookies } from "next/headers";
 import Link from "next/link";
 import "./watch.css";
 import { ChevronLeft, ChevronRight, Lock } from "lucide-react";
@@ -10,6 +12,7 @@ import VideoPlayer from "@/components/video-player";
 import { getWatchProgress } from "@/lib/actions/progress";
 import SaveButton from "@/components/save-button";
 import { isWorkSaved } from "@/lib/actions/watchlist";
+import { getOrCreateSession, trackEvent } from "@/lib/analytics";
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -115,6 +118,30 @@ export default async function WatchPage({ params, searchParams }: Props) {
     ? await getWatchProgress(work.id)
     : 0;
   const isSaved = session?.user ? await isWorkSaved(work.id) : false;
+
+  // Track TRAILER_CLICK after response — fires when the watch page loads in trailer mode
+  if (isTrailer) {
+    const jar = await cookies();
+    const _visitorId = jar.get("aim-vid")?.value;
+    const _userId    = session?.user?.id ?? undefined;
+    const _workId    = work.id;
+    const _path      = `/watch/${slug}`;
+    after(async () => {
+      if (!_visitorId) return;
+      try {
+        const sessionId = await getOrCreateSession({ visitorId: _visitorId })
+          .catch(() => undefined);
+        await trackEvent({
+          visitorId: _visitorId,
+          userId: _userId,
+          sessionId,
+          type: "TRAILER_CLICK",
+          path: _path,
+          workId: _workId,
+        });
+      } catch { /* never block watch page */ }
+    });
+  }
 
   // Episode navigation
   const siblings = work.parent?.episodes ?? [];

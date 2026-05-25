@@ -3,6 +3,8 @@
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
+import { trackEvent } from "@/lib/analytics";
 
 async function requireUser() {
   const session = await auth();
@@ -17,12 +19,28 @@ export async function saveWork(workId: string) {
     create: { userId, workId },
     update: {},
   });
+  // Track save event — fire-and-forget
+  void (async () => {
+    try {
+      const jar = await cookies();
+      const visitorId = jar.get("aim-vid")?.value;
+      if (visitorId) await trackEvent({ visitorId, userId, type: "SAVE_WORK", workId });
+    } catch { /* never block */ }
+  })();
   revalidatePath("/dashboard");
 }
 
 export async function unsaveWork(workId: string) {
   const userId = await requireUser();
   await prisma.savedWork.deleteMany({ where: { userId, workId } });
+  // Track unsave event — fire-and-forget
+  void (async () => {
+    try {
+      const jar = await cookies();
+      const visitorId = jar.get("aim-vid")?.value;
+      if (visitorId) await trackEvent({ visitorId, userId, type: "UNSAVE_WORK", workId });
+    } catch { /* never block */ }
+  })();
   revalidatePath("/dashboard");
 }
 
