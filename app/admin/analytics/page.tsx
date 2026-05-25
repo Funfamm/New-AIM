@@ -1,351 +1,263 @@
-// Admin analytics dashboard — server-rendered, no client JS, no chart library.
-// All queries run only under /admin (isolated from public bundle).
-// CSS-only bar charts — no recharts/chart.js installed.
-// Time range controlled via searchParams — pure link navigation, no state.
+// Admin Analytics — Overview tab
+// Server-rendered. CSS-only charts. No client JS on this page.
+// All queries isolated to /admin/analytics — not loaded on public routes.
 
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import type { Metadata } from "next";
-import "./analytics.css";
 
-export const metadata: Metadata = { title: "Admin — Analytics" };
+export const metadata: Metadata = { title: "Analytics — Overview" };
 
-type Props = {
-  searchParams: Promise<{ range?: string }>;
-};
-
-const RANGE_OPTIONS = [
-  { value: "today", label: "Today" },
-  { value: "7d",    label: "7 days" },
-  { value: "30d",   label: "30 days" },
-  { value: "all",   label: "All time" },
-];
-
-function getRangeStart(range: string): Date | null {
-  const now = new Date();
-  switch (range) {
-    case "today": {
-      const d = new Date(now);
-      d.setHours(0, 0, 0, 0);
-      return d;
-    }
-    case "7d":
-      return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    case "30d":
-      return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    default:
-      return null;
-  }
+function timeAgo(date: Date): string {
+  const s = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (s < 60)   return `${s}s ago`;
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+  if (s < 86400)return `${Math.floor(s / 3600)}h ago`;
+  return `${Math.floor(s / 86400)}d ago`;
 }
 
-const DEVICE_LABELS: Record<string, string> = {
-  MOBILE: "Mobile", TABLET: "Tablet", DESKTOP: "Desktop",
-  BOT: "Bot", UNKNOWN: "Unknown",
+const EVENT_LABELS: Record<string, string> = {
+  PAGE_VIEW:        "Page View",
+  WORK_VIEW:        "Work Viewed",
+  TRAILER_CLICK:    "Trailer Click",
+  WATCH_START:      "Watch Started",
+  WATCH_PROGRESS:   "Watch Progress",
+  WATCH_COMPLETE:   "Watch Completed",
+  EPISODE_START:    "Episode Started",
+  EPISODE_COMPLETE: "Episode Completed",
+  SIGN_IN:          "Sign In",
+  SIGN_UP:          "Sign Up",
+  SIGN_OUT:         "Sign Out",
+  SAVE_WORK:        "Saved Work",
+  UNSAVE_WORK:      "Unsaved Work",
+  NOTIFICATION_OPEN:"Notification Open",
+  SETTINGS_UPDATE:  "Settings Update",
 };
 
-/** Width % for CSS bar chart — first item is always 100 %. */
-function barPct(value: number, max: number): string {
-  return max === 0 ? "0%" : `${Math.round((value / max) * 100)}%`;
-}
+export default async function AnalyticsOverviewPage() {
+  const now       = new Date();
+  const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
+  const weekStart  = new Date(now.getTime() - 7  * 86400_000);
+  const monthStart = new Date(now); monthStart.setDate(1); monthStart.setHours(0,0,0,0);
 
-export default async function AdminAnalyticsPage({ searchParams }: Props) {
-  const { range = "30d" } = await searchParams;
-  const since = getRangeStart(range);
-
-  // ── Parallel aggregation queries ────────────────────────────────────
   const [
-    totalPageViews,
-    totalSessions,
-    totalSignUps,
-    totalWatchStarts,
-    totalWatchCompletes,
-    deviceBreakdown,
-    countryBreakdown,
-    topPagesRaw,
-    topWorksRaw,
+    totalUsers,
+    newThisMonth,
+    totalWorks,
+    publishedWorks,
+    pageViewsToday,
+    pageViewsWeek,
+    pageViewsMonth,
+    trailerClicksWeek,
+    watchStartsWeek,
+    watchCompletesWeek,
+    signUpsWeek,
+    savedWorksTotal,
+    emailSentToday,
+    emailFailedTotal,
+    suppressionCount,
+    recentEvents,
   ] = await Promise.all([
-
-    // Overview counts
-    prisma.analyticsEvent.count({
-      where: since
-        ? { type: "PAGE_VIEW", createdAt: { gte: since } }
-        : { type: "PAGE_VIEW" },
-    }),
-    prisma.visitorSession.count({
-      where: since ? { createdAt: { gte: since } } : undefined,
-    }),
-    prisma.analyticsEvent.count({
-      where: since
-        ? { type: "SIGN_UP", createdAt: { gte: since } }
-        : { type: "SIGN_UP" },
-    }),
-    prisma.analyticsEvent.count({
-      where: since
-        ? { type: "WATCH_START", createdAt: { gte: since } }
-        : { type: "WATCH_START" },
-    }),
-    prisma.analyticsEvent.count({
-      where: since
-        ? { type: "WATCH_COMPLETE", createdAt: { gte: since } }
-        : { type: "WATCH_COMPLETE" },
-    }),
-
-    // Device breakdown (exclude bots)
-    prisma.visitorSession.groupBy({
-      by: ["deviceType"],
-      where: since
-        ? { isBot: false, createdAt: { gte: since } }
-        : { isBot: false },
-      _count: { deviceType: true },
-      orderBy: { _count: { deviceType: "desc" } },
-    }),
-
-    // Country breakdown (top 8, no nulls)
-    prisma.visitorSession.groupBy({
-      by: ["country"],
-      where: since
-        ? { isBot: false, country: { not: null }, createdAt: { gte: since } }
-        : { isBot: false, country: { not: null } },
-      _count: { country: true },
-      orderBy: { _count: { country: "desc" } },
-      take: 8,
-    }),
-
-    // Top pages by PAGE_VIEW count
-    prisma.analyticsEvent.groupBy({
-      by: ["path"],
-      where: since
-        ? { type: "PAGE_VIEW", path: { not: null }, createdAt: { gte: since } }
-        : { type: "PAGE_VIEW", path: { not: null } },
-      _count: { path: true },
-      orderBy: { _count: { path: "desc" } },
-      take: 10,
-    }),
-
-    // Top works by WORK_VIEW + WATCH_START events
-    prisma.analyticsEvent.groupBy({
-      by: ["workId"],
-      where: since
-        ? { type: { in: ["WORK_VIEW", "WATCH_START"] }, workId: { not: null }, createdAt: { gte: since } }
-        : { type: { in: ["WORK_VIEW", "WATCH_START"] }, workId: { not: null } },
-      _count: { workId: true },
-      orderBy: { _count: { workId: "desc" } },
-      take: 10,
+    prisma.user.count(),
+    prisma.user.count({ where: { createdAt: { gte: monthStart } } }),
+    prisma.work.count({ where: { type: { not: "EPISODE" } } }),
+    prisma.work.count({ where: { status: "PUBLISHED", type: { not: "EPISODE" } } }),
+    prisma.analyticsEvent.count({ where: { type: "PAGE_VIEW", createdAt: { gte: todayStart } } }),
+    prisma.analyticsEvent.count({ where: { type: "PAGE_VIEW", createdAt: { gte: weekStart } } }),
+    prisma.analyticsEvent.count({ where: { type: "PAGE_VIEW", createdAt: { gte: monthStart } } }),
+    prisma.analyticsEvent.count({ where: { type: "TRAILER_CLICK", createdAt: { gte: weekStart } } }),
+    prisma.analyticsEvent.count({ where: { type: { in: ["WATCH_START", "EPISODE_START"] }, createdAt: { gte: weekStart } } }),
+    prisma.analyticsEvent.count({ where: { type: { in: ["WATCH_COMPLETE", "EPISODE_COMPLETE"] }, createdAt: { gte: weekStart } } }),
+    prisma.analyticsEvent.count({ where: { type: "SIGN_UP", createdAt: { gte: weekStart } } }),
+    prisma.savedWork.count(),
+    prisma.emailLog.count({ where: { status: "SENT",   createdAt: { gte: todayStart } } }),
+    prisma.emailLog.count({ where: { status: "FAILED" } }),
+    prisma.emailSuppression.count({ where: { active: true } }),
+    prisma.analyticsEvent.findMany({
+      where: { type: { notIn: ["PAGE_VIEW", "WATCH_PROGRESS"] } },
+      orderBy: { createdAt: "desc" },
+      take: 15,
+      select: { type: true, path: true, createdAt: true, userId: true },
     }),
   ]);
 
-  // ── Resolve work titles for top works ───────────────────────────────
-  const workIds = topWorksRaw
-    .map((r) => r.workId)
-    .filter((id): id is string => id !== null);
+  const completionRate = watchStartsWeek > 0
+    ? Math.round((watchCompletesWeek / watchStartsWeek) * 100) : 0;
 
-  const workDetails = workIds.length
-    ? await prisma.work.findMany({
-        where: { id: { in: workIds } },
-        select: { id: true, title: true, type: true },
-      })
-    : [];
-
-  const workMap = new Map(workDetails.map((w) => [w.id, w]));
-  const topWorks = topWorksRaw.map((r) => ({
-    workId: r.workId!,
-    count:  r._count.workId,
-    work:   workMap.get(r.workId!),
-  }));
-
-  // ── Derived metrics ─────────────────────────────────────────────────
-  const completionRate =
-    totalWatchStarts > 0
-      ? Math.round((totalWatchCompletes / totalWatchStarts) * 100)
-      : 0;
-
-  const deviceMax  = deviceBreakdown[0]?._count.deviceType ?? 0;
-  const countryMax = countryBreakdown[0]?._count.country   ?? 0;
-  const pageMax    = topPagesRaw[0]?._count.path            ?? 0;
-  const workMax    = topWorks[0]?.count                     ?? 0;
-
-  const stats = [
-    { label: "Page Views",   value: totalPageViews.toLocaleString(),       note: "recorded loads" },
-    { label: "Sessions",     value: totalSessions.toLocaleString(),         note: "browsing windows" },
-    { label: "Sign-ups",     value: totalSignUps.toLocaleString(),          note: "new accounts" },
-    { label: "Watch Starts", value: totalWatchStarts.toLocaleString(),      note: "video plays" },
-    { label: "Completion",   value: `${completionRate}%`,                   note: "videos finished" },
-  ];
+  const graphOk = !!(process.env.AZURE_CLIENT_ID && process.env.AZURE_CLIENT_SECRET &&
+    process.env.AZURE_TENANT_ID && process.env.GRAPH_EMAIL_SENDER);
 
   return (
-    <div className="admin-page">
-
-      {/* ── Header ── */}
-      <div className="admin-page-header">
-        <h1 className="admin-page-title">Analytics</h1>
-        <div className="arange">
-          {RANGE_OPTIONS.map((opt) => (
-            <Link
-              key={opt.value}
-              href={`?range=${opt.value}`}
-              className={`arange-btn${range === opt.value ? " arange-btn--active" : ""}`}
-            >
-              {opt.label}
-            </Link>
-          ))}
+    <div>
+      {/* ── Top stat row ── */}
+      <div className="astat-row">
+        <div className="astat-cell">
+          <div className="astat-cell-val">{totalUsers.toLocaleString()}</div>
+          <div className="astat-cell-lbl">Total Members</div>
+        </div>
+        <div className="astat-cell">
+          <div className="astat-cell-val astat-cell-val--accent">{newThisMonth}</div>
+          <div className="astat-cell-lbl">New This Month</div>
+        </div>
+        <div className="astat-cell">
+          <div className="astat-cell-val">{publishedWorks}</div>
+          <div className="astat-cell-lbl">Published Works</div>
+        </div>
+        <div className="astat-cell">
+          <div className="astat-cell-val">{totalWorks}</div>
+          <div className="astat-cell-lbl">Total Works</div>
+        </div>
+        <div className="astat-cell">
+          <div className="astat-cell-val">{savedWorksTotal.toLocaleString()}</div>
+          <div className="astat-cell-lbl">Watchlist Saves</div>
         </div>
       </div>
 
-      {/* ── Overview stats ── */}
-      <div className="astats">
-        {stats.map((s) => (
-          <div key={s.label} className="astat">
-            <div className="astat-value">{s.value}</div>
-            <div className="astat-label">{s.label}</div>
-            <div className="astat-note">{s.note}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* ── Breakdown row ── */}
+      {/* ── Traffic + engagement cards ── */}
       <div className="acols">
 
-        {/* Devices */}
         <div className="asection">
-          <h2 className="asection-title">Devices</h2>
-          {deviceBreakdown.length === 0 ? (
-            <p className="aempty">No session data yet.</p>
-          ) : (
-            <div className="achart">
-              {deviceBreakdown.map((d) => (
-                <div key={d.deviceType} className="abar-row">
-                  <span className="abar-label">
-                    {DEVICE_LABELS[d.deviceType] ?? d.deviceType}
-                  </span>
-                  <div className="abar-track">
-                    <div
-                      className="abar-fill"
-                      style={{ width: barPct(d._count.deviceType, deviceMax) }}
-                    />
-                  </div>
-                  <span className="abar-count">{d._count.deviceType}</span>
+          <h2 className="asection-title">Page Views</h2>
+          <div className="achart">
+            {[
+              { label: "Today",      val: pageViewsToday },
+              { label: "This Week",  val: pageViewsWeek  },
+              { label: "This Month", val: pageViewsMonth  },
+            ].map(({ label, val }) => (
+              <div key={label} className="abar-row">
+                <span className="abar-label">{label}</span>
+                <div className="abar-track">
+                  <div className="abar-fill" style={{ width: pageViewsMonth > 0 ? `${Math.round((val / pageViewsMonth) * 100)}%` : "0%" }} />
                 </div>
-              ))}
-            </div>
-          )}
+                <span className="abar-count">{val.toLocaleString()}</span>
+              </div>
+            ))}
+          </div>
         </div>
 
-        {/* Countries */}
         <div className="asection">
-          <h2 className="asection-title">Countries</h2>
-          {countryBreakdown.length === 0 ? (
-            <p className="aempty">
-              No geo data yet — country is populated from Vercel edge
-              headers after deployment.
-            </p>
-          ) : (
-            <div className="achart">
-              {countryBreakdown.map((c) => (
-                <div key={c.country} className="abar-row">
-                  <span className="abar-label">{c.country ?? "Unknown"}</span>
+          <h2 className="asection-title">Engagement (7 days)</h2>
+          <div className="achart">
+            {[
+              { label: "Sign-ups",    val: signUpsWeek },
+              { label: "Trailers",    val: trailerClicksWeek },
+              { label: "Watch Starts",val: watchStartsWeek },
+              { label: "Completions", val: watchCompletesWeek },
+            ].map(({ label, val }) => {
+              const max = Math.max(signUpsWeek, trailerClicksWeek, watchStartsWeek, watchCompletesWeek, 1);
+              return (
+                <div key={label} className="abar-row">
+                  <span className="abar-label">{label}</span>
                   <div className="abar-track">
-                    <div
-                      className="abar-fill"
-                      style={{ width: barPct(c._count.country, countryMax) }}
-                    />
+                    <div className="abar-fill" style={{ width: `${Math.round((val / max) * 100)}%` }} />
                   </div>
-                  <span className="abar-count">{c._count.country}</span>
+                  <span className="abar-count">{val}</span>
                 </div>
-              ))}
-            </div>
-          )}
+              );
+            })}
+          </div>
         </div>
 
       </div>
 
-      {/* ── Top pages ── */}
-      <div className="asection">
-        <h2 className="asection-title">Top Pages</h2>
-        {topPagesRaw.length === 0 ? (
-          <p className="aempty">No page view data yet.</p>
+      {/* ── Email + completion row ── */}
+      <div className="acols" style={{ marginTop: "1.5rem" }}>
+
+        <div className="asection">
+          <h2 className="asection-title">Email Health</h2>
+          <div className="achart">
+            <div className="abar-row">
+              <span className="abar-label">Provider</span>
+              <span className="abar-count" style={{ width: "auto", textAlign: "left", color: graphOk ? "#4ade80" : "var(--color-brand-red)" }}>
+                {graphOk ? "Graph ✓" : "Not configured"}
+              </span>
+            </div>
+            <div className="abar-row">
+              <span className="abar-label">Sent today</span>
+              <span className="abar-count" style={{ width: "auto" }}>{emailSentToday}</span>
+            </div>
+            <div className="abar-row">
+              <span className="abar-label">Failed (all)</span>
+              <span className="abar-count" style={{ width: "auto", color: emailFailedTotal > 0 ? "var(--color-brand-red)" : "inherit" }}>{emailFailedTotal}</span>
+            </div>
+            <div className="abar-row">
+              <span className="abar-label">Suppressed</span>
+              <span className="abar-count" style={{ width: "auto" }}>{suppressionCount}</span>
+            </div>
+          </div>
+          <p style={{ marginTop: "0.75rem" }}>
+            <Link href="/admin/email" className="asection-count" style={{ color: "var(--color-brand-accent)", textDecoration: "none" }}>
+              View full email log →
+            </Link>
+          </p>
+        </div>
+
+        <div className="asection">
+          <h2 className="asection-title">Watch Funnel (7 days)</h2>
+          <div className="achart">
+            <div className="abar-row">
+              <span className="abar-label">Starts</span>
+              <div className="abar-track">
+                <div className="abar-fill" style={{ width: "100%" }} />
+              </div>
+              <span className="abar-count">{watchStartsWeek}</span>
+            </div>
+            <div className="abar-row">
+              <span className="abar-label">Completed</span>
+              <div className="abar-track">
+                <div className="abar-fill" style={{ width: watchStartsWeek > 0 ? `${completionRate}%` : "0%" }} />
+              </div>
+              <span className="abar-count">{watchCompletesWeek}</span>
+            </div>
+            <div className="abar-row" style={{ marginTop: "0.25rem" }}>
+              <span className="abar-label" style={{ color: "var(--color-brand-muted)" }}>Completion</span>
+              <span className={`rate-chip ${completionRate >= 60 ? "rate-chip--good" : completionRate >= 30 ? "rate-chip--mid" : "rate-chip--low"}`}>
+                {completionRate}%
+              </span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      {/* ── Live activity feed ── */}
+      <div className="asection" style={{ marginTop: "2rem" }}>
+        <div className="asection-hd">
+          <h2 className="asection-title">Recent Activity</h2>
+          <span className="asection-count">last 15 meaningful events</span>
+        </div>
+        {recentEvents.length === 0 ? (
+          <p className="aempty">No events recorded yet.</p>
         ) : (
-          <div className="admin-table-wrap">
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th style={{ width: 32 }}>#</th>
-                  <th>Page</th>
-                  <th style={{ width: 80 }}>Views</th>
-                  <th style={{ width: 160 }}>Share</th>
-                </tr>
-              </thead>
-              <tbody>
-                {topPagesRaw.map((p, i) => (
-                  <tr key={p.path}>
-                    <td className="a-muted a-num">{i + 1}</td>
-                    <td className="a-primary">{p.path ?? "/"}</td>
-                    <td className="a-muted">{p._count.path}</td>
-                    <td>
-                      <div className="abar-track">
-                        <div
-                          className="abar-fill"
-                          style={{ width: barPct(p._count.path, pageMax) }}
-                        />
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="activity-feed">
+            {recentEvents.map((e, i) => (
+              <div key={i} className="activity-row">
+                <span className="activity-dot" />
+                <span className="activity-type">{EVENT_LABELS[e.type] ?? e.type}</span>
+                <span className="activity-path">{e.path ?? "—"}</span>
+                <span className="activity-time">{timeAgo(e.createdAt)}</span>
+              </div>
+            ))}
           </div>
         )}
       </div>
 
-      {/* ── Top works ── */}
-      <div className="asection">
-        <h2 className="asection-title">Top Works</h2>
-        {topWorks.length === 0 ? (
-          <p className="aempty">No work view data yet.</p>
-        ) : (
-          <div className="admin-table-wrap">
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th style={{ width: 32 }}>#</th>
-                  <th>Work</th>
-                  <th>Type</th>
-                  <th style={{ width: 80 }}>Plays</th>
-                  <th style={{ width: 160 }}>Share</th>
-                </tr>
-              </thead>
-              <tbody>
-                {topWorks.map((w, i) => (
-                  <tr key={w.workId}>
-                    <td className="a-muted a-num">{i + 1}</td>
-                    <td className="a-primary">
-                      {w.work?.title ?? (
-                        <span className="a-muted">{w.workId}</span>
-                      )}
-                    </td>
-                    <td>
-                      {w.work?.type && (
-                        <span className="type-label">
-                          {w.work.type.replace(/_/g, " ")}
-                        </span>
-                      )}
-                    </td>
-                    <td className="a-muted">{w.count}</td>
-                    <td>
-                      <div className="abar-track">
-                        <div
-                          className="abar-fill"
-                          style={{ width: barPct(w.count, workMax) }}
-                        />
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+      {/* ── Quick links to other tabs ── */}
+      <div className="acols" style={{ marginTop: "2rem" }}>
+        {[
+          { href: "/admin/analytics/traffic",  label: "Traffic →",  note: "Top pages, devices, referrers, countries" },
+          { href: "/admin/analytics/content",  label: "Content →",  note: "Trailer leaderboard, film ranking, completions" },
+          { href: "/admin/analytics/visitors", label: "Visitors →", note: "Sessions, browser, OS, geo breakdown" },
+          { href: "/admin/analytics/system",   label: "System →",   note: "DB inventory, config health, service status" },
+        ].map((l) => (
+          <Link key={l.href} href={l.href} style={{ textDecoration: "none" }}>
+            <div className="astat" style={{ cursor: "pointer", transition: "border-color 0.2s" }}>
+              <div className="astat-value" style={{ fontSize: "1rem" }}>{l.label}</div>
+              <div className="astat-label" style={{ marginTop: "0.4rem" }}>{l.note}</div>
+            </div>
+          </Link>
+        ))}
       </div>
-
     </div>
   );
 }
