@@ -439,3 +439,60 @@ model EmailSuppression {
   @@index([email])
   @@map("email_suppressions")
 }
+
+// ─────────────────────────────────────────────
+// ADMIN SETTINGS
+// Singleton row (id = "singleton") — upserted on every save.
+// Feature flag fields are stored now; wired when features ship.
+// ─────────────────────────────────────────────
+
+model AdminSettings {
+  id String @id @default("singleton")
+
+  // ── Email ──────────────────────────────────
+  emailSendingEnabled       Boolean @default(true)
+  primaryEmailProvider      String  @default("graph")
+  testEmailRecipient        String?
+  fromDisplayName           String  @default("AIM Studio")
+  replyToEmail              String?
+  adminAlertEmail           String?
+  welcomeEmailEnabled       Boolean @default(true)
+  passwordResetEmailEnabled Boolean @default(true)
+  notificationEmailEnabled  Boolean @default(false)
+
+  // ── Content Access ─────────────────────────
+  defaultRequireLoginToWatch       Boolean @default(false)
+  defaultRequireLoginToViewTrailer Boolean @default(false)
+  allowPublicProjectDetails        Boolean @default(true)
+  showLockedContentInCatalog       Boolean @default(true)
+
+  // ── Feature Visibility ─────────────────────
+  showCasting           Boolean @default(false)
+  showScripts           Boolean @default(false)
+  showTraining          Boolean @default(false)
+  showSponsors          Boolean @default(false)
+  showDonations         Boolean @default(false)
+  showCommunityComments Boolean @default(false)
+  showWatchParty        Boolean @default(false)
+  showNotifications     Boolean @default(true)
+
+  // ── Notifications ──────────────────────────
+  inAppNotificationsEnabled        Boolean @default(true)
+  newReleaseNotificationsEnabled   Boolean @default(true)
+  newEpisodeNotificationsEnabled   Boolean @default(true)
+  announcementNotificationsEnabled Boolean @default(true)
+
+  // ── Playback ───────────────────────────────
+  defaultAutoplayNextEpisode Boolean @default(true)
+  defaultResumePlayback      Boolean @default(true)
+  defaultVideoPreload        String  @default("none")
+
+  // ── Security / Auth ────────────────────────
+  allowGoogleSignIn      Boolean @default(true)
+  allowCredentialsSignIn Boolean @default(true)
+  allowNewRegistrations  Boolean @default(true)
+
+  updatedAt DateTime @updatedAt
+
+  @@map("admin_settings")
+}

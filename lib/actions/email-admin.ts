@@ -15,7 +15,10 @@ async function requireAdmin() {
 // ── Test Graph email ──────────────────────────────────────────
 export async function testGraphEmail(): Promise<{ ok: boolean; message: string }> {
   const admin = await requireAdmin();
-  const to = admin.email!;
+
+  // Use testEmailRecipient from AdminSettings if set, else fall back to admin's own email
+  const settings = await prisma.adminSettings.findUnique({ where: { id: "singleton" } });
+  const to = settings?.testEmailRecipient?.trim() || admin.email!;
 
   try {
     await sendEmail({
