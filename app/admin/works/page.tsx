@@ -23,6 +23,7 @@ const STATUS_CLASS: Record<WorkStatus, string> = {
 
 export default async function AdminWorksPage() {
   const works = await prisma.work.findMany({
+    where: { type: { not: "EPISODE" } },
     orderBy: { createdAt: "desc" },
     select: {
       id: true, slug: true, title: true, type: true, status: true,

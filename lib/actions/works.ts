@@ -55,7 +55,7 @@ function parseFormData(formData: FormData) {
 }
 
 function revalidateAll() {
-  revalidatePath("/admin/works");
+  revalidatePath("/admin/works", "layout"); // covers list + all /admin/works/[id] pages
   revalidatePath("/works");
   revalidatePath("/");
 }
@@ -78,6 +78,10 @@ export async function createWork(formData: FormData) {
   await prisma.work.create({ data: { ...data, slug } });
 
   revalidateAll();
+  // After creating an episode, return to the parent series edit page
+  if (data.type === "EPISODE" && data.parentId) {
+    redirect(`/admin/works/${data.parentId}`);
+  }
   redirect("/admin/works");
 }
 
@@ -90,7 +94,8 @@ export async function updateWork(id: string, formData: FormData) {
   await prisma.work.update({ where: { id }, data });
 
   revalidateAll();
-  redirect("/admin/works");
+  // Stay on the edit page so admins can immediately see the episodes panel after saving
+  redirect(`/admin/works/${id}`);
 }
 
 // ── Toggle published/private ──────────────────────────────────

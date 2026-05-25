@@ -42,6 +42,10 @@ type Props = {
   action: (formData: FormData) => Promise<void>;
   seriesList: { id: string; title: string }[];
   error?: string;
+  /** Pre-select type for new works (e.g. "EPISODE" from Add Episode link) */
+  defaultType?: WorkType;
+  /** Pre-select parent series for new episode */
+  defaultParentId?: string;
 };
 
 const CLIENT_TYPES: WorkType[] = ["COMMERCIAL", "BRANDING", "CAMPAIGN", "CASE_STUDY"];
@@ -52,8 +56,8 @@ const GENRES = [
   "Survival", "Commercial", "Branding", "Campaign",
 ];
 
-export default function WorkForm({ work, workTitle, action, seriesList, error }: Props) {
-  const [type, setType] = useState<WorkType>(work?.type ?? "SHORT_FILM");
+export default function WorkForm({ work, workTitle, action, seriesList, error, defaultType, defaultParentId }: Props) {
+  const [type, setType] = useState<WorkType>(work?.type ?? defaultType ?? "SHORT_FILM");
 
   const showFilmMeta   = ["SHORT_FILM", "FULL_FILM", "SERIES", "TRAILER"].includes(type);
   const showDuration   = !["SERIES", ...CLIENT_TYPES].includes(type);
@@ -117,7 +121,7 @@ export default function WorkForm({ work, workTitle, action, seriesList, error }:
           <div className="form-row">
             <div className="form-group">
               <label className="form-label">Parent Series *</label>
-              <select name="parentId" className="form-input" defaultValue={work?.parentId ?? ""} required>
+              <select name="parentId" className="form-input" defaultValue={work?.parentId ?? defaultParentId ?? ""} required>
                 <option value="">Select a series…</option>
                 {seriesList.map((s) => (
                   <option key={s.id} value={s.id}>{s.title}</option>
