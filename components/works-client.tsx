@@ -10,6 +10,8 @@ type Work = {
   slug: string;
   title: string;
   posterUrl: string | null;
+  heroMobileUrl: string | null;
+  heroDesktopUrl: string | null;
   genre: string | null;
   requiresAuth: boolean;
   type: string;
@@ -53,7 +55,13 @@ export default function WorksClient({ works }: { works: Work[] }) {
       works
         .filter((w) => w.posterUrl != null)
         .slice(0, 5)
-        .map((w) => ({ posterUrl: w.posterUrl!, title: w.title, slug: w.slug })),
+        .map((w) => ({
+          posterUrl: w.posterUrl!,
+          title: w.title,
+          slug: w.slug,
+          heroMobileUrl: w.heroMobileUrl,
+          heroDesktopUrl: w.heroDesktopUrl,
+        })),
     [works]
   );
 

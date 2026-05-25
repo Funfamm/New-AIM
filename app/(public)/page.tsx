@@ -9,6 +9,7 @@ import "./home.css";
 
 const HOME_SELECT = {
   id: true, slug: true, title: true, posterUrl: true,
+  heroMobileUrl: true, heroDesktopUrl: true,
   genre: true, requiresAuth: true, type: true,
 } as const;
 
@@ -59,7 +60,13 @@ export default async function HomePage() {
   const heroItems = featured
     .filter((w) => w.posterUrl != null)
     .slice(0, 5)
-    .map((w) => ({ posterUrl: w.posterUrl!, title: w.title, slug: w.slug }));
+    .map((w) => ({
+      posterUrl: w.posterUrl!,
+      title: w.title,
+      slug: w.slug,
+      heroMobileUrl: w.heroMobileUrl,
+      heroDesktopUrl: w.heroDesktopUrl,
+    }));
 
   const isEmpty = featured.length === 0 && newReleases.length === 0;
 
@@ -74,7 +81,7 @@ export default async function HomePage() {
         <div className="hero-content">
           <span className="hero-eyebrow">— Now Streaming</span>
           <h1 className="hero-title">Cinema, reimagined.</h1>
-          <p className="hero-desc">We make films about what we almost lost.</p>
+          <p className="hero-desc">We make films, series, and creative work with AI tools built around story, emotion, memory, and impact. Don&apos;t look away.</p>
           <div className="hero-actions">
             <Link href="/works" className="hero-btn-primary">
               <Play size={16} fill="currentColor" /> Watch Our Films
@@ -88,7 +95,7 @@ export default async function HomePage() {
 
       {/* ── Continue Watching ───────────────────────── */}
       {continueWatching.length > 0 && (
-        <FilmRail title="Continue Watching" films={continueWatching} />
+        <FilmRail title="Continue Watching" films={continueWatching.map(w => ({ ...w, requiresAuth: false }))} />
       )}
 
       {/* ── Featured Works ──────────────────────────── */}

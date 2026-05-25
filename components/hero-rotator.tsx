@@ -9,6 +9,8 @@ export type HeroItem = {
   posterUrl: string;
   title: string;
   slug: string;
+  heroMobileUrl?: string | null;
+  heroDesktopUrl?: string | null;
 };
 
 type Props = {
@@ -39,6 +41,8 @@ export default function HeroRotator({ items, interval = 4000 }: Props) {
     <div className="hr-stack">
       {items.map((item, i) => {
         const isActive = i === active;
+        const hasArtDirection = !!(item.heroDesktopUrl || item.heroMobileUrl);
+
         return (
           <div
             key={i}
@@ -48,27 +52,40 @@ export default function HeroRotator({ items, interval = 4000 }: Props) {
               pointerEvents: isActive ? "auto" : "none",
             }}
           >
-            {/*
-              Art direction hook: when heroMobileUrl / heroDesktopUrl exist,
-              replace the Image below with a <picture> element using
-              <source media="(min-width: 768px)" srcSet={heroDesktopUrl} />
-              so the browser only downloads the appropriate source.
-            */}
             <Link
               href={`/works/${item.slug}`}
               className="hr-slide-link"
               aria-label={`View details for ${item.title}`}
               tabIndex={isActive ? 0 : -1}
             >
-              <Image
-                src={item.posterUrl}
-                alt=""
-                fill
-                className="hr-img"
-                sizes="100vw"
-                quality={85}
-                priority={i === 0}
-              />
+              {hasArtDirection ? (
+                /* Native <picture> for 4G-safe art direction —
+                   browser downloads only the source that matches the viewport */
+                <picture className="hr-picture">
+                  {item.heroDesktopUrl && (
+                    <source media="(min-width: 768px)" srcSet={item.heroDesktopUrl} />
+                  )}
+                  {/* Mobile: heroMobileUrl if set, else posterUrl */}
+                  <img
+                    src={item.heroMobileUrl ?? item.posterUrl}
+                    alt=""
+                    className="hr-img-native"
+                    loading={i === 0 ? "eager" : "lazy"}
+                    fetchPriority={i === 0 ? "high" : "low"}
+                  />
+                </picture>
+              ) : (
+                /* No art direction: use next/image for optimization */
+                <Image
+                  src={item.posterUrl}
+                  alt=""
+                  fill
+                  className="hr-img"
+                  sizes="100vw"
+                  quality={85}
+                  priority={i === 0}
+                />
+              )}
             </Link>
           </div>
         );

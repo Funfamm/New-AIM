@@ -25,7 +25,9 @@ const TYPE_LABELS: Record<WorkType, string> = {
 
 type WorkData = {
   type: WorkType; status: WorkStatus; title: string;
-  description: string | null; posterUrl: string | null;
+  description: string | null;
+  posterUrl: string | null; heroMobileUrl: string | null;
+  heroDesktopUrl: string | null; thumbnailUrl: string | null;
   videoUrl: string | null; trailerUrl: string | null; teaserUrl: string | null;
   year: number | null; duration: number | null; director: string | null; genre: string | null;
   clientName: string | null; industry: string | null; projectGoal: string | null;
@@ -207,11 +209,36 @@ export default function WorkForm({ work, workTitle, action, seriesList, error }:
           </>
         )}
 
-        {/* Poster */}
+        {/* Images */}
         <div className="form-group">
-          <label className="form-label">Poster / Thumbnail URL</label>
+          <label className="form-label">Poster / Card Image URL</label>
           <input type="url" name="posterUrl" className="form-input"
             defaultValue={work?.posterUrl ?? ""} placeholder="https://…" />
+          <span className="form-hint">Portrait image used on cards, detail page, and as universal fallback.</span>
+        </div>
+
+        {!isEpisode && (
+          <>
+            <div className="form-group">
+              <label className="form-label">Mobile Hero Image URL</label>
+              <input type="url" name="heroMobileUrl" className="form-input"
+                defaultValue={work?.heroMobileUrl ?? ""} placeholder="https://…" />
+              <span className="form-hint">Recommended 9:16 portrait image for phone hero sections.</span>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Desktop Hero Image URL</label>
+              <input type="url" name="heroDesktopUrl" className="form-input"
+                defaultValue={work?.heroDesktopUrl ?? ""} placeholder="https://…" />
+              <span className="form-hint">Recommended 16:9 or wider cinematic image for desktop hero sections.</span>
+            </div>
+          </>
+        )}
+
+        <div className="form-group">
+          <label className="form-label">Thumbnail URL</label>
+          <input type="url" name="thumbnailUrl" className="form-input"
+            defaultValue={work?.thumbnailUrl ?? ""} placeholder="https://…" />
+          <span className="form-hint">Optional landscape thumbnail for episode rows and compact previews. Falls back to poster if empty.</span>
         </div>
 
         {/* Trailer URL */}

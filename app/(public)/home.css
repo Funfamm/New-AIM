@@ -38,8 +38,8 @@
 }
 .hero-title {
   font-family: var(--font-display);
-  font-size: clamp(3.5rem, 9vw, 7rem);
-  font-weight: 700; line-height: 1.05; letter-spacing: -0.03em;
+  font-size: clamp(3rem, 5vw, 5.25rem);
+  font-weight: 700; line-height: 1.08; letter-spacing: -0.03em;
   color: var(--color-brand-white); margin: 0 0 1rem;
 }
 .hero-desc {

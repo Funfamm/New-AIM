@@ -10,6 +10,7 @@ async function getWorks() {
     orderBy: { order: "asc" },
     select: {
       id: true, slug: true, title: true, posterUrl: true,
+      heroMobileUrl: true, heroDesktopUrl: true,
       genre: true, requiresAuth: true, type: true,
     },
   });

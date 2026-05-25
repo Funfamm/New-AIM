@@ -110,7 +110,8 @@ export default async function WatchPage({ params, searchParams }: Props) {
   const isEmbed   = isYouTube || isVimeo;
   const embedUrl  = videoUrl ? toEmbedUrl(videoUrl) : null;
 
-  const initialSeconds = session?.user && !isEmbed && work.id
+  // Trailers always restart from the beginning — never resume
+  const initialSeconds = session?.user && !isEmbed && !isTrailer && work.id
     ? await getWatchProgress(work.id)
     : 0;
   const isSaved = session?.user ? await isWorkSaved(work.id) : false;

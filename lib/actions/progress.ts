@@ -43,7 +43,11 @@ export async function getAllWatchProgress() {
   if (!session?.user?.id) return [];
 
   return prisma.watchProgress.findMany({
-    where: { userId: session.user.id, completed: false },
+    where: {
+      userId: session.user.id,
+      completed: false,
+      work: { type: { not: "TRAILER" } }, // trailers always restart; exclude from Continue Watching
+    },
     include: {
       work: {
         select: {

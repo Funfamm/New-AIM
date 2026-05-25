@@ -59,3 +59,8 @@ select.form-input { cursor: pointer; }
   cursor: pointer; transition: filter 0.2s;
 }
 .form-submit:hover { filter: brightness(1.05); }
+.form-hint {
+  display: block; margin-top: 0.35rem;
+  font-family: var(--font-body); font-size: 0.75rem;
+  color: var(--color-brand-muted); line-height: 1.4;
+}

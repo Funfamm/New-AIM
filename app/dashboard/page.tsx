@@ -50,8 +50,15 @@ export default async function DashboardPage() {
             <h2 className="section-heading">Continue Watching</h2>
             {progress.length > 0 ? (
               <div className="progress-grid">
-                {progress.map((p) => (
-                  <Link key={p.id} href={`/watch/${p.work.slug}`} className="progress-card">
+                {progress.map((p) => {
+                  // Episodes and series navigate directly; everything else needs ?full=1
+                  // so the watch page plays the main video, not the trailer
+                  const watchHref =
+                    p.work.type === "EPISODE" || p.work.type === "SERIES"
+                      ? `/watch/${p.work.slug}`
+                      : `/watch/${p.work.slug}?full=1`;
+                  return (
+                  <Link key={p.id} href={watchHref} className="progress-card">
                     {p.work.posterUrl ? (
                       <img src={p.work.posterUrl} alt={p.work.title} className="progress-poster" />
                     ) : (
@@ -78,7 +85,8 @@ export default async function DashboardPage() {
                     </div>
                     <div className="progress-play"><Play size={18} fill="currentColor" /></div>
                   </Link>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="dashboard-empty">

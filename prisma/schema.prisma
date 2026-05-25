@@ -79,7 +79,10 @@ model Work {
   status      WorkStatus @default(DRAFT)
   title       String
   description String?
-  posterUrl   String?
+  posterUrl      String?   // card poster, detail poster, and universal fallback
+  heroMobileUrl  String?   // 9:16 portrait hero for mobile hero sections
+  heroDesktopUrl String?   // 16:9 / 21:9 landscape hero for desktop
+  thumbnailUrl   String?   // landscape thumbnail for episode rows / compact previews
 
   // Video URLs — stored only, files live in R2/S3 later
   trailerUrl  String?   // short film, full film, series
