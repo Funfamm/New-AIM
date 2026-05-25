@@ -1,5 +1,255 @@
-.td-email { color: var(--color-brand-muted); font-size: 0.8125rem; }
-.admin-count {
-  font-family: var(--font-body); font-size: 0.8rem;
+/* Admin Users page — users.css */
+
+/* ── Page header ── */
+.upage-count {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
   color: var(--color-brand-muted);
 }
+
+/* ── Stat cards ── */
+.ustat-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1px;
+  background: var(--color-brand-border);
+  border: 1px solid var(--color-brand-border);
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+}
+
+.ustat-cell {
+  flex: 1;
+  min-width: 110px;
+  background: var(--color-brand-dark);
+  padding: 1rem 1.25rem;
+}
+
+.ustat-val {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-brand-white);
+  font-family: var(--font-body);
+  line-height: 1;
+}
+
+.ustat-val--accent { color: var(--color-brand-accent); }
+.ustat-val--green  { color: #4ade80; }
+.ustat-val--red    { color: var(--color-brand-red); }
+
+.ustat-lbl {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-brand-muted);
+  margin-top: 0.3rem;
+}
+
+/* ── Filters bar ── */
+.ufilters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.ufilter-search {
+  flex: 1;
+  min-width: 180px;
+  max-width: 320px;
+  background: var(--color-brand-dark);
+  border: 1px solid var(--color-brand-border);
+  border-radius: 4px;
+  color: var(--color-brand-light);
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  padding: 0.45rem 0.75rem;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.ufilter-search::placeholder { color: var(--color-brand-muted); }
+.ufilter-search:focus { border-color: var(--color-brand-accent); }
+
+.ufilter-select {
+  background: var(--color-brand-dark);
+  border: 1px solid var(--color-brand-border);
+  border-radius: 4px;
+  color: var(--color-brand-light);
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  padding: 0.45rem 0.65rem;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s;
+  appearance: none;
+  padding-right: 1.4rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath fill='%236b7280' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.5rem center;
+}
+
+.ufilter-select:focus { border-color: var(--color-brand-accent); }
+
+/* ── Table cell styles ── */
+.ucell-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-brand-white);
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.ucell-anon {
+  font-style: italic;
+  color: var(--color-brand-muted);
+  font-weight: 400;
+}
+
+.ucell-email {
+  font-size: 0.775rem;
+  color: var(--color-brand-muted);
+  margin-top: 0.15rem;
+}
+
+.ucell-date {
+  font-size: 0.78rem;
+  color: var(--color-brand-muted);
+  white-space: nowrap;
+}
+
+.ucell-count {
+  font-size: 0.82rem;
+  color: var(--color-brand-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── "You" tag on self row ── */
+.uself-tag {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: rgba(232, 201, 126, 0.12);
+  color: var(--color-brand-accent);
+  border: 1px solid rgba(232, 201, 126, 0.25);
+  border-radius: 2px;
+  padding: 1px 5px;
+}
+
+.urow--self td { background: rgba(232, 201, 126, 0.025); }
+
+/* ── Login method badges ── */
+.uvia-badge {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.55rem;
+  border-radius: 2px;
+  white-space: nowrap;
+}
+
+.uvia-badge--google {
+  background: rgba(66, 133, 244, 0.12);
+  color: #7aadff;
+}
+
+.uvia-badge--email {
+  background: rgba(107, 114, 128, 0.12);
+  color: var(--color-brand-muted);
+}
+
+.uvia-badge--multi {
+  background: rgba(167, 139, 250, 0.12);
+  color: #c4b5fd;
+}
+
+/* ── Role selector ── */
+.urole-form {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.urole-select {
+  background: transparent;
+  border: 1px solid var(--color-brand-border);
+  border-radius: 3px;
+  color: var(--color-brand-light);
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.2rem 0.45rem;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.15s;
+  appearance: none;
+}
+
+.urole-select:focus       { border-color: var(--color-brand-accent); }
+.urole-select:disabled    { opacity: 0.45; cursor: not-allowed; }
+.urole-select--self       { opacity: 0.45; }
+.urole-select--err        { border-color: rgba(192, 57, 43, 0.5); }
+
+.urole-pending {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-brand-accent);
+  opacity: 0.6;
+  animation: upulse 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes upulse {
+  from { opacity: 0.3; }
+  to   { opacity: 1; }
+}
+
+.urole-error {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--color-brand-red);
+  cursor: help;
+}
+
+/* ── Reset button feedback ── */
+.ureset-ok  { font-size: 0.72rem; color: #4ade80; }
+.ureset-err { font-size: 0.72rem; color: var(--color-brand-red); }
+
+/* ── Pagination ── */
+.upagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--color-brand-border);
+}
+
+.upag-btn {
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-brand-light);
+  background: var(--color-brand-dark);
+  border: 1px solid var(--color-brand-border);
+  border-radius: 4px;
+  padding: 0.4rem 0.85rem;
+  text-decoration: none;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.upag-btn:hover { border-color: rgba(255,255,255,0.25); color: var(--color-brand-white); }
+.upag-btn--disabled { opacity: 0.3; cursor: default; pointer-events: none; }
+
+.upag-info {
+  font-size: 0.78rem;
+  color: var(--color-brand-muted);
+}
+
+.upag-sub { color: var(--color-brand-border); }
