@@ -191,51 +191,43 @@ export default async function DashboardPage() {
               )}
             </section>
 
-            {/* ── Notifications preview ── */}
-            <section className="dashboard-section">
-              <div className="section-head">
-                <h2 className="section-heading">
-                  Notifications
-                  {unreadCount > 0 && (
-                    <span className="section-badge">{unreadCount} new</span>
-                  )}
-                </h2>
-                <Link href="/dashboard/notifications" className="section-link">
-                  View all <ChevronRight size={14} />
-                </Link>
-              </div>
-              {notifications.length > 0 ? (
-                <>
-                  <ul className="notif-list">
-                    {notifications.slice(0, 5).map((n) => (
-                      <li key={n.id} className={`notif-item${n.read ? "" : " notif-item--unread"}`}>
-                        <span className="notif-icon" aria-hidden="true">{NOTIF_ICON[n.type] ?? "🔔"}</span>
-                        <div className="notif-body">
-                          {n.href ? (
-                            <Link href={n.href} className="notif-title">{n.title}</Link>
-                          ) : (
-                            <p className="notif-title">{n.title}</p>
-                          )}
-                          {n.body && <p className="notif-text">{n.body}</p>}
-                        </div>
-                        {!n.read && <span className="notif-dot" aria-label="Unread" />}
-                      </li>
-                    ))}
-                  </ul>
-                  {unreadCount > 0 && (
-                    <form action={markAllNotificationsRead} className="notif-mark-all-form">
-                      <button type="submit" className="notif-mark-all-btn">
-                        Mark all as read
-                      </button>
-                    </form>
-                  )}
-                </>
-              ) : (
-                <div className="dashboard-empty dashboard-empty--sm">
-                  <p>No notifications yet.</p>
+            {/* ── Notifications preview — only shown when there are notifications ── */}
+            {notifications.length > 0 && (
+              <section className="dashboard-section">
+                <div className="section-head">
+                  <h2 className="section-heading">
+                    Notifications
+                    {unreadCount > 0 && (
+                      <span className="section-badge">{unreadCount} new</span>
+                    )}
+                  </h2>
+                  <Link href="/dashboard/notifications" className="section-link">
+                    View all <ChevronRight size={14} />
+                  </Link>
                 </div>
-              )}
-            </section>
+                <ul className="notif-list">
+                  {notifications.slice(0, 5).map((n) => (
+                    <li key={n.id} className={`notif-item${n.read ? "" : " notif-item--unread"}`}>
+                      <span className="notif-icon" aria-hidden="true">{NOTIF_ICON[n.type] ?? "🔔"}</span>
+                      <div className="notif-body">
+                        {n.href ? (
+                          <Link href={n.href} className="notif-title">{n.title}</Link>
+                        ) : (
+                          <p className="notif-title">{n.title}</p>
+                        )}
+                        {n.body && <p className="notif-text">{n.body}</p>}
+                      </div>
+                      {!n.read && <span className="notif-dot" aria-label="Unread" />}
+                    </li>
+                  ))}
+                </ul>
+                {unreadCount > 0 && (
+                  <form action={markAllNotificationsRead} className="notif-mark-all-form">
+                    <button type="submit" className="notif-mark-all-btn">Mark all as read</button>
+                  </form>
+                )}
+              </section>
+            )}
 
             {/* ── Settings shortcut ── */}
             <section className="dashboard-section">

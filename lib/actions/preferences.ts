@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 async function requireUser() {
   const session = await auth();
@@ -79,40 +80,60 @@ export async function getUserPreferences(): Promise<UserPreferencesData> {
   }
 }
 
-/**
- * Update preferences for the current user (upsert).
- * Skips new fields silently if the columns don't exist yet (before db:push).
- */
+const bool = (formData: FormData, key: string) => {
+  const val = formData.get(key);
+  return val === "on" || val === "true" || val === "1";
+};
+
+/** Save all preferences at once (legacy — kept for compatibility). */
 export async function updateUserPreferences(formData: FormData) {
   const userId = await requireUser();
-
-  const bool = (key: string) => {
-    const val = formData.get(key);
-    // Unchecked checkbox sends nothing; checked sends "on"
-    return val === "on" || val === "true" || val === "1";
-  };
-
   const data = {
-    inAppNotifications:        bool("inAppNotifications"),
-    emailNotifications:        bool("emailNotifications"),
-    newReleaseNotifications:   bool("newReleaseNotifications"),
-    newEpisodeNotifications:   bool("newEpisodeNotifications"),
-    announcementNotifications: bool("announcementNotifications"),
-    studioUpdates:             bool("studioUpdates"),
-    autoplayNextEpisode:       bool("autoplayNextEpisode"),
-    resumePlayback:            bool("resumePlayback"),
-    reducedMotion:             bool("reducedMotion"),
+    inAppNotifications:        bool(formData, "inAppNotifications"),
+    emailNotifications:        bool(formData, "emailNotifications"),
+    newReleaseNotifications:   bool(formData, "newReleaseNotifications"),
+    newEpisodeNotifications:   bool(formData, "newEpisodeNotifications"),
+    announcementNotifications: bool(formData, "announcementNotifications"),
+    studioUpdates:             bool(formData, "studioUpdates"),
+    autoplayNextEpisode:       bool(formData, "autoplayNextEpisode"),
+    resumePlayback:            bool(formData, "resumePlayback"),
+    reducedMotion:             bool(formData, "reducedMotion"),
   };
-
   try {
-    await prisma.userPreferences.upsert({
-      where: { userId },
-      create: { userId, ...data },
-      update: data,
-    });
-  } catch {
-    // New columns not in DB yet — skip silently until db:push
-  }
-
+    await prisma.userPreferences.upsert({ where: { userId }, create: { userId, ...data }, update: data });
+  } catch { /* columns not in DB yet */ }
   revalidatePath("/dashboard/settings");
+}
+
+/** Save notification preferences only. */
+export async function updateNotificationPreferences(formData: FormData) {
+  const userId = await requireUser();
+  const data = {
+    inAppNotifications:        bool(formData, "inAppNotifications"),
+    emailNotifications:        bool(formData, "emailNotifications"),
+    newReleaseNotifications:   bool(formData, "newReleaseNotifications"),
+    newEpisodeNotifications:   bool(formData, "newEpisodeNotifications"),
+    announcementNotifications: bool(formData, "announcementNotifications"),
+    studioUpdates:             bool(formData, "studioUpdates"),
+  };
+  try {
+    await prisma.userPreferences.upsert({ where: { userId }, create: { userId, ...data }, update: data });
+  } catch { /* columns not in DB yet */ }
+  revalidatePath("/dashboard/settings");
+  redirect("/dashboard/settings?saved=notifications");
+}
+
+/** Save playback preferences only. */
+export async function updatePlaybackPreferences(formData: FormData) {
+  const userId = await requireUser();
+  const data = {
+    autoplayNextEpisode: bool(formData, "autoplayNextEpisode"),
+    resumePlayback:      bool(formData, "resumePlayback"),
+    reducedMotion:       bool(formData, "reducedMotion"),
+  };
+  try {
+    await prisma.userPreferences.upsert({ where: { userId }, create: { userId, ...data }, update: data });
+  } catch { /* columns not in DB yet */ }
+  revalidatePath("/dashboard/settings");
+  redirect("/dashboard/settings?saved=playback");
 }
