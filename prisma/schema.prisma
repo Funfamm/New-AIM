@@ -46,6 +46,32 @@ enum NotificationType {
   SYSTEM
 }
 
+enum AnalyticsEventType {
+  PAGE_VIEW
+  WORK_VIEW
+  TRAILER_CLICK
+  WATCH_START
+  WATCH_PROGRESS
+  WATCH_COMPLETE
+  EPISODE_START
+  EPISODE_COMPLETE
+  SIGN_IN
+  SIGN_UP
+  SIGN_OUT
+  SAVE_WORK
+  UNSAVE_WORK
+  NOTIFICATION_OPEN
+  SETTINGS_UPDATE
+}
+
+enum DeviceType {
+  MOBILE
+  TABLET
+  DESKTOP
+  BOT
+  UNKNOWN
+}
+
 // ─────────────────────────────────────────────
 // USER
 // ─────────────────────────────────────────────
@@ -123,9 +149,10 @@ model Work {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  progress      WatchProgress[]
-  savedBy       SavedWork[]
-  notifications Notification[]
+  progress        WatchProgress[]
+  savedBy         SavedWork[]
+  notifications   Notification[]
+  analyticsEvents AnalyticsEvent[]
 
   @@map("works")
 }
@@ -280,4 +307,68 @@ model Notification {
   work Work? @relation(fields: [workId], references: [id], onDelete: SetNull)
 
   @@map("notifications")
+}
+
+// ─────────────────────────────────────────────
+// VISITOR SESSION
+// Tracks guest + logged-in visit sessions.
+// userId is a plain field (not a FK) so analytics survive account deletion.
+// Country/region are derived from Vercel edge headers — raw IP is never stored.
+// ─────────────────────────────────────────────
+
+model VisitorSession {
+  id              String     @id @default(cuid())
+  visitorId       String     // opaque anonymous cookie value set by edge middleware
+  userId          String?    // plain — not a FK; populated on sign-in for conversion tracking
+  startedAt       DateTime   @default(now())
+  lastSeenAt      DateTime   @default(now())
+  endedAt         DateTime?
+  durationSeconds Int        @default(0)
+  landingPage     String?
+  referrer        String?
+  country         String?    // from x-vercel-ip-country header — no IP stored
+  region          String?    // from x-vercel-ip-region
+  city            String?    // from x-vercel-ip-city
+  deviceType      DeviceType @default(UNKNOWN)
+  browser         String?    // parsed: "Chrome 124", "Safari 17"
+  os              String?    // parsed: "iOS 17", "Android 14", "Windows 11"
+  isBot           Boolean    @default(false)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  events AnalyticsEvent[]
+
+  @@index([visitorId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("visitor_sessions")
+}
+
+// ─────────────────────────────────────────────
+// ANALYTICS EVENT
+// One row per meaningful user action.
+// userId is a plain field (not a FK) for the same privacy reason as VisitorSession.
+// Metadata payloads are capped at ~200 bytes at the application layer.
+// ─────────────────────────────────────────────
+
+model AnalyticsEvent {
+  id        String             @id @default(cuid())
+  visitorId String             // matches VisitorSession.visitorId
+  userId    String?            // plain — not a FK; null for guests
+  sessionId String?
+  type      AnalyticsEventType
+  path      String?            // page path e.g. "/works/my-film"
+  workId    String?
+  metadata  Json?              // e.g. { seconds: 45, percent: 60, method: "google" }
+  createdAt DateTime           @default(now())
+
+  session VisitorSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  work    Work?           @relation(fields: [workId], references: [id], onDelete: SetNull)
+
+  @@index([visitorId])
+  @@index([userId])
+  @@index([type])
+  @@index([workId])
+  @@index([createdAt])
+  @@map("analytics_events")
 }
