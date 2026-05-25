@@ -8,9 +8,18 @@
 .hero-bg { position: absolute; inset: 0; z-index: 0; }
 .hero-bg-gradient {
   position: absolute; inset: 0;
+  pointer-events: none; /* must not block clicks on background link */
+  /* Mobile: strong bottom gradient — text sits at bottom of portrait frame */
   background:
-    linear-gradient(to right,  rgba(10,10,10,0.78) 0%, rgba(10,10,10,0.25) 45%, rgba(10,10,10,0) 65%),
-    linear-gradient(to top,    rgba(10,10,10,0.96) 0%, rgba(10,10,10,0.62) 20%, rgba(10,10,10,0.10) 55%, rgba(10,10,10,0) 100%);
+    linear-gradient(to top, rgba(10,10,10,0.95) 0%, rgba(10,10,10,0.60) 22%, rgba(10,10,10,0.08) 52%, rgba(10,10,10,0) 100%);
+}
+@media (min-width: 768px) {
+  .hero-bg-gradient {
+    /* Desktop: left vignette for text legibility + softer bottom */
+    background:
+      linear-gradient(to right, rgba(10,10,10,0.78) 0%, rgba(10,10,10,0.25) 45%, rgba(10,10,10,0) 65%),
+      linear-gradient(to top,   rgba(10,10,10,0.96) 0%, rgba(10,10,10,0.62) 20%, rgba(10,10,10,0.10) 55%, rgba(10,10,10,0) 100%);
+  }
 }
 .hero-content {
   position: absolute;

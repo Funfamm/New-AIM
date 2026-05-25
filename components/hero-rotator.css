@@ -6,3 +6,23 @@
 @media (prefers-reduced-motion: reduce) {
   .hr-slide { transition: none; }
 }
+
+/* Full-bleed clickable link — covers the entire slide */
+.hr-slide-link {
+  position: absolute; inset: 0;
+  display: block;
+  outline-offset: -3px;
+}
+
+/* Art direction via object-position:
+   Mobile  → portrait framing, favor upper portion (subjects/faces near top)
+   Desktop → center framing for wide cinematic crop */
+.hr-img {
+  object-fit: cover;
+  object-position: center 20%;
+}
+@media (min-width: 768px) {
+  .hr-img {
+    object-position: center center;
+  }
+}

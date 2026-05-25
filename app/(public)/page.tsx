@@ -59,7 +59,7 @@ export default async function HomePage() {
   const heroItems = featured
     .filter((w) => w.posterUrl != null)
     .slice(0, 5)
-    .map((w) => ({ posterUrl: w.posterUrl!, title: w.title }));
+    .map((w) => ({ posterUrl: w.posterUrl!, title: w.title, slug: w.slug }));
 
   const isEmpty = featured.length === 0 && newReleases.length === 0;
 

@@ -53,7 +53,7 @@ export default function WorksClient({ works }: { works: Work[] }) {
       works
         .filter((w) => w.posterUrl != null)
         .slice(0, 5)
-        .map((w) => ({ posterUrl: w.posterUrl!, title: w.title })),
+        .map((w) => ({ posterUrl: w.posterUrl!, title: w.title, slug: w.slug })),
     [works]
   );
 
