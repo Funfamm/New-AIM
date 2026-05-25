@@ -11,6 +11,25 @@ async function requireUser() {
   return session.user.id;
 }
 
+/**
+ * Fetch the current user's live profile from the database.
+ * Always reflects the latest DB state — never the stale JWT session.
+ */
+export async function getUserProfile() {
+  const session = await auth();
+  if (!session?.user?.id) return { name: null as string | null, email: null as string | null };
+
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { name: true, email: true },
+  });
+
+  return {
+    name:  user?.name  ?? null,
+    email: user?.email ?? session.user.email ?? null,
+  };
+}
+
 /** Update the current user's display name. */
 export async function updateUserProfile(formData: FormData) {
   const userId = await requireUser();
@@ -27,5 +46,7 @@ export async function updateUserProfile(formData: FormData) {
 
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/settings");
+  // Redirect back with ?saved=profile so the Saved chip appears.
+  // The page reads name from DB (getUserProfile), so the updated value shows immediately.
   redirect("/dashboard/settings?saved=profile");
 }

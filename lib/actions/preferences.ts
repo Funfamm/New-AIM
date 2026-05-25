@@ -119,8 +119,8 @@ export async function updateNotificationPreferences(formData: FormData) {
   try {
     await prisma.userPreferences.upsert({ where: { userId }, create: { userId, ...data }, update: data });
   } catch { /* columns not in DB yet */ }
+  // revalidatePath only — no redirect so the page stays in place (no black screen)
   revalidatePath("/dashboard/settings");
-  redirect("/dashboard/settings?saved=notifications");
 }
 
 /** Save playback preferences only. */
@@ -134,6 +134,6 @@ export async function updatePlaybackPreferences(formData: FormData) {
   try {
     await prisma.userPreferences.upsert({ where: { userId }, create: { userId, ...data }, update: data });
   } catch { /* columns not in DB yet */ }
+  // revalidatePath only — no redirect so the page stays in place (no black screen)
   revalidatePath("/dashboard/settings");
-  redirect("/dashboard/settings?saved=playback");
 }

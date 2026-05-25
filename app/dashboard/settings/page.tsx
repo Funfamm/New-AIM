@@ -4,7 +4,7 @@ import {
   updateNotificationPreferences,
   updatePlaybackPreferences,
 } from "@/lib/actions/preferences";
-import { updateUserProfile } from "@/lib/actions/user";
+import { updateUserProfile, getUserProfile } from "@/lib/actions/user";
 import { logoutUser } from "@/lib/actions/auth";
 import Link from "next/link";
 import { ChevronLeft, ChevronDown, LogOut } from "lucide-react";
@@ -20,15 +20,15 @@ type Props = {
 };
 
 export default async function SettingsPage({ searchParams }: Props) {
-  const [session, prefs, params] = await Promise.all([
+  // Fetch session (auth check), live DB profile, and preferences in parallel
+  const [, profile, prefs, params] = await Promise.all([
     auth(),
+    getUserProfile(),      // always reads from DB — never the stale JWT session
     getUserPreferences(),
     searchParams,
   ]);
 
-  const userName = session?.user?.name ?? "";
-  const userEmail = session?.user?.email ?? "";
-  const savedSection = params.saved;
+  const savedSection = params.saved;   // "profile" → shows Saved chip on Profile section
   const errorMsg = params.error;
 
   return (
@@ -45,7 +45,9 @@ export default async function SettingsPage({ searchParams }: Props) {
             <h1 className="settingspage-title">Settings</h1>
 
             {errorMsg && (
-              <p className="settings-feedback settings-feedback--error">{decodeURIComponent(errorMsg)}</p>
+              <p className="settings-feedback settings-feedback--error">
+                {decodeURIComponent(errorMsg)}
+              </p>
             )}
 
             {/* ── Profile ── */}
@@ -60,12 +62,14 @@ export default async function SettingsPage({ searchParams }: Props) {
               <div className="settings-accordion-body">
                 <form action={updateUserProfile} className="settings-form">
                   <div className="settings-field-row">
-                    <label className="settings-field-label" htmlFor="name">Display name</label>
+                    <label className="settings-field-label" htmlFor="name">
+                      Display name
+                    </label>
                     <input
                       id="name"
                       name="name"
                       type="text"
-                      defaultValue={userName}
+                      defaultValue={profile.name ?? ""}
                       maxLength={80}
                       className="settings-text-input"
                       autoComplete="name"
@@ -73,11 +77,15 @@ export default async function SettingsPage({ searchParams }: Props) {
                   </div>
                   <div className="settings-field-row">
                     <label className="settings-field-label">Email</label>
-                    <span className="settings-field-readonly">{userEmail}</span>
+                    <span className="settings-field-readonly">{profile.email ?? "—"}</span>
                   </div>
                   <div className="settings-form-footer">
-                    <button type="submit" className="settings-save-btn">Save Profile</button>
-                    <Link href="/forgot-password" className="settings-text-link">Change password</Link>
+                    <button type="submit" className="settings-save-btn">
+                      Save Profile
+                    </button>
+                    <Link href="/forgot-password" className="settings-text-link">
+                      Change password
+                    </Link>
                   </div>
                 </form>
               </div>
@@ -87,9 +95,6 @@ export default async function SettingsPage({ searchParams }: Props) {
             <details className="settings-accordion">
               <summary className="settings-accordion-summary">
                 <span>Notification Preferences</span>
-                {savedSection === "notifications" && (
-                  <span className="settings-saved-chip">Saved</span>
-                )}
                 <ChevronDown size={16} className="settings-accordion-chevron" aria-hidden="true" />
               </summary>
               <div className="settings-accordion-body">
@@ -154,9 +159,6 @@ export default async function SettingsPage({ searchParams }: Props) {
             <details className="settings-accordion" id="playback">
               <summary className="settings-accordion-summary">
                 <span>Playback Preferences</span>
-                {savedSection === "playback" && (
-                  <span className="settings-saved-chip">Saved</span>
-                )}
                 <ChevronDown size={16} className="settings-accordion-chevron" aria-hidden="true" />
               </summary>
               <div className="settings-accordion-body">
@@ -192,7 +194,7 @@ export default async function SettingsPage({ searchParams }: Props) {
               </div>
             </details>
 
-            {/* ── Account ── */}
+            {/* ── Account & Security ── */}
             <details className="settings-accordion">
               <summary className="settings-accordion-summary">
                 <span>Account &amp; Security</span>
