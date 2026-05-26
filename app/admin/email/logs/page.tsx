@@ -53,6 +53,10 @@ export default async function AdminEmailLogsPage({ searchParams }: Props) {
       where,
       orderBy: { createdAt: "desc" },
       take: 200,
+      select: {
+        id: true, to: true, subject: true, type: true,
+        provider: true, status: true, error: true, createdAt: true,
+      },
     }),
     prisma.emailLog.groupBy({
       by: ["status"],
@@ -138,19 +142,29 @@ export default async function AdminEmailLogsPage({ searchParams }: Props) {
                 </thead>
                 <tbody>
                   {logs.map((log) => (
-                    <tr key={log.id}>
-                      <td>
-                        <span className="elog-status-cell">
-                          {statusIcon(log.status)}
-                          <span>{log.status}</span>
-                        </span>
-                      </td>
-                      <td className="elog-to">{log.to}</td>
-                      <td className="elog-subject" title={log.subject}>{log.subject}</td>
-                      <td><span className="elog-badge">{log.type}</span></td>
-                      <td className="elog-provider">{log.provider}</td>
-                      <td className="elog-date">{fmtDate(log.createdAt)}</td>
-                    </tr>
+                    <>
+                      <tr key={log.id}>
+                        <td>
+                          <span className="elog-status-cell">
+                            {statusIcon(log.status)}
+                            <span>{log.status}</span>
+                          </span>
+                        </td>
+                        <td className="elog-to">{log.to}</td>
+                        <td className="elog-subject" title={log.subject}>{log.subject}</td>
+                        <td><span className="elog-badge">{log.type}</span></td>
+                        <td className="elog-provider">{log.provider}</td>
+                        <td className="elog-date">{fmtDate(log.createdAt)}</td>
+                      </tr>
+                      {log.status === "FAILED" && log.error && (
+                        <tr key={`${log.id}-err`} className="elog-error-row">
+                          <td />
+                          <td colSpan={5} className="elog-error-cell">
+                            {log.error.slice(0, 300)}
+                          </td>
+                        </tr>
+                      )}
+                    </>
                   ))}
                 </tbody>
               </table>

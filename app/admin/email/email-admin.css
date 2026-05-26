@@ -538,6 +538,25 @@
   color: var(--color-brand-red);
 }
 
+/* ── Failed log error detail row ─────────────── */
+
+.elog-error-row td {
+  background: rgba(192, 57, 43, 0.06);
+  border-top: none;
+  padding-top: 0;
+  padding-bottom: 0.6rem;
+}
+
+.elog-error-cell {
+  font-size: 0.75rem;
+  color: #f87171;
+  font-family: monospace;
+  line-height: 1.5;
+  word-break: break-word;
+  padding-top: 0.25rem !important;
+  padding-bottom: 0.6rem !important;
+}
+
 /* ── Import textarea ─────────────────────────── */
 
 .email-import-textarea {
