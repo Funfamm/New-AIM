@@ -1,20 +1,9 @@
-// /admin/email/logs — full email log viewer
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/lib/auth";
-import { isAdminRole } from "@/lib/auth-guard";
-import { notFound } from "next/navigation";
 import Link from "next/link";
-import { CheckCircle, XCircle, MinusCircle, Clock, SkipForward, ArrowLeft } from "lucide-react";
-import type { Metadata } from "next";
-import "../email-admin.css";
-
-export const metadata: Metadata = { title: "Email Logs — Admin" };
+import { CheckCircle, XCircle, MinusCircle, Clock, SkipForward } from "lucide-react";
 
 type StatusFilter = "ALL" | "SENT" | "FAILED" | "SUPPRESSED" | "QUEUED" | "SKIPPED";
-
-type Props = {
-  searchParams: Promise<{ status?: string; type?: string }>;
-};
+const STATUS_OPTIONS: StatusFilter[] = ["ALL", "SENT", "FAILED", "SUPPRESSED", "QUEUED", "SKIPPED"];
 
 function statusIcon(status: string) {
   if (status === "SENT")       return <CheckCircle  size={13} className="elog-sent"       />;
@@ -32,32 +21,20 @@ function fmtDate(d: Date) {
   }).format(d);
 }
 
-const STATUS_OPTIONS: StatusFilter[] = ["ALL", "SENT", "FAILED", "SUPPRESSED", "QUEUED", "SKIPPED"];
+interface Props {
+  statusFilter: StatusFilter;
+  typeFilter:   string;
+}
 
-export default async function AdminEmailLogsPage({ searchParams }: Props) {
-  const session = await auth();
-  if (!session?.user || !isAdminRole(session.user.role)) notFound();
-
-  const params     = await searchParams;
-  const rawStatus  = (params.status ?? "ALL").toUpperCase() as StatusFilter;
-  const statusFilter: StatusFilter = STATUS_OPTIONS.includes(rawStatus) ? rawStatus : "ALL";
-  const typeFilter = params.type ?? "";
-
+export default async function TabLogs({ statusFilter, typeFilter }: Props) {
   const where = {
     ...(statusFilter !== "ALL" ? { status: statusFilter as any } : {}),
     ...(typeFilter              ? { type:   typeFilter   as any } : {}),
   };
 
   const [logs, counts] = await Promise.all([
-    prisma.emailLog.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-      take: 200,
-    }),
-    prisma.emailLog.groupBy({
-      by: ["status"],
-      _count: { _all: true },
-    }),
+    prisma.emailLog.findMany({ where, orderBy: { createdAt: "desc" }, take: 200 }),
+    prisma.emailLog.groupBy({ by: ["status"], _count: { _all: true } }),
   ]);
 
   const countMap: Record<string, number> = {};
@@ -65,17 +42,8 @@ export default async function AdminEmailLogsPage({ searchParams }: Props) {
   const totalAll = counts.reduce((sum, r) => sum + r._count._all, 0);
 
   return (
-    <div className="email-page">
-      <div className="email-section-head" style={{ marginBottom: "1.5rem" }}>
-        <div>
-          <Link href="/admin/email" className="email-back-link">
-            <ArrowLeft size={13} /> Email settings
-          </Link>
-          <h1 className="admin-page-title" style={{ marginBottom: 0 }}>Email Logs</h1>
-        </div>
-      </div>
-
-      {/* ── Status counts ──────────────────────────── */}
+    <>
+      {/* ── Stats ────────────────────────────────── */}
       <section className="email-section">
         <div className="email-stats">
           <div className="email-stat">
@@ -106,10 +74,10 @@ export default async function AdminEmailLogsPage({ searchParams }: Props) {
       {/* ── Filters ───────────────────────────────── */}
       <section className="email-section">
         <div className="email-filter-row">
-          {STATUS_OPTIONS.map(s => (
+          {STATUS_OPTIONS.map((s) => (
             <Link
               key={s}
-              href={`/admin/email/logs?status=${s}${typeFilter ? `&type=${typeFilter}` : ""}`}
+              href={`/admin/email?tab=logs&status=${s}${typeFilter ? `&type=${typeFilter}` : ""}`}
               className={`email-filter-pill${statusFilter === s ? " email-filter-pill--active" : ""}`}
             >
               {s === "ALL" ? `All (${totalAll})` : `${s} (${countMap[s] ?? 0})`}
@@ -118,7 +86,7 @@ export default async function AdminEmailLogsPage({ searchParams }: Props) {
         </div>
       </section>
 
-      {/* ── Log table ─────────────────────────────── */}
+      {/* ── Table ─────────────────────────────────── */}
       <section className="email-section">
         {logs.length === 0 ? (
           <p className="email-empty">No logs match the current filter.</p>
@@ -158,6 +126,6 @@ export default async function AdminEmailLogsPage({ searchParams }: Props) {
           </>
         )}
       </section>
-    </div>
+    </>
   );
 }

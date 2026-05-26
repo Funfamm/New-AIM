@@ -1,16 +1,7 @@
-// /admin/email/suppressions — dedicated suppression manager
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/lib/auth";
-import { isAdminRole } from "@/lib/auth-guard";
-import { notFound } from "next/navigation";
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import { addSuppression } from "@/lib/actions/email-admin";
-import RemoveSuppressionButton from "../remove-suppression-button";
-import type { Metadata } from "next";
-import "../email-admin.css";
-
-export const metadata: Metadata = { title: "Email Suppressions — Admin" };
+import RemoveSuppressionButton from "./remove-suppression-button";
+import DeleteSuppressionButton from "./delete-suppression-button";
 
 function fmtDate(d: Date) {
   return new Intl.DateTimeFormat("en-GB", {
@@ -19,10 +10,7 @@ function fmtDate(d: Date) {
   }).format(d);
 }
 
-export default async function AdminEmailSuppressionsPage() {
-  const session = await auth();
-  if (!session?.user || !isAdminRole(session.user.role)) notFound();
-
+export default async function TabSuppression({ error }: { error?: string }) {
   const [active, inactive] = await Promise.all([
     prisma.emailSuppression.findMany({
       where:   { active: true },
@@ -35,25 +23,38 @@ export default async function AdminEmailSuppressionsPage() {
     }),
   ]);
 
-  return (
-    <div className="email-page">
-      <div style={{ marginBottom: "1.5rem" }}>
-        <Link href="/admin/email" className="email-back-link">
-          <ArrowLeft size={13} /> Email settings
-        </Link>
-        <h1 className="admin-page-title" style={{ marginBottom: 0 }}>Suppression List</h1>
-      </div>
+  const byCounts = active.reduce((acc, s) => {
+    const key = s.reason ?? "unknown";
+    acc[key] = (acc[key] ?? 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
 
-      <p className="email-hint" style={{ marginBottom: "2rem" }}>
-        Suppressed addresses will not receive any bulk or transactional emails
-        (except security alerts, which cannot be suppressed at this level).
-        Addresses are suppressed automatically when a user clicks
-        &ldquo;Unsubscribe&rdquo; in a bulk email.
-      </p>
+  return (
+    <>
+      {/* ── Stats ────────────────────────────────── */}
+      <section className="email-section">
+        <div className="email-stats">
+          <div className="email-stat">
+            <span className="email-stat-val">{active.length}</span>
+            <span className="email-stat-label">Active</span>
+          </div>
+          {Object.entries(byCounts).map(([reason, count]) => (
+            <div key={reason} className="email-stat">
+              <span className="email-stat-val email-stat-val--muted">{count}</span>
+              <span className="email-stat-label">{reason}</span>
+            </div>
+          ))}
+        </div>
+      </section>
 
       {/* ── Add suppression ───────────────────────── */}
       <section className="email-section">
         <h2 className="email-section-title">Add suppression</h2>
+        <p className="email-hint">
+          Manually suppress an address. It will not receive any emails.
+          Use the Import tab to add addresses in bulk.
+        </p>
+        {error && <p className="email-test-err" style={{ marginBottom: "0.75rem" }}>⚠ {error}</p>}
         <form action={addSuppression} className="email-sup-form">
           <input
             type="email"
@@ -62,30 +63,26 @@ export default async function AdminEmailSuppressionsPage() {
             placeholder="email@example.com"
             className="email-sup-input"
           />
-          <input
-            type="text"
-            name="reason"
-            placeholder="Reason (optional)"
-            className="email-sup-input email-sup-input--reason"
-          />
-          <button type="submit" className="email-sup-btn">Add</button>
+          <select name="reason" className="email-sup-input email-sup-input--reason">
+            <option value="manual">manual</option>
+            <option value="hard_bounce">hard_bounce</option>
+            <option value="complaint">complaint</option>
+            <option value="unsubscribe">unsubscribe</option>
+          </select>
+          <button type="submit" className="email-sup-btn">Suppress</button>
         </form>
       </section>
 
       {/* ── Active suppressions ───────────────────── */}
       <section className="email-section">
-        <h2 className="email-section-title">
-          Active suppressions ({active.length})
-        </h2>
+        <h2 className="email-section-title">Active suppressions ({active.length})</h2>
         {active.length === 0 ? (
           <p className="email-empty">No active suppressions.</p>
         ) : (
           <div className="email-log-wrap">
             <table className="email-sup-table">
               <thead>
-                <tr>
-                  <th>Email</th><th>Reason</th><th>Source</th><th>Added</th><th></th>
-                </tr>
+                <tr><th>Email</th><th>Reason</th><th>Source</th><th>Added</th><th></th></tr>
               </thead>
               <tbody>
                 {active.map((s) => (
@@ -94,7 +91,12 @@ export default async function AdminEmailSuppressionsPage() {
                     <td className="elog-provider">{s.reason ?? "—"}</td>
                     <td className="elog-provider">{s.source ?? "—"}</td>
                     <td className="elog-date">{fmtDate(s.createdAt)}</td>
-                    <td><RemoveSuppressionButton email={s.email} /></td>
+                    <td>
+                      <span className="esup-actions">
+                        <RemoveSuppressionButton email={s.email} />
+                        <DeleteSuppressionButton email={s.email} />
+                      </span>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -103,14 +105,12 @@ export default async function AdminEmailSuppressionsPage() {
         )}
       </section>
 
-      {/* ── Removed suppressions ──────────────────── */}
+      {/* ── Previously removed ────────────────────── */}
       {inactive.length > 0 && (
         <section className="email-section">
-          <h2 className="email-section-title">
-            Previously removed ({inactive.length})
-          </h2>
+          <h2 className="email-section-title">Previously removed ({inactive.length})</h2>
           <p className="email-hint">
-            These addresses were suppressed and then manually re-enabled.
+            These addresses were suppressed and then manually re-enabled. They can receive emails again.
           </p>
           <div className="email-log-wrap">
             <table className="email-sup-table">
@@ -131,6 +131,6 @@ export default async function AdminEmailSuppressionsPage() {
           </div>
         </section>
       )}
-    </div>
+    </>
   );
 }

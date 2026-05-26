@@ -6,8 +6,6 @@ import { sendEmail } from "@/lib/email";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
-
-
 // ── Test Graph email ──────────────────────────────────────────
 export async function testGraphEmail(): Promise<{ ok: boolean; message: string }> {
   const admin = await requireAdmin();
@@ -55,7 +53,7 @@ export async function addSuppression(formData: FormData) {
   await requireAdmin();
   const email  = (formData.get("email") as string)?.toLowerCase().trim();
   const reason = (formData.get("reason") as string) || "manual";
-  if (!email) redirect("/admin/email?error=Email+is+required");
+  if (!email) redirect("/admin/email?tab=suppression&error=Email+is+required");
 
   await prisma.emailSuppression.upsert({
     where:  { email },
@@ -63,13 +61,56 @@ export async function addSuppression(formData: FormData) {
     update: { reason, active: true },
   });
   revalidatePath("/admin/email");
+  redirect("/admin/email?tab=suppression");
 }
 
+// Soft-lift: marks inactive but keeps the record for audit
 export async function removeSuppression(email: string) {
   await requireAdmin();
   await prisma.emailSuppression.update({
-    where:  { email },
-    data:   { active: false },
+    where: { email },
+    data:  { active: false },
   });
   revalidatePath("/admin/email");
+}
+
+// Hard delete: permanently removes the suppression record
+export async function deleteSuppression(email: string) {
+  await requireAdmin();
+  await prisma.emailSuppression.delete({ where: { email } });
+  revalidatePath("/admin/email");
+}
+
+// Bulk import suppressions from pasted email list
+export async function bulkImportSuppression(formData: FormData) {
+  await requireAdmin();
+  const raw    = (formData.get("emails") as string) ?? "";
+  const reason = (formData.get("reason") as string) || "manual";
+
+  const emails = raw
+    .split(/[\n,;\s]+/)
+    .map((e) => e.trim().toLowerCase())
+    .filter((e) => e.includes("@") && e.length > 3);
+
+  if (emails.length === 0) {
+    redirect("/admin/email?tab=import&error=No+valid+email+addresses+found");
+  }
+
+  const unique = [...new Set(emails)];
+  let imported = 0;
+  let skipped  = 0;
+
+  for (const email of unique) {
+    const existing = await prisma.emailSuppression.findUnique({ where: { email } });
+    if (existing?.active) { skipped++; continue; }
+    await prisma.emailSuppression.upsert({
+      where:  { email },
+      create: { email, reason, source: "admin", active: true },
+      update: { reason, active: true },
+    });
+    imported++;
+  }
+
+  revalidatePath("/admin/email");
+  redirect(`/admin/email?tab=import&imported=${imported}&skipped=${skipped}`);
 }

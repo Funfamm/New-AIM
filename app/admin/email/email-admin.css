@@ -490,3 +490,61 @@
   border-radius: 4px;
   white-space: nowrap;
 }
+
+/* ── Tab navigation ──────────────────────────── */
+
+.etab-nav {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--color-brand-border);
+  margin-bottom: 2rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.etab-nav::-webkit-scrollbar { display: none; }
+
+.etab-link {
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-brand-muted);
+  text-decoration: none;
+  padding: 0.6rem 1.1rem;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s;
+}
+.etab-link:hover { color: var(--color-brand-light); }
+.etab-link--active {
+  color: var(--color-brand-accent);
+  border-bottom-color: var(--color-brand-accent);
+}
+
+/* ── Suppression action buttons ──────────────── */
+
+.esup-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+/* Hard-delete variant — appears as secondary danger */
+.email-sup-remove--del {
+  border-color: transparent;
+  color: var(--color-brand-border);
+}
+.email-sup-remove--del:hover:not(:disabled) {
+  border-color: var(--color-brand-red);
+  color: var(--color-brand-red);
+}
+
+/* ── Import textarea ─────────────────────────── */
+
+.email-import-textarea {
+  min-height: 120px;
+  resize: vertical;
+  width: 100%;
+  font-family: monospace;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
