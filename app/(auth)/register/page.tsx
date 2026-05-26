@@ -1,7 +1,8 @@
-import { registerUser, signInWithGoogle } from "@/lib/actions/auth";
+import { signInWithGoogle } from "@/lib/actions/auth";
 import Link from "next/link";
 import { Film, Users, MessageSquare } from "lucide-react";
 import type { Metadata } from "next";
+import { RegisterForm } from "./register-form";
 import "./register.css";
 
 export const metadata: Metadata = { title: "Join the Studio — AIM Studio" };
@@ -33,7 +34,7 @@ export default async function RegisterPage({
           <h1 className="auth-title">Join the Studio</h1>
         </div>
 
-        {/* Value pills — compact horizontal row */}
+        {/* Value pills */}
         <ul className="auth-perks">
           <li className="auth-perk">
             <span className="auth-perk-icon" aria-hidden="true"><Film size={13} /></span>
@@ -59,53 +60,8 @@ export default async function RegisterPage({
 
         <div className="auth-divider"><span>or create an account</span></div>
 
-        {params?.error && (
-          <div className="auth-error">{params.error}</div>
-        )}
-
-        <form action={registerUser} className="auth-form">
-          <div className="form-group">
-            <label className="form-label">
-              Name <span className="form-optional">(optional)</span>
-            </label>
-            <input
-              type="text"
-              name="name"
-              className="form-input"
-              placeholder="Your name"
-              autoComplete="name"
-            />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Email</label>
-            <input
-              type="email"
-              name="email"
-              className="form-input"
-              placeholder="your@email.com"
-              required
-              autoComplete="email"
-            />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Password</label>
-            <input
-              type="password"
-              name="password"
-              className="form-input"
-              placeholder="At least 8 characters"
-              required
-              minLength={8}
-              autoComplete="new-password"
-            />
-          </div>
-          <button type="submit" className="auth-btn">Create Account</button>
-          <p className="auth-fine-print">
-            By joining, you agree to our{" "}
-            <Link href="/terms">Terms</Link> and{" "}
-            <Link href="/privacy">Privacy Policy</Link>.
-          </p>
-        </form>
+        {/* Client form — handles confirm password + show/hide toggles */}
+        <RegisterForm error={params?.error} />
 
         <p className="auth-switch">
           Already have an account?{" "}

@@ -1,6 +1,7 @@
 import { loginUser, signInWithGoogle } from "@/lib/actions/auth";
 import Link from "next/link";
 import type { Metadata } from "next";
+import { PasswordInput } from "../password-input";
 import "./login.css";
 
 export const metadata: Metadata = { title: "Sign In — AIM Studio" };
@@ -64,13 +65,11 @@ export default async function LoginPage({
           </div>
           <div className="form-group">
             <label className="form-label">Password</label>
-            <input
-              type="password"
+            <PasswordInput
               name="password"
-              className="form-input"
               placeholder="••••••••"
-              required
               autoComplete="current-password"
+              required
             />
           </div>
           <div className="auth-forgot">
