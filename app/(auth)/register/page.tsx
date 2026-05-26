@@ -26,27 +26,38 @@ export default async function RegisterPage({
   return (
     <main className="auth-page">
       <div className="auth-card">
+
+        {/* Brand */}
         <div className="auth-header">
           <Link href="/" className="auth-logo">AIM<span>Studio</span></Link>
           <h1 className="auth-title">Join the Studio</h1>
-          <p className="auth-sub">Free forever. Always will be.</p>
         </div>
 
-        {/* Three quick wins */}
+        {/* Value pills — compact horizontal row */}
         <ul className="auth-perks">
           <li className="auth-perk">
-            <span className="auth-perk-icon" aria-hidden="true"><Film size={15} /></span>
-            Watch full films free
+            <span className="auth-perk-icon" aria-hidden="true"><Film size={13} /></span>
+            Watch free
           </li>
           <li className="auth-perk">
-            <span className="auth-perk-icon" aria-hidden="true"><Users size={15} /></span>
-            Apply for casting opportunities
+            <span className="auth-perk-icon" aria-hidden="true"><Users size={13} /></span>
+            Casting calls
           </li>
           <li className="auth-perk">
-            <span className="auth-perk-icon" aria-hidden="true"><MessageSquare size={15} /></span>
-            Join the community
+            <span className="auth-perk-icon" aria-hidden="true"><MessageSquare size={13} /></span>
+            Community
           </li>
         </ul>
+
+        {/* Google — shown first */}
+        <form action={signInWithGoogle}>
+          <button type="submit" className="auth-btn-google">
+            <GoogleIcon />
+            Continue with Google
+          </button>
+        </form>
+
+        <div className="auth-divider"><span>or create an account</span></div>
 
         {params?.error && (
           <div className="auth-error">{params.error}</div>
@@ -88,29 +99,20 @@ export default async function RegisterPage({
               autoComplete="new-password"
             />
           </div>
-          <button type="submit" className="auth-btn">Create My Account</button>
+          <button type="submit" className="auth-btn">Create Account</button>
           <p className="auth-fine-print">
-            By creating an account, you agree to our{" "}
+            By joining, you agree to our{" "}
             <Link href="/terms">Terms</Link> and{" "}
             <Link href="/privacy">Privacy Policy</Link>.
           </p>
-        </form>
-
-        <div className="auth-divider"><span>or</span></div>
-
-        <form action={signInWithGoogle}>
-          <button type="submit" className="auth-btn-google">
-            <GoogleIcon />
-            Continue with Google
-          </button>
         </form>
 
         <p className="auth-switch">
           Already have an account?{" "}
           <Link href="/login">Sign in</Link>
         </p>
-      </div>
 
+      </div>
     </main>
   );
 }
