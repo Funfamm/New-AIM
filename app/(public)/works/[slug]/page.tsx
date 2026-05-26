@@ -39,10 +39,33 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const work = await prisma.work.findUnique({
     where: { slug },
-    select: { title: true, description: true },
+    select: { title: true, description: true, posterUrl: true },
   });
   if (!work) return { title: "Not Found" };
-  return { title: work.title, description: work.description ?? undefined };
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://aimstudio.app";
+  const ogImage = work.posterUrl
+    ? { url: work.posterUrl, width: 1200, height: 630, alt: work.title }
+    : { url: `${appUrl}/images/SP_Logo.jpg`, width: 1200, height: 630, alt: "AIM Studio" };
+
+  return {
+    title: work.title,
+    description: work.description ?? undefined,
+    alternates: { canonical: `${appUrl}/works/${slug}` },
+    openGraph: {
+      title: work.title,
+      description: work.description ?? undefined,
+      url: `${appUrl}/works/${slug}`,
+      images: [ogImage],
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: work.title,
+      description: work.description ?? undefined,
+      images: [work.posterUrl ?? `${appUrl}/images/SP_Logo.jpg`],
+    },
+  };
 }
 
 async function getWork(slug: string) {

@@ -19,17 +19,37 @@ const manrope = Manrope({
 
 export const metadata: Metadata = {
   title: {
-    default: "AIM Studio",
+    default: "AIM Studio | Creating Cinema with AI",
     template: "%s | AIM Studio",
   },
   description:
-    "Cinema about sacrifice, regret, and the people we'd do anything for.",
+    "A cinematic streaming platform for original AI-powered films, series, shorts, and stories that refuse to look away.",
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_APP_URL ?? "https://aimstudio.vercel.app"
+    process.env.NEXT_PUBLIC_APP_URL ?? "https://aimstudio.app"
   ),
   openGraph: {
     type: "website",
     siteName: "AIM Studio",
+    title: "AIM Studio | Creating Cinema with AI",
+    description:
+      "A cinematic streaming platform for original AI-powered films, series, shorts, and stories that refuse to look away.",
+    images: [{ url: "/images/SP_Logo.jpg", width: 1200, height: 630, alt: "AIM Studio" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "AIM Studio | Creating Cinema with AI",
+    description:
+      "A cinematic streaming platform for original AI-powered films, series, shorts, and stories that refuse to look away.",
+    images: ["/images/SP_Logo.jpg"],
+  },
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon.png",    type: "image/png" },
+    ],
+    apple: [
+      { url: "/apple-icon.png", sizes: "180x180", type: "image/png" },
+    ],
   },
 };
 

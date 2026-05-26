@@ -59,6 +59,8 @@ export default function VideoPlayer({
         className="watch-video"
         controls
         playsInline
+        controlsList="nodownload"
+        disablePictureInPicture
         poster={poster}
         onPlay={() => {
           if (!hasStarted.current) {

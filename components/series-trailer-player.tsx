@@ -40,6 +40,8 @@ export default function SeriesTrailerPlayer({ posterUrl, trailerUrl, title }: Pr
             autoPlay
             playsInline
             preload="metadata"
+            controlsList="nodownload"
+            disablePictureInPicture
           />
           <button className="stp-close" onClick={handleStop} aria-label="Close trailer">
             <X size={15} />
