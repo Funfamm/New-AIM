@@ -12,7 +12,7 @@ const HOME_SELECT = {
   id: true, slug: true, title: true, posterUrl: true,
   heroMobileUrl: true, heroDesktopUrl: true,
   genre: true, genres: true, requiresAuth: true, type: true,
-  trailerUrl: true, requiresLoginToViewTrailer: true,
+  trailerUrl: true, requiresLoginToViewTrailer: true, videoUrl: true,
 } as const;
 
 async function getHomeWorks() {
@@ -106,6 +106,7 @@ export default async function HomePage() {
     type: w.type,
     trailerUrl: w.trailerUrl ?? null,
     requiresLoginToViewTrailer: w.requiresLoginToViewTrailer,
+    videoUrl: w.videoUrl ?? null,
   }));
 
   const isEmpty = featured.length === 0 && newReleases.length === 0;
@@ -138,10 +139,19 @@ export default async function HomePage() {
                   <Play size={16} fill="currentColor" /> Watch Our Films
                 </Link>
               );
+              const hasFullVideo = p.type !== "TRAILER" && !!p.videoUrl;
+              const hasTrailer   = !!p.trailerUrl;
+              const hasPlayable  = p.type === "SERIES" || hasFullVideo;
               const watchHref = p.type === "SERIES"
                 ? `/watch/${p.slug}`
-                : `/watch/${p.slug}?full=1`;
-              const watchLabel = p.type === "SERIES" ? "Watch Series" : "Watch";
+                : hasFullVideo
+                ? `/watch/${p.slug}?full=1`
+                : `/watch/${p.slug}`;
+              const watchLabel = p.type === "SERIES"
+                ? "Watch Series"
+                : hasFullVideo
+                ? "Watch Full Film"
+                : "Watch Trailer";
               return (
                 <>
                   {p.requiresAuth && !userId ? (
@@ -153,8 +163,12 @@ export default async function HomePage() {
                       <Play size={16} fill="currentColor" /> {watchLabel}
                     </Link>
                   )}
-                  {p.trailerUrl && (
-                    <Link href={`/works/${p.slug}`} className="hero-btn-trailer">
+                  {/* Secondary "Watch Trailer" only when there is both full content and a trailer */}
+                  {hasPlayable && hasTrailer && (
+                    <Link
+                      href={p.type === "SERIES" ? `/watch/${p.slug}?trailer=1` : `/works/${p.slug}`}
+                      className="hero-btn-trailer"
+                    >
                       Watch Trailer
                     </Link>
                   )}

@@ -16,8 +16,9 @@ export type MobileHeroItem = {
   requiresAuth: boolean;
   genres: string[];
   type: string;
+  videoUrl?: string | null;
   trailerUrl?: string | null;
-  requiresLoginToViewTrailer?: boolean;
+  requiresLoginToViewTrailer?: boolean | null;
 };
 
 // Pill definitions: shown only if at least one requiredType has published content
@@ -151,11 +152,22 @@ export default function MobileFeaturedHero({ items, isLoggedIn, savedIds, availa
           onClickCapture={onClickCapture}
         >
           {items.map((item, i) => {
-            const isActive = i === active;
+            const isActive     = i === active;
+            const hasFullVideo = item.type !== "TRAILER" && !!item.videoUrl;
+            const hasTrailer   = !!item.trailerUrl;
+            const hasPlayable  = item.type === "SERIES" || hasFullVideo;
             const watchHref =
               item.type === "SERIES"
                 ? `/watch/${item.slug}`
-                : `/watch/${item.slug}?full=1`;
+                : hasFullVideo
+                ? `/watch/${item.slug}?full=1`
+                : `/watch/${item.slug}`;
+            const watchLabel =
+              item.type === "SERIES"
+                ? "Watch Series"
+                : hasFullVideo
+                ? "Watch Full Film"
+                : "Watch Trailer";
             const signInHref = `/login?from=${encodeURIComponent(watchHref)}`;
 
             return (
@@ -219,11 +231,16 @@ export default function MobileFeaturedHero({ items, isLoggedIn, savedIds, availa
                       ) : (
                         <Link href={watchHref} className="mfh-btn-play" tabIndex={isActive ? 0 : -1}>
                           <Play size={14} fill="currentColor" />
-                          {item.type === "SERIES" ? "Watch Series" : "Watch"}
+                          {watchLabel}
                         </Link>
                       )}
-                      {item.trailerUrl && (
-                        <Link href={`/works/${item.slug}`} className="mfh-btn-trailer" tabIndex={isActive ? 0 : -1}>
+                      {/* Secondary trailer button — only when there is both full content and a trailer */}
+                      {hasPlayable && hasTrailer && (
+                        <Link
+                          href={item.type === "SERIES" ? `/watch/${item.slug}?trailer=1` : `/works/${item.slug}`}
+                          className="mfh-btn-trailer"
+                          tabIndex={isActive ? 0 : -1}
+                        >
                           Watch Trailer
                         </Link>
                       )}

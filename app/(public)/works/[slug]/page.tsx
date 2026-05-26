@@ -140,7 +140,7 @@ export default async function WorkDetailPage({ params }: Props) {
 
   const hasMainContent =
     (isSeries && firstEp != null) ||
-    (!isSeries && !!work.videoUrl);
+    (!isSeries && work.type !== "TRAILER" && !!work.videoUrl);
 
   // Trailer href — series needs ?trailer=1 to bypass the series→ep1 redirect on watch page
   const trailerHref = isSeries
@@ -281,8 +281,8 @@ export default async function WorkDetailPage({ params }: Props) {
                   )
                 )}
 
-                {/* Film / short / other → full video — published only */}
-                {!isSeries && work.videoUrl && isPublished && (
+                {/* Film / short / other → full video — published only; TRAILER type excluded */}
+                {!isSeries && work.type !== "TRAILER" && work.videoUrl && isPublished && (
                   locked ? (
                     <Link href={`/login?from=/watch/${work.slug}?full=1`} className="detail-btn-primary">
                       <Lock size={14} /> Sign In to Watch
