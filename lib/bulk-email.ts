@@ -17,18 +17,28 @@
 
 import { prisma } from "@/lib/prisma";
 import { buildUnsubscribeUrl, buildPreferencesUrl } from "@/lib/unsubscribe";
-import type { EmailType, Prisma } from "@prisma/client";
+import type { EmailType, EmailProvider, Prisma } from "@prisma/client";
 
 const APP_URL   = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 const FROM_NAME = "AIM Studio";
 
-// ── ACS configuration check ───────────────────────────────────
+// ── Provider configuration checks ────────────────────────────
 
 export function isAcsConfigured(): boolean {
+  return !!(process.env.ACS_CONNECTION_STRING && process.env.ACS_SENDER_ADDRESS);
+}
+
+export function isGraphConfigured(): boolean {
   return !!(
-    process.env.ACS_CONNECTION_STRING &&
-    process.env.ACS_SENDER_ADDRESS
+    process.env.AZURE_CLIENT_ID &&
+    process.env.AZURE_CLIENT_SECRET &&
+    process.env.AZURE_TENANT_ID &&
+    process.env.GRAPH_EMAIL_SENDER
   );
+}
+
+export function isSmtpConfigured(): boolean {
+  return !!(process.env.SMTP_HOST && process.env.SMTP_USER);
 }
 
 // ── Base email template (dark cinematic — matches lib/email.ts) ──
@@ -381,26 +391,49 @@ async function getSuppressedSet(emails: string[]): Promise<Set<string>> {
 }
 
 // ── Batch processor ───────────────────────────────────────────
-// Processes up to `limit` QUEUED items.
-// If ACS is not configured: marks all as FAILED and returns an error.
-// This is called by admin actions or a cron route — never inline.
+// Processes up to `limit` QUEUED items using whichever bulk provider
+// is selected in AdminSettings.primaryBulkProvider (acs | graph | smtp).
+// Called by admin actions or a cron route — never inline.
 
 export type ProcessResult = {
   processed: number;
   sent:      number;
   failed:    number;
-  error?:    string;        // set if ACS is not configured
+  error?:    string;
 };
 
 export async function processEmailQueueBatch(limit = 50): Promise<ProcessResult> {
-  if (!isAcsConfigured()) {
+  // Resolve the active bulk provider from AdminSettings
+  const settings = await prisma.adminSettings.findUnique({
+    where:  { id: "singleton" },
+    select: { primaryBulkProvider: true },
+  });
+
+  const providerKey = ((settings?.primaryBulkProvider ?? "acs").toLowerCase()) as "acs" | "graph" | "smtp";
+
+  // Validate that the selected provider is configured
+  if (providerKey === "acs" && !isAcsConfigured()) {
     return {
-      processed: 0,
-      sent:      0,
-      failed:    0,
-      error:     "Bulk email provider (ACS) is not configured. Set ACS_CONNECTION_STRING and ACS_SENDER_ADDRESS.",
+      processed: 0, sent: 0, failed: 0,
+      error: "Bulk provider is set to ACS but ACS_CONNECTION_STRING / ACS_SENDER_ADDRESS are not set.",
     };
   }
+  if (providerKey === "graph" && !isGraphConfigured()) {
+    return {
+      processed: 0, sent: 0, failed: 0,
+      error: "Bulk provider is set to Graph but AZURE_CLIENT_ID / AZURE_TENANT_ID / GRAPH_EMAIL_SENDER are not set.",
+    };
+  }
+  if (providerKey === "smtp" && !isSmtpConfigured()) {
+    return {
+      processed: 0, sent: 0, failed: 0,
+      error: "Bulk provider is set to SMTP but SMTP_HOST / SMTP_USER are not set.",
+    };
+  }
+
+  const logProvider: EmailProvider =
+    providerKey === "graph" ? "GRAPH" :
+    providerKey === "smtp"  ? "SMTP"  : "ACS";
 
   // Claim up to `limit` QUEUED items
   const items = await prisma.emailQueue.findMany({
@@ -416,24 +449,22 @@ export async function processEmailQueueBatch(limit = 50): Promise<ProcessResult>
 
   for (const item of items) {
     try {
-      await sendViaAcs({
-        to:      item.to,
-        subject: item.subject,
-        html:    item.bodyHtml,
-      });
+      if (providerKey === "acs") {
+        await sendViaAcs({ to: item.to, subject: item.subject, html: item.bodyHtml });
+      } else if (providerKey === "graph") {
+        await sendViaBulkGraph({ to: item.to, subject: item.subject, html: item.bodyHtml });
+      } else {
+        throw new Error("SMTP bulk sending requires additional server configuration. Switch to ACS or Graph.");
+      }
 
       await prisma.emailQueue.update({
         where: { id: item.id },
-        data:  { status: "SENT", processedAt: new Date(), error: null },
+        data:  { status: "SENT", processedAt: new Date(), error: null, provider: logProvider },
       });
 
-      // Log success
       await logBulkSend({
-        to:         item.to,
-        subject:    item.subject,
-        type:       item.type,
-        status:     "SENT",
-        campaignId: item.campaignId,
+        to: item.to, subject: item.subject, type: item.type,
+        status: "SENT", campaignId: item.campaignId, provider: logProvider,
       });
 
       sent++;
@@ -449,14 +480,9 @@ export async function processEmailQueueBatch(limit = 50): Promise<ProcessResult>
         },
       });
 
-      // Log failure
       await logBulkSend({
-        to:         item.to,
-        subject:    item.subject,
-        type:       item.type,
-        status:     "FAILED",
-        error:      errorMsg,
-        campaignId: item.campaignId,
+        to: item.to, subject: item.subject, type: item.type,
+        status: "FAILED", error: errorMsg, campaignId: item.campaignId, provider: logProvider,
       });
 
       failed++;
@@ -464,6 +490,60 @@ export async function processEmailQueueBatch(limit = 50): Promise<ProcessResult>
   }
 
   return { processed: items.length, sent, failed };
+}
+
+// ── Microsoft Graph bulk sender ──────────────────────────────
+// Reuses the same Graph API as transactional email (lib/email.ts)
+// but is a self-contained copy to avoid circular imports.
+// isGraphConfigured() is always checked before this is called.
+
+async function sendViaBulkGraph(opts: {
+  to: string; subject: string; html: string;
+}): Promise<void> {
+  const clientId     = process.env.AZURE_CLIENT_ID!;
+  const clientSecret = process.env.AZURE_CLIENT_SECRET!;
+  const tenantId     = process.env.AZURE_TENANT_ID!;
+  const from         = process.env.GRAPH_EMAIL_SENDER!;
+
+  const tokenRes = await fetch(
+    `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`,
+    {
+      method:  "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body:    new URLSearchParams({
+        grant_type:    "client_credentials",
+        client_id:     clientId,
+        client_secret: clientSecret,
+        scope:         "https://graph.microsoft.com/.default",
+      }),
+    }
+  );
+  if (!tokenRes.ok) throw new Error(`Graph token failed: ${tokenRes.status}`);
+  const { access_token } = await tokenRes.json() as { access_token: string };
+
+  const mailRes = await fetch(
+    `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(from)}/sendMail`,
+    {
+      method:  "POST",
+      headers: {
+        Authorization:  `Bearer ${access_token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        message: {
+          subject:      opts.subject,
+          body:         { contentType: "HTML", content: opts.html },
+          toRecipients: [{ emailAddress: { address: opts.to } }],
+          from:         { emailAddress: { address: from, name: FROM_NAME } },
+        },
+        saveToSentItems: false,
+      }),
+    }
+  );
+  if (!mailRes.ok) {
+    const body = await mailRes.text();
+    throw new Error(`Graph sendMail failed: ${mailRes.status} — ${body}`);
+  }
 }
 
 // ── ACS sender ────────────────────────────────────────────────
@@ -536,16 +616,21 @@ async function logBulkSend(opts: {
   status:      "SENT" | "FAILED";
   error?:      string;
   campaignId?: string | null;
+  provider?:   EmailProvider;
 }): Promise<void> {
   try {
-    const from = process.env.ACS_SENDER_ADDRESS ?? "bulk@aimstudio.app";
+    const provider = opts.provider ?? "ACS";
+    const from = provider === "GRAPH"
+      ? (process.env.GRAPH_EMAIL_SENDER ?? "noreply@aimstudio.app")
+      : (process.env.ACS_SENDER_ADDRESS ?? "bulk@aimstudio.app");
+
     await prisma.emailLog.create({
       data: {
         to:       opts.to,
         from,
         subject:  opts.subject,
         type:     opts.type,
-        provider: "ACS",
+        provider,
         status:   opts.status,
         error:    opts.error ?? null,
         metadata: opts.campaignId ? { campaignId: opts.campaignId } : undefined,

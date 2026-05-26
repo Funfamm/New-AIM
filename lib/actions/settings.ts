@@ -89,14 +89,17 @@ export async function savePlaybackSettings(formData: FormData) {
   });
 }
 
-// ── Section 5b: Bulk Email (ACS) ─────────────────────────────
+// ── Section 5b: Bulk Email ────────────────────────────────────
 export async function saveBulkEmailSettings(formData: FormData) {
   await requireAdmin();
+  const raw      = (formData.get("primaryBulkProvider") as string ?? "").toLowerCase();
+  const provider = ["acs", "graph", "smtp"].includes(raw) ? raw : "acs";
   await upsert({
-    bulkEmailSendingEnabled:  formData.get("bulkEmailSendingEnabled")  === "true",
-    testBulkEmailRecipient:   (formData.get("testBulkEmailRecipient") as string) || null,
-    // primaryBulkProvider is always "acs" — not user-configurable
+    bulkEmailSendingEnabled: formData.get("bulkEmailSendingEnabled") === "true",
+    primaryBulkProvider:     provider,
+    testBulkEmailRecipient:  (formData.get("testBulkEmailRecipient") as string) || null,
   });
+  revalidatePath("/admin/email");
 }
 
 // ── Section 6: Security / Auth ────────────────────────────────

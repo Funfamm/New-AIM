@@ -8,7 +8,7 @@ import { requireAdmin } from "@/lib/auth-guard";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { processEmailQueueBatch, isAcsConfigured } from "@/lib/bulk-email";
+import { processEmailQueueBatch } from "@/lib/bulk-email";
 
 const BATCH_LIMIT = 50;
 
@@ -25,16 +25,6 @@ export type QueueProcessResult = {
 // Returns counts for admin feedback — never throws.
 export async function triggerEmailQueueBatch(): Promise<QueueProcessResult> {
   await requireAdmin();
-
-  if (!isAcsConfigured()) {
-    return {
-      processed: 0,
-      sent:      0,
-      failed:    0,
-      remaining: 0,
-      error:     "Bulk email provider (ACS) is not configured. Set ACS_CONNECTION_STRING and ACS_SENDER_ADDRESS.",
-    };
-  }
 
   // Check admin settings: bulk sending must be enabled
   const settings = await prisma.adminSettings.findUnique({

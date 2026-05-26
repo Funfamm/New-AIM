@@ -538,6 +538,70 @@
   color: var(--color-brand-red);
 }
 
+/* ── Bulk provider selector ──────────────────── */
+
+.eprovider-form { display: flex; flex-direction: column; }
+
+.eprovider-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.eprovider-card {
+  display: block;
+  background: var(--color-brand-dark);
+  border: 1px solid var(--color-brand-border);
+  border-radius: 8px;
+  padding: 0.875rem 1rem;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.eprovider-card:hover { border-color: rgba(255,255,255,0.2); }
+.eprovider-card--active { border-color: var(--color-brand-accent); }
+.eprovider-card--dim { opacity: 0.65; }
+
+.eprovider-radio-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.35rem;
+}
+
+.eprovider-radio { accent-color: var(--color-brand-accent); width: 15px; height: 15px; flex-shrink: 0; }
+
+.eprovider-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-brand-light);
+  flex: 1;
+}
+
+.eprovider-badge {
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.eprovider-badge--ok   { background: rgba(74,222,128,0.12); color: #4ade80; }
+.eprovider-badge--warn { background: var(--color-brand-surface); color: var(--color-brand-muted); }
+
+.eprovider-desc {
+  font-size: 0.78rem;
+  color: var(--color-brand-muted);
+  margin: 0;
+  padding-left: 1.4rem;
+  line-height: 1.5;
+}
+
+.eprovider-hint {
+  font-size: 0.72rem;
+  color: #f59e0b;
+  margin: 0.3rem 0 0;
+  padding-left: 1.4rem;
+}
+
 /* ── Failed log error detail row ─────────────── */
 
 .elog-error-row td {
