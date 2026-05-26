@@ -141,9 +141,6 @@ export default async function HomePage() {
               const watchHref = p.type === "SERIES"
                 ? `/watch/${p.slug}`
                 : `/watch/${p.slug}?full=1`;
-              const trailerHref = p.type === "SERIES"
-                ? `/watch/${p.slug}?trailer=1`
-                : `/watch/${p.slug}`;
               const watchLabel = p.type === "SERIES" ? "Watch Series" : "Watch";
               return (
                 <>
@@ -157,15 +154,9 @@ export default async function HomePage() {
                     </Link>
                   )}
                   {p.trailerUrl && (
-                    p.requiresLoginToViewTrailer && !userId ? (
-                      <Link href={`/login?from=${encodeURIComponent(trailerHref)}`} className="hero-btn-trailer">
-                        Sign In to Watch Trailer
-                      </Link>
-                    ) : (
-                      <Link href={trailerHref} className="hero-btn-trailer">
-                        Watch Trailer
-                      </Link>
-                    )
+                    <Link href={`/works/${p.slug}`} className="hero-btn-trailer">
+                      Watch Trailer
+                    </Link>
                   )}
                 </>
               );
