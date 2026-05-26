@@ -48,13 +48,16 @@ export async function sendNewReleaseEmail(
 
   const settings = await prisma.adminSettings.findUnique({
     where:  { id: "singleton" },
-    select: { emailSendingEnabled: true, bulkEmailSendingEnabled: true },
+    select: { emailSendingEnabled: true, bulkEmailSendingEnabled: true, notificationEmailEnabled: true },
   });
   if (!settings?.emailSendingEnabled) {
     return { queued: 0, suppressed: 0, skipped: 0, error: "Email sending is disabled in Admin Settings." };
   }
   if (!settings?.bulkEmailSendingEnabled) {
     return { queued: 0, suppressed: 0, skipped: 0, error: "Bulk email sending is disabled in Admin Settings → Bulk Email (ACS)." };
+  }
+  if (!settings?.notificationEmailEnabled) {
+    return { queued: 0, suppressed: 0, skipped: 0, error: "Notification emails are disabled in Admin Settings → Email." };
   }
 
   const work = await prisma.work.findUnique({
@@ -138,13 +141,16 @@ export async function sendNewEpisodeEmail(
 
   const settings = await prisma.adminSettings.findUnique({
     where:  { id: "singleton" },
-    select: { emailSendingEnabled: true, bulkEmailSendingEnabled: true },
+    select: { emailSendingEnabled: true, bulkEmailSendingEnabled: true, notificationEmailEnabled: true },
   });
   if (!settings?.emailSendingEnabled) {
     return { queued: 0, suppressed: 0, skipped: 0, error: "Email sending is disabled in Admin Settings." };
   }
   if (!settings?.bulkEmailSendingEnabled) {
     return { queued: 0, suppressed: 0, skipped: 0, error: "Bulk email sending is disabled in Admin Settings → Bulk Email (ACS)." };
+  }
+  if (!settings?.notificationEmailEnabled) {
+    return { queued: 0, suppressed: 0, skipped: 0, error: "Notification emails are disabled in Admin Settings → Email." };
   }
 
   const episode = await prisma.work.findUnique({

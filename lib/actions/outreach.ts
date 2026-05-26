@@ -107,13 +107,20 @@ export type OutreachResult = {
 async function checkBulkEmailSettings(): Promise<{ ok: boolean; error?: string }> {
   const settings = await prisma.adminSettings.findUnique({
     where:  { id: "singleton" },
-    select: { emailSendingEnabled: true, bulkEmailSendingEnabled: true },
+    select: {
+      emailSendingEnabled:      true,
+      bulkEmailSendingEnabled:  true,
+      notificationEmailEnabled: true,
+    },
   });
   if (!settings?.emailSendingEnabled) {
     return { ok: false, error: "Email sending is disabled in Admin Settings." };
   }
   if (!settings?.bulkEmailSendingEnabled) {
     return { ok: false, error: "Bulk email sending is disabled in Admin Settings → Bulk Email (ACS)." };
+  }
+  if (!settings?.notificationEmailEnabled) {
+    return { ok: false, error: "Notification emails are disabled in Admin Settings → Email." };
   }
   return { ok: true };
 }

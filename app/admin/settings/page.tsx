@@ -121,7 +121,8 @@ export default async function SettingsPage() {
           <CheckRow name="passwordResetEmailEnabled" checked={s.passwordResetEmailEnabled}
             label="Send password reset emails" />
           <CheckRow name="notificationEmailEnabled" checked={s.notificationEmailEnabled}
-            label="Send notification emails" note="Future — not yet wired" />
+            label="Send notification emails"
+            note="Controls ACS broadcast emails — announcements, new releases, new episodes. Does not affect password reset or security emails." />
         </div>
 
         <div className="stg-field-row">

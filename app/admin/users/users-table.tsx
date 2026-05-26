@@ -151,21 +151,26 @@ export function UsersTable({ users, isFiltered }: Props) {
       {purgeTarget && (
         <div className="purge-overlay" onClick={(e) => { if (e.target === e.currentTarget) closePurge(); }}>
           <div className="purge-modal" role="dialog" aria-modal="true" aria-label="Purge user confirmation">
-            <h3 className="purge-modal-title">Permanently Purge User</h3>
+            <h3 className="purge-modal-title">Purge Permanently</h3>
             <p className="purge-modal-body">
-              This will permanently delete all data associated with this account — profile, activity,
-              devices, sessions, and preferences. Audit and security records are preserved for accountability.
-              <strong> This action cannot be undone.</strong>
+              This will permanently delete this user and <strong>all connected records</strong> —
+              profile, sessions, OAuth links, watch progress, saved list, likes, notifications,
+              preferences, login history, Notify Me signups, and queued emails.
+              Analytics are anonymised (not deleted). Audit logs are preserved for accountability.
+            </p>
+            <p className="purge-modal-body" style={{ marginTop: "0.5rem" }}>
+              <strong>This cannot be undone.</strong> If the same person re-registers, they will be
+              treated as a brand-new user and receive a fresh welcome email.
             </p>
             <label className="purge-modal-label">
-              Type <code className="purge-code">PURGE USER</code> to confirm:
+              Type <code className="purge-code">PURGE</code> to confirm:
             </label>
             <input
               type="text"
               value={purgePhrase}
               onChange={(e) => setPurgePhrase(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && purgePhrase === "PURGE USER" && handlePurge()}
-              placeholder="PURGE USER"
+              onKeyDown={(e) => e.key === "Enter" && purgePhrase === "PURGE" && handlePurge()}
+              placeholder="PURGE"
               className="purge-modal-input"
               autoFocus
             />
@@ -176,10 +181,10 @@ export function UsersTable({ users, isFiltered }: Props) {
               </button>
               <button
                 onClick={handlePurge}
-                disabled={purgePhrase !== "PURGE USER" || isPending}
+                disabled={purgePhrase !== "PURGE" || isPending}
                 className="purge-confirm-btn"
               >
-                {isPending ? "Purging…" : "Purge User"}
+                {isPending ? "Purging…" : "Purge Permanently"}
               </button>
             </div>
           </div>
@@ -369,7 +374,7 @@ export function UsersTable({ users, isFiltered }: Props) {
                         onClick={() => handleDeactivate(u.id)}
                         disabled={isPending}
                         className="action-btn action-btn--deactivate"
-                        title="Deactivate account (soft-delete)"
+                        title="Delete account but keep records (reversible)"
                       >
                         —
                       </button>
@@ -391,7 +396,7 @@ export function UsersTable({ users, isFiltered }: Props) {
                         onClick={() => openPurge(u.id)}
                         disabled={isPending}
                         className="action-btn action-btn--purge"
-                        title="Permanently purge user data"
+                        title="Purge permanently — deletes all user records (irreversible)"
                       >
                         ✕
                       </button>

@@ -259,9 +259,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return true;
     },
 
-    // Attach role and id to the JWT token
+    // Attach role and id to the JWT token.
+    // On every subsequent request (user is undefined), verify the account still
+    // exists in the DB. Returning null clears the session cookie immediately —
+    // purged users become guests on their next page load.
     async jwt({ token, user, account }) {
       if (user) {
+        // ── Initial sign-in ──────────────────────────────────────
         token.id = user.id;
         if (account?.type === "oauth") {
           const dbUser = await prisma.user.findUnique({
@@ -272,6 +276,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         } else {
           token.role = (user as { role?: string }).role ?? "USER";
         }
+      } else if (token?.id) {
+        // ── Subsequent requests — verify user still exists ───────
+        // Returning null clears the session cookie so purged users
+        // are immediately treated as guests. One cheap SELECT per
+        // auth() call; acceptable for this scale.
+        const exists = await prisma.user.findUnique({
+          where:  { id: token.id as string },
+          select: { id: true },
+        });
+        if (!exists) return null;
       }
       return token;
     },

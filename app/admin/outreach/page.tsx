@@ -51,7 +51,7 @@ export default async function AdminOutreachPage({ searchParams }: Props) {
     prisma.emailQueue.count({ where: { status: "QUEUED" } }),
     prisma.adminSettings.findUnique({
       where:  { id: "singleton" },
-      select: { emailSendingEnabled: true, bulkEmailSendingEnabled: true },
+      select: { emailSendingEnabled: true, bulkEmailSendingEnabled: true, notificationEmailEnabled: true },
     }),
     // Published non-episode works (for New Release type)
     prisma.work.findMany({
@@ -94,11 +94,12 @@ export default async function AdminOutreachPage({ searchParams }: Props) {
     }),
   ]);
 
-  // Email channel is available when ACS is wired up AND both email flags are on
+  // Email channel is available when ACS is wired up AND all three email flags are on
   const acsReady =
     acsConfigured &&
-    (settings?.emailSendingEnabled ?? true) &&
-    (settings?.bulkEmailSendingEnabled ?? false);
+    (settings?.emailSendingEnabled      ?? true)  &&
+    (settings?.bulkEmailSendingEnabled  ?? false) &&
+    (settings?.notificationEmailEnabled ?? false);
 
   return (
     <div className="outreach-page">
@@ -164,8 +165,9 @@ export default async function AdminOutreachPage({ searchParams }: Props) {
           acsReady={acsReady}
           acsConfigured={acsConfigured}
           bulkEmailEnabled={
-            (settings?.emailSendingEnabled ?? true) &&
-            (settings?.bulkEmailSendingEnabled ?? false)
+            (settings?.emailSendingEnabled      ?? true)  &&
+            (settings?.bulkEmailSendingEnabled  ?? false) &&
+            (settings?.notificationEmailEnabled ?? false)
           }
           publishedWorks={publishedWorks}
           publishedEpisodes={publishedEpisodes.map((e) => ({

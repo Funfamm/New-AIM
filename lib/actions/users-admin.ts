@@ -325,16 +325,16 @@ export async function restoreUser(
 
 // ── Purge user (hard delete) ──────────────────────────────────
 // Permanently removes or anonymizes all user data.
-// Requires: admin actor, confirmation phrase, cannot purge self or last admin.
-// Keeps a minimal SecurityEvent record for accountability.
+// Requires: admin actor, confirmation phrase "PURGE", cannot purge self or last admin.
+// Keeps SecurityEvent + AdminAuditLog records for accountability (no PII).
 export async function purgeUser(
   userId: string,
   confirmationPhrase: string
 ): Promise<{ ok: boolean; error?: string }> {
   const actor = await requireAdmin();
 
-  if (confirmationPhrase !== "PURGE USER") {
-    return { ok: false, error: "Incorrect confirmation phrase. Type PURGE USER to confirm." };
+  if (confirmationPhrase !== "PURGE") {
+    return { ok: false, error: 'Incorrect confirmation phrase. Type PURGE to confirm.' };
   }
   if (userId === actor.id) {
     return { ok: false, error: "You cannot purge your own account." };
@@ -355,56 +355,61 @@ export async function purgeUser(
   const emailSnapshot = target.email; // capture before deletion
 
   // ── Hard delete in dependency order ───────────────────────────
-  // Each delete is wrapped to allow partial success logging
   await prisma.$transaction(async (tx) => {
-    // 1. Clear Auth.js linked accounts + sessions
+    // 1. Clear Auth.js linked accounts + sessions (sessions no-op for JWT, done for completeness)
     await tx.account.deleteMany({ where: { userId } });
     await tx.session.deleteMany({ where: { userId } });
 
-    // 2. Clear password reset tokens
+    // 2. Clear password reset tokens (by email — plain string, not FK)
     await tx.passwordResetToken.deleteMany({ where: { email: emailSnapshot } });
 
-    // 3. Clear user content/activity
+    // 3. Clear user content / activity (FK cascade would handle these, explicit for clarity)
+    await tx.workLike.deleteMany({ where: { userId } });
     await tx.watchProgress.deleteMany({ where: { userId } });
     await tx.savedWork.deleteMany({ where: { userId } });
     await tx.notification.deleteMany({ where: { userId } });
     await tx.userPreferences.deleteMany({ where: { userId } });
 
-    // 4. Anonymize analytics events — preserve counts, remove identity
-    // userId is plain string on AnalyticsEvent — update to null
-    await tx.analyticsEvent.updateMany({
-      where: { userId },
-      data:  { userId: null },
-    });
-    // VisitorSession.userId is also plain — anonymize
-    await tx.visitorSession.updateMany({
-      where: { userId },
-      data:  { userId: null },
+    // 4. Cancel any queued email rows addressed to this user — prevent delivery post-purge
+    await tx.emailQueue.updateMany({
+      where: { to: emailSnapshot, status: "QUEUED" },
+      data:  { status: "SKIPPED", error: "Recipient account purged" },
     });
 
-    // 5. Remove device records
+    // 5. Remove login attempt records (plain userId string — not FK)
+    await tx.loginAttempt.deleteMany({ where: { userId } });
+
+    // 6. Remove Notify Me signups for this email (email-only link)
+    await tx.notifyMeSignup.deleteMany({ where: { email: emailSnapshot } });
+
+    // 7. Anonymize analytics — preserve counts, remove identity
+    await tx.analyticsEvent.updateMany({ where: { userId }, data: { userId: null } });
+    await tx.visitorSession.updateMany({ where: { userId }, data: { userId: null } });
+
+    // 8. Remove device records (plain userId string — not FK)
     await tx.userDevice.deleteMany({ where: { userId } });
 
-    // 6. Resolve open security alerts
+    // 9. Resolve open security alerts (kept as resolved — not deleted — for audit continuity)
     await tx.securityAlert.updateMany({
-      where:  { userId, status: "OPEN" },
-      data:   { status: "RESOLVED", resolvedAt: new Date() },
+      where: { userId, status: "OPEN" },
+      data:  { status: "RESOLVED", resolvedAt: new Date() },
     });
 
-    // 7. Delete the user record
+    // 10. Delete the user record (cascades: Account, Session, WatchProgress,
+    //     SavedWork, WorkLike, Notification, UserPreferences — already removed above)
     await tx.user.delete({ where: { id: userId } });
   });
 
-  // Minimal immutable audit record — no PII, just accountability
+  // Immutable audit record — no PII (email removed, ID only)
   void writeAudit({
     actorId:    actor.id!,
     actorEmail: actor.email ?? "unknown",
-    targetId:   userId,      // ID only — email removed
+    targetId:   userId,
     action:     "PURGE",
-    detail:     "User permanently purged. All PII removed.",
+    detail:     "User permanently purged. All PII and user-owned records removed.",
   });
 
-  // Security event — uses email snapshot since user row is gone
+  // Security event — email snapshot NOT stored; user row already gone
   void writeSecurityEvent({
     actorUserId: actor.id,
     type:        "USER_PURGED",
