@@ -278,14 +278,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
       } else if (token?.id) {
         // ── Subsequent requests — verify user still exists ───────
-        // Returning null clears the session cookie so purged users
-        // are immediately treated as guests. One cheap SELECT per
-        // auth() call; acceptable for this scale.
-        const exists = await prisma.user.findUnique({
-          where:  { id: token.id as string },
-          select: { id: true },
-        });
-        if (!exists) return null;
+        // Skipped in Edge runtime (middleware) where Prisma is unavailable.
+        // Runs in Node.js on every server-component/action auth() call:
+        // returning null clears the session cookie so purged users
+        // become guests on their next page render.
+        if (process.env.NEXT_RUNTIME !== "edge") {
+          try {
+            const exists = await prisma.user.findUnique({
+              where:  { id: token.id as string },
+              select: { id: true },
+            });
+            if (!exists) return null;
+          } catch {
+            // DB temporarily unreachable — trust the JWT rather than
+            // locking everyone out.
+          }
+        }
       }
       return token;
     },
