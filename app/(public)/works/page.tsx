@@ -11,12 +11,15 @@ type Props = {
 
 async function getWorks() {
   return prisma.work.findMany({
-    where: { status: "PUBLISHED", type: { not: "EPISODE" } },
+    where: {
+      status: { in: ["PUBLISHED", "UPCOMING", "IN_PRODUCTION"] },
+      type: { not: "EPISODE" },
+    },
     orderBy: { order: "asc" },
     select: {
       id: true, slug: true, title: true, posterUrl: true,
       heroMobileUrl: true, heroDesktopUrl: true,
-      genre: true, requiresAuth: true, type: true,
+      genre: true, requiresAuth: true, type: true, status: true,
     },
   });
 }

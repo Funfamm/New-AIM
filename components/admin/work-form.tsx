@@ -9,7 +9,7 @@ type WorkType =
   | "SHORT_FILM" | "FULL_FILM" | "SERIES" | "EPISODE" | "TRAILER"
   | "COMMERCIAL" | "BRANDING" | "CAMPAIGN" | "CASE_STUDY";
 
-type WorkStatus = "DRAFT" | "PUBLISHED" | "PRIVATE";
+type WorkStatus = "DRAFT" | "IN_PRODUCTION" | "UPCOMING" | "PUBLISHED" | "PRIVATE";
 
 const TYPE_LABELS: Record<WorkType, string> = {
   SHORT_FILM: "Short Film",
@@ -111,6 +111,8 @@ export default function WorkForm({ work, workTitle, action, seriesList, error, d
             <label className="form-label">Status</label>
             <select name="status" className="form-input" defaultValue={work?.status ?? "DRAFT"}>
               <option value="DRAFT">Draft</option>
+              <option value="IN_PRODUCTION">In Production (public, no full film)</option>
+              <option value="UPCOMING">Upcoming / Coming Soon (public)</option>
               <option value="PUBLISHED">Published</option>
               <option value="PRIVATE">Private</option>
             </select>

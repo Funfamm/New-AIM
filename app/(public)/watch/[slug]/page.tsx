@@ -11,7 +11,10 @@ import EpisodePlayer from "@/components/episode-player";
 import VideoPlayer from "@/components/video-player";
 import { getWatchProgress } from "@/lib/actions/progress";
 import SaveButton from "@/components/save-button";
+import LikeButton from "@/components/like-button";
+import ShareButton from "@/components/share-button";
 import { isWorkSaved } from "@/lib/actions/watchlist";
+import { getWorkLikeState } from "@/lib/actions/likes";
 import { getOrCreateSession, trackEvent } from "@/lib/analytics";
 
 type Props = {
@@ -89,7 +92,8 @@ export default async function WatchPage({ params, searchParams }: Props) {
   const { full, trailer } = await searchParams;
   const work = await getWork(slug);
 
-  if (!work || work.status !== "PUBLISHED") notFound();
+  const PUBLIC_WATCH_STATUSES = new Set(["PUBLISHED", "UPCOMING", "IN_PRODUCTION"]);
+  if (!work || !PUBLIC_WATCH_STATUSES.has(work.status)) notFound();
 
   // SERIES with episodes → redirect to episode 1
   // Skip redirect when ?trailer=1 so the series trailer can play on the watch page
@@ -134,10 +138,17 @@ export default async function WatchPage({ params, searchParams }: Props) {
   const embedUrl  = videoUrl ? toEmbedUrl(videoUrl) : null;
 
   // Trailers always restart from the beginning — never resume
+  // Block full-film viewing for non-published works (upcoming/in-production can only show trailers)
+  if (work.status !== "PUBLISHED" && wantFull) notFound();
+
   const initialSeconds = session?.user && !isEmbed && !isTrailer && work.id
     ? await getWatchProgress(work.id)
     : 0;
-  const isSaved = session?.user ? await isWorkSaved(work.id) : false;
+
+  const [isSaved, { isLiked, likeCount }] = await Promise.all([
+    session?.user ? isWorkSaved(work.id) : Promise.resolve(false),
+    getWorkLikeState(work.id),
+  ]);
 
   // ── Episode navigation (computed before CTA so we can detect last episode) ──
   const siblings = work.parent?.episodes ?? [];
@@ -299,13 +310,29 @@ export default async function WatchPage({ params, searchParams }: Props) {
               <h1 className="watch-title">{work.title}</h1>
               {work.description && <p className="watch-desc">{work.description}</p>}
 
-              {session?.user && (
-                <SaveButton
+              <div className="watch-engagement">
+                {session?.user && (
+                  <SaveButton
+                    workId={work.id}
+                    initialSaved={isSaved}
+                    className="save-btn save-btn--sm"
+                  />
+                )}
+                <LikeButton
                   workId={work.id}
-                  initialSaved={isSaved}
-                  className="save-btn save-btn--sm"
+                  initialLiked={isLiked}
+                  likeCount={likeCount}
+                  isGuest={!session?.user}
+                  slug={isEpisode && work.parent ? work.parent.slug : work.slug}
+                  size="sm"
                 />
-              )}
+                <ShareButton
+                  title={isEpisode && work.parent ? work.parent.title : work.title}
+                  slug={isEpisode && work.parent ? work.parent.slug : work.slug}
+                  workId={isEpisode && work.parent ? work.parent.id : work.id}
+                  size="sm"
+                />
+              </div>
 
               {/* Next Episode button */}
               {isEpisode && nextEp && (

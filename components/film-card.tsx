@@ -14,6 +14,11 @@ const TYPE_LABEL: Record<string, string> = {
   CASE_STUDY: "Case Study",
 };
 
+const STATUS_LABELS: Record<string, string> = {
+  UPCOMING:      "Coming Soon",
+  IN_PRODUCTION: "In Production",
+};
+
 type FilmCardProps = {
   slug: string;
   title: string;
@@ -22,6 +27,7 @@ type FilmCardProps = {
   requiresAuth?: boolean;
   isLoggedIn?: boolean;
   type?: string;
+  status?: string;
   priority?: boolean;
   watchHref?: string;
 };
@@ -34,9 +40,11 @@ export default function FilmCard({
   requiresAuth,
   isLoggedIn = false,
   type,
+  status,
   priority = false,
   watchHref,
 }: FilmCardProps) {
+  const isUpcoming = status === "UPCOMING" || status === "IN_PRODUCTION";
   return (
     <Link
       href={watchHref ?? `/works/${slug}`}
@@ -118,15 +126,36 @@ export default function FilmCard({
           </div>
         )}
 
-        {/* Lock badge — top-right (guests only) */}
-        {requiresAuth && !isLoggedIn && (
+        {/* Status badge — top-right for upcoming/in-production */}
+        {isUpcoming && status && STATUS_LABELS[status] ? (
           <div
-            className="absolute right-3 top-3 flex items-center rounded p-1 text-brand-accent"
-            style={{ background: "rgba(0,0,0,0.72)" }}
-            aria-label="Members only"
+            className="absolute right-3 top-3"
+            style={{
+              background: "rgba(232,201,126,0.18)",
+              border: "1px solid rgba(232,201,126,0.35)",
+              padding: "0.2rem 0.45rem",
+              borderRadius: 2,
+            }}
           >
-            <Lock size={11} aria-hidden="true" />
+            <span style={{
+              fontFamily: "var(--font-body)", fontSize: "0.6rem",
+              fontWeight: 700, letterSpacing: "0.07em",
+              textTransform: "uppercase", color: "var(--color-brand-accent)",
+            }}>
+              {STATUS_LABELS[status]}
+            </span>
           </div>
+        ) : (
+          /* Lock badge — top-right (guests only, published content) */
+          requiresAuth && !isLoggedIn && (
+            <div
+              className="absolute right-3 top-3 flex items-center rounded p-1 text-brand-accent"
+              style={{ background: "rgba(0,0,0,0.72)" }}
+              aria-label="Members only"
+            >
+              <Lock size={11} aria-hidden="true" />
+            </div>
+          )
         )}
       </div>
     </Link>

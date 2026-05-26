@@ -16,9 +16,11 @@ const TYPE_LABELS: Record<WorkType, string> = {
 };
 
 const STATUS_CLASS: Record<WorkStatus, string> = {
-  PUBLISHED: "badge--published",
-  DRAFT:     "badge--draft",
-  PRIVATE:   "badge--private",
+  PUBLISHED:     "badge--published",
+  DRAFT:         "badge--draft",
+  PRIVATE:       "badge--private",
+  IN_PRODUCTION: "badge--production",
+  UPCOMING:      "badge--upcoming",
 };
 
 export default async function AdminWorksPage() {

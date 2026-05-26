@@ -10,7 +10,10 @@ import { Play, Clock, Calendar, ChevronLeft, Lock } from "lucide-react";
 import type { Metadata } from "next";
 import SynopsisToggle from "@/components/synopsis-toggle";
 import SaveButton from "@/components/save-button";
+import LikeButton from "@/components/like-button";
+import ShareButton from "@/components/share-button";
 import { isWorkSaved } from "@/lib/actions/watchlist";
+import { getWorkLikeState } from "@/lib/actions/likes";
 import { getOrCreateSession, trackEvent } from "@/lib/analytics";
 import SeriesTrailerPlayer from "@/components/series-trailer-player";
 
@@ -25,6 +28,11 @@ const TYPE_LABEL: Record<string, string> = {
   BRANDING: "Branding",
   CAMPAIGN: "Campaign",
   CASE_STUDY: "Case Study",
+};
+
+const STATUS_BADGE: Record<string, { label: string; cls: string } | undefined> = {
+  UPCOMING:      { label: "Coming Soon",    cls: "detail-status-badge detail-status-badge--upcoming" },
+  IN_PRODUCTION: { label: "In Production",  cls: "detail-status-badge detail-status-badge--production" },
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -68,7 +76,8 @@ export default async function WorkDetailPage({ params }: Props) {
   const { slug } = await params;
   const [work, session] = await Promise.all([getWork(slug), auth()]);
 
-  if (!work || work.status !== "PUBLISHED") notFound();
+  const PUBLIC_STATUSES = new Set(["PUBLISHED", "UPCOMING", "IN_PRODUCTION"]);
+  if (!work || !PUBLIC_STATUSES.has(work.status)) notFound();
 
   // Track WORK_VIEW after the response is sent — zero render latency
   const jar = await cookies();
@@ -95,7 +104,12 @@ export default async function WorkDetailPage({ params }: Props) {
   const isGuest       = !session?.user;
   const locked        = work.requiresAuth && isGuest;
   const trailerLocked = work.requiresLoginToViewTrailer && isGuest;
-  const isSaved       = !isGuest ? await isWorkSaved(work.id) : false;
+  const isPublished   = work.status === "PUBLISHED";
+
+  const [isSaved, { isLiked, likeCount }] = await Promise.all([
+    !isGuest ? isWorkSaved(work.id) : Promise.resolve(false),
+    getWorkLikeState(work.id),
+  ]);
 
   const firstEp      = work.type === "SERIES" ? work.episodes[0] ?? null : null;
   const episodeCount = work.type === "SERIES" ? work.episodes.length : null;
@@ -200,25 +214,30 @@ export default async function WorkDetailPage({ params }: Props) {
 
               {work.description && <SynopsisToggle text={work.description} />}
 
+              {/* Status badge — upcoming / in-production works */}
+              {STATUS_BADGE[work.status] && (
+                <span className={STATUS_BADGE[work.status]!.cls}>
+                  {STATUS_BADGE[work.status]!.label}
+                </span>
+              )}
+
               {/* CTAs */}
               <div className="detail-actions">
 
-                {/* Watch Trailer — ghost button
-                    On mobile series: hidden (trailer plays in the sticky player above).
-                    On desktop series: links to /watch/[slug]?trailer=1 */}
+                {/* Watch Trailer — ghost when full content also exists; primary when no full content */}
                 {work.trailerUrl && (
                   <div className={isSeries ? "detail-trailer-desktop-only" : undefined}>
                     {trailerLocked ? (
                       <Link
                         href={trailerLoginHref}
-                        className={hasMainContent ? "detail-btn-ghost" : "detail-btn-primary"}
+                        className={hasMainContent && isPublished ? "detail-btn-ghost" : "detail-btn-primary"}
                       >
                         <Lock size={14} /> Sign In to Watch Trailer
                       </Link>
                     ) : (
                       <Link
                         href={trailerHref}
-                        className={hasMainContent ? "detail-btn-ghost" : "detail-btn-primary"}
+                        className={hasMainContent && isPublished ? "detail-btn-ghost" : "detail-btn-primary"}
                       >
                         <Play size={14} fill="currentColor" /> Watch Trailer
                       </Link>
@@ -226,8 +245,8 @@ export default async function WorkDetailPage({ params }: Props) {
                   </div>
                 )}
 
-                {/* SERIES → Watch Series (ep 1) */}
-                {isSeries && firstEp && (
+                {/* SERIES → Watch Series (ep 1) — published + has episodes only */}
+                {isSeries && firstEp && isPublished && (
                   locked ? (
                     <Link href={`/login?from=/watch/${firstEp.slug}`} className="detail-btn-primary">
                       <Lock size={14} /> Sign In to Watch
@@ -239,8 +258,8 @@ export default async function WorkDetailPage({ params }: Props) {
                   )
                 )}
 
-                {/* Film / short / other → full video */}
-                {!isSeries && work.videoUrl && (
+                {/* Film / short / other → full video — published only */}
+                {!isSeries && work.videoUrl && isPublished && (
                   locked ? (
                     <Link href={`/login?from=/watch/${work.slug}?full=1`} className="detail-btn-primary">
                       <Lock size={14} /> Sign In to Watch
@@ -253,10 +272,20 @@ export default async function WorkDetailPage({ params }: Props) {
                 )}
               </div>
 
-              {/* Save — logged-in users only */}
-              {!isGuest && (
-                <SaveButton workId={work.id} initialSaved={isSaved} />
-              )}
+              {/* Engagement row — Save (members) + Like + Share */}
+              <div className="detail-engagement">
+                {!isGuest && (
+                  <SaveButton workId={work.id} initialSaved={isSaved} />
+                )}
+                <LikeButton
+                  workId={work.id}
+                  initialLiked={isLiked}
+                  likeCount={likeCount}
+                  isGuest={isGuest}
+                  slug={work.slug}
+                />
+                <ShareButton title={work.title} slug={work.slug} workId={work.id} />
+              </div>
 
               {/* Guest note — only when content is gated */}
               {work.requiresAuth && isGuest && (

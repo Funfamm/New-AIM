@@ -26,6 +26,9 @@ const VALID_TYPES = new Set<string>([
   "SAVE_WORK", "UNSAVE_WORK",
   "NOTIFICATION_OPEN", "SETTINGS_UPDATE",
   "CTA_IMPRESSION", "CTA_SIGNUP",                     // notify-me CTA
+  "PAGE_LEAVE",                                        // page dwell duration
+  "LIKE_WORK", "UNLIKE_WORK",                         // likes
+  "SHARE_WORK",                                        // share
 ]);
 
 export async function POST(request: NextRequest) {

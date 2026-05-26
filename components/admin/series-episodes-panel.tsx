@@ -10,7 +10,7 @@ import "./series-episodes-panel.css";
 type Episode = {
   id: string;
   title: string;
-  status: "DRAFT" | "PUBLISHED" | "PRIVATE";
+  status: "DRAFT" | "IN_PRODUCTION" | "UPCOMING" | "PUBLISHED" | "PRIVATE";
   seasonNumber: number | null;
   episodeNumber: number | null;
   duration: number | null;
@@ -23,9 +23,11 @@ type Props = {
 };
 
 const STATUS_CLASS: Record<Episode["status"], string> = {
-  PUBLISHED: "badge--published",
-  DRAFT:     "badge--draft",
-  PRIVATE:   "badge--private",
+  PUBLISHED:     "badge--published",
+  DRAFT:         "badge--draft",
+  PRIVATE:       "badge--private",
+  IN_PRODUCTION: "badge--production",
+  UPCOMING:      "badge--upcoming",
 };
 
 export default function SeriesEpisodesPanel({ seriesId, episodes }: Props) {

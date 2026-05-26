@@ -15,10 +15,12 @@ type Work = {
   genre: string | null;
   requiresAuth: boolean;
   type: string;
+  status: string;
 };
 
 type Tab =
   | "ALL"
+  | "UPCOMING"
   | "FILMS"
   | "SERIES"
   | "SHORTS"
@@ -28,8 +30,11 @@ type Tab =
   | "TRAILERS"
   | "CASE_STUDY";
 
+const UPCOMING_STATUSES = new Set(["UPCOMING", "IN_PRODUCTION"]);
+
 const TAB_LABELS: Record<Tab, string> = {
   ALL:       "All",
+  UPCOMING:  "Upcoming",
   FILMS:     "Films",
   SERIES:    "Series",
   SHORTS:    "Shorts",
@@ -40,8 +45,10 @@ const TAB_LABELS: Record<Tab, string> = {
   CASE_STUDY:"Case Studies",
 };
 
+// null = no type filter; "UPCOMING" tab uses status filter instead
 const TAB_TYPES: Record<Tab, string[] | null> = {
   ALL:       null,
+  UPCOMING:  null,   // filtered by status, not type
   FILMS:     ["SHORT_FILM", "FULL_FILM"],
   SERIES:    ["SERIES"],
   SHORTS:    ["SHORT_FILM"],
@@ -55,6 +62,7 @@ const TAB_TYPES: Record<Tab, string[] | null> = {
 // Maps ?collection= URL param → Tab key
 const COLLECTION_TO_TAB: Record<string, Tab> = {
   all:         "ALL",
+  upcoming:    "UPCOMING",
   films:       "FILMS",
   series:      "SERIES",
   shorts:      "SHORTS",
@@ -96,10 +104,13 @@ export default function WorksClient({ works, collection, isLoggedIn = false }: P
     setTab(next);
   }, [collection]);
 
-  // Up to 5 works with poster art for the hero backdrop rotation
+  // Published works — used for hero, rails, and tab filtering
+  const publishedWorks = useMemo(() => works.filter((w) => w.status === "PUBLISHED"), [works]);
+
+  // Up to 5 published works with poster art for the hero backdrop rotation
   const heroItems = useMemo(
     () =>
-      works
+      publishedWorks
         .filter((w) => w.posterUrl != null)
         .slice(0, 5)
         .map((w) => ({
@@ -109,18 +120,34 @@ export default function WorksClient({ works, collection, isLoggedIn = false }: P
           heroMobileUrl: w.heroMobileUrl,
           heroDesktopUrl: w.heroDesktopUrl,
         })),
-    [works]
+    [publishedWorks]
   );
 
   const visibleTabs = useMemo<Tab[]>(() => {
+    const hasUpcoming = works.some((w) => UPCOMING_STATUSES.has(w.status));
     const extras = (Object.entries(TAB_TYPES) as [Tab, string[] | null][])
-      .filter(([key, types]) => key !== "ALL" && types !== null && works.some((w) => types!.includes(w.type)))
+      .filter(([key, types]) =>
+        key !== "ALL" && key !== "UPCOMING" &&
+        types !== null && publishedWorks.some((w) => types!.includes(w.type))
+      )
       .map(([key]) => key);
-    return extras.length > 0 ? ["ALL", ...extras] : [];
-  }, [works]);
+    const tabs: Tab[] = ["ALL"];
+    if (hasUpcoming) tabs.push("UPCOMING");
+    tabs.push(...extras);
+    return tabs.length > 1 ? tabs : [];
+  }, [works, publishedWorks]);
 
   const filtered = useMemo(() => {
-    let list = works;
+    // UPCOMING tab: filter by status regardless of query
+    if (tab === "UPCOMING") {
+      const list = works.filter((w) => UPCOMING_STATUSES.has(w.status));
+      if (!query.trim()) return list;
+      const q = query.toLowerCase();
+      return list.filter((w) => w.title.toLowerCase().includes(q) || (w.genre?.toLowerCase() ?? "").includes(q));
+    }
+
+    // Other tabs: published works only
+    let list = publishedWorks;
     if (query.trim()) {
       const q = query.toLowerCase();
       list = list.filter(
@@ -134,14 +161,14 @@ export default function WorksClient({ works, collection, isLoggedIn = false }: P
       if (types) list = list.filter((w) => types.includes(w.type));
     }
     return list;
-  }, [works, tab, query]);
+  }, [works, publishedWorks, tab, query]);
 
   const showRails = tab === "ALL" && query.trim() === "";
 
-  // Priority images: first visible rail only
+  // Priority images: first visible rail only (from published)
   const firstRailKey = useMemo(
-    () => RAILS.find(({ key }) => works.some((w) => TAB_TYPES[key]!.includes(w.type)))?.key,
-    [works]
+    () => RAILS.find(({ key }) => publishedWorks.some((w) => TAB_TYPES[key]!.includes(w.type)))?.key,
+    [publishedWorks]
   );
 
   return (
@@ -206,7 +233,7 @@ export default function WorksClient({ works, collection, isLoggedIn = false }: P
         <div className="wc-rails wc-animate-in">
           {RAILS.map(({ key, title, eyebrow }) => {
             const types = TAB_TYPES[key]!;
-            const railWorks = works.filter((w) => types.includes(w.type));
+            const railWorks = publishedWorks.filter((w) => types.includes(w.type));
             if (railWorks.length === 0) return null;
             return (
               <section key={key} className="wc-rail">

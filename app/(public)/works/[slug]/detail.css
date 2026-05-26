@@ -275,3 +275,35 @@
   /* Hide desktop "Watch Trailer" link for series — trailer plays in sticky player */
   .detail-trailer-desktop-only { display: none; }
 }
+
+/* ── Status badge — upcoming / in-production ── */
+.detail-status-badge {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.25rem 0.65rem;
+  border-radius: 2px;
+  margin-bottom: 0.75rem;
+}
+.detail-status-badge--upcoming {
+  background: rgba(232,201,126,0.12);
+  color: var(--color-brand-accent);
+  border: 1px solid rgba(232,201,126,0.3);
+}
+.detail-status-badge--production {
+  background: rgba(74,222,128,0.08);
+  color: #4ade80;
+  border: 1px solid rgba(74,222,128,0.2);
+}
+
+/* ── Engagement row — Save + Like + Share ── */
+.detail-engagement {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}

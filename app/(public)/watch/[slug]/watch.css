@@ -131,3 +131,6 @@
   letter-spacing: 0.08em; text-transform: uppercase;
   color: var(--color-brand-accent); margin-top: 0.1rem;
 }
+
+/* Engagement row on watch page */
+.watch-engagement { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
