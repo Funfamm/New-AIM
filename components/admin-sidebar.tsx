@@ -11,7 +11,7 @@ const NAV = [
   { href: "/admin/works",      label: "Works",     icon: Clapperboard },
   { href: "/admin/users",      label: "Users",     icon: Users },
   { href: "/admin/analytics",  label: "Analytics", icon: BarChart2 },
-  { href: "/admin/notifications",   label: "Notifications", icon: Megaphone },
+  { href: "/admin/outreach",         label: "Outreach",      icon: Megaphone },
   { href: "/admin/notify-me-ctas", label: "Notify Me",     icon: BellRing },
   { href: "/admin/security",       label: "Security",      icon: Shield },
   { href: "/admin/email",          label: "Email",         icon: Mail },

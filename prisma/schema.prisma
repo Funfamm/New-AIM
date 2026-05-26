@@ -852,6 +852,11 @@ model Announcement {
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
 
+  // Delivery tracking — populated on publish
+  audienceType     String @default("all")  // "all" | "admins" | "notify_me" | "saved_work"
+  recipientCount   Int    @default(0)       // in-app notifications created
+  emailQueuedCount Int    @default(0)       // EmailQueue rows created
+
   @@index([publishedAt])
   @@map("announcements")
 }

@@ -54,7 +54,7 @@ export async function createAnnouncement(
     },
   });
 
-  revalidatePath("/admin/notifications");
+  revalidatePath("/admin/outreach");
   return { error: undefined };
 }
 
@@ -95,7 +95,7 @@ export async function publishAnnouncement(
   if (announcement.sendEmail) {
     if (!isAcsConfigured()) {
       // In-app was already sent — partial success
-      revalidatePath("/admin/notifications");
+      revalidatePath("/admin/outreach");
       return {
         created,
         queued: 0,
@@ -139,7 +139,7 @@ export async function publishAnnouncement(
     queued = result.queued;
   }
 
-  revalidatePath("/admin/notifications");
+  revalidatePath("/admin/outreach");
   return { created, queued };
 }
 
@@ -154,7 +154,7 @@ export async function unpublishAnnouncement(id: string): Promise<{ error?: strin
     data:  { publishedAt: null },
   });
 
-  revalidatePath("/admin/notifications");
+  revalidatePath("/admin/outreach");
   return {};
 }
 
@@ -166,6 +166,6 @@ export async function deleteAnnouncement(id: string): Promise<{ error?: string }
 
   await prisma.announcement.delete({ where: { id } });
 
-  revalidatePath("/admin/notifications");
+  revalidatePath("/admin/outreach");
   return {};
 }
