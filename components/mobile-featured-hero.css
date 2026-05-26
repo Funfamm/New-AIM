@@ -157,6 +157,7 @@
   display: flex;
   gap: 0.5rem;
   align-items: center;
+  flex-wrap: wrap;
   pointer-events: auto;
 }
 
@@ -181,6 +182,26 @@
   white-space: nowrap;
 }
 .mfh-btn-play:hover { filter: brightness(1.08); }
+
+/* Trailer button */
+.mfh-btn-trailer {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-brand-white);
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.22);
+  height: 40px;
+  padding: 0 1rem;
+  border-radius: 3px;
+  text-decoration: none;
+  transition: background 0.15s, border-color 0.15s;
+  touch-action: manipulation;
+  white-space: nowrap;
+}
+.mfh-btn-trailer:hover { background: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.4); }
 
 /* Save button — overrides save-button.tsx default class */
 .mfh-btn-save {

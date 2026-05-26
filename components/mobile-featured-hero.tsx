@@ -16,6 +16,8 @@ export type MobileHeroItem = {
   requiresAuth: boolean;
   genres: string[];
   type: string;
+  trailerUrl?: string | null;
+  requiresLoginToViewTrailer?: boolean;
 };
 
 // Pill definitions: shown only if at least one requiredType has published content
@@ -82,7 +84,12 @@ export default function MobileFeaturedHero({ items, isLoggedIn, savedIds, availa
               item.type === "SERIES"
                 ? `/watch/${item.slug}`
                 : `/watch/${item.slug}?full=1`;
+            const trailerHref =
+              item.type === "SERIES"
+                ? `/watch/${item.slug}?trailer=1`
+                : `/watch/${item.slug}`;
             const signInHref = `/login?from=${encodeURIComponent(watchHref)}`;
+            const signInTrailerHref = `/login?from=${encodeURIComponent(trailerHref)}`;
 
             return (
               <div
@@ -142,8 +149,19 @@ export default function MobileFeaturedHero({ items, isLoggedIn, savedIds, availa
                       ) : (
                         <Link href={watchHref} className="mfh-btn-play">
                           <Play size={14} fill="currentColor" />
-                          Watch
+                          {item.type === "SERIES" ? "Watch Series" : "Watch"}
                         </Link>
+                      )}
+                      {item.trailerUrl && (
+                        item.requiresLoginToViewTrailer && !isLoggedIn ? (
+                          <Link href={signInTrailerHref} className="mfh-btn-trailer" tabIndex={isActive ? 0 : -1}>
+                            Sign In to Watch Trailer
+                          </Link>
+                        ) : (
+                          <Link href={trailerHref} className="mfh-btn-trailer" tabIndex={isActive ? 0 : -1}>
+                            Watch Trailer
+                          </Link>
+                        )
                       )}
                       {isLoggedIn && (
                         <SaveButton

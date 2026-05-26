@@ -12,6 +12,7 @@ const HOME_SELECT = {
   id: true, slug: true, title: true, posterUrl: true,
   heroMobileUrl: true, heroDesktopUrl: true,
   genre: true, genres: true, requiresAuth: true, type: true,
+  trailerUrl: true, requiresLoginToViewTrailer: true,
 } as const;
 
 async function getHomeWorks() {
@@ -103,6 +104,8 @@ export default async function HomePage() {
     requiresAuth: w.requiresAuth,
     genres: w.genres,
     type: w.type,
+    trailerUrl: w.trailerUrl ?? null,
+    requiresLoginToViewTrailer: w.requiresLoginToViewTrailer,
   }));
 
   const isEmpty = featured.length === 0 && newReleases.length === 0;
@@ -128,9 +131,45 @@ export default async function HomePage() {
           <h1 className="hero-title">Cinema, reimagined.</h1>
           <p className="hero-desc">We make films, series, and creative work with AI tools built around story, emotion, memory, and impact. Don&apos;t look away.</p>
           <div className="hero-actions">
-            <Link href="/works" className="hero-btn-primary">
-              <Play size={16} fill="currentColor" /> Watch Our Films
-            </Link>
+            {(() => {
+              const p = featuredWithPosters[0];
+              if (!p) return (
+                <Link href="/works" className="hero-btn-primary">
+                  <Play size={16} fill="currentColor" /> Watch Our Films
+                </Link>
+              );
+              const watchHref = p.type === "SERIES"
+                ? `/watch/${p.slug}`
+                : `/watch/${p.slug}?full=1`;
+              const trailerHref = p.type === "SERIES"
+                ? `/watch/${p.slug}?trailer=1`
+                : `/watch/${p.slug}`;
+              const watchLabel = p.type === "SERIES" ? "Watch Series" : "Watch";
+              return (
+                <>
+                  {p.requiresAuth && !userId ? (
+                    <Link href={`/login?from=${encodeURIComponent(watchHref)}`} className="hero-btn-primary">
+                      <Play size={16} fill="currentColor" /> Sign In to Watch
+                    </Link>
+                  ) : (
+                    <Link href={watchHref} className="hero-btn-primary">
+                      <Play size={16} fill="currentColor" /> {watchLabel}
+                    </Link>
+                  )}
+                  {p.trailerUrl && (
+                    p.requiresLoginToViewTrailer && !userId ? (
+                      <Link href={`/login?from=${encodeURIComponent(trailerHref)}`} className="hero-btn-trailer">
+                        Sign In to Watch Trailer
+                      </Link>
+                    ) : (
+                      <Link href={trailerHref} className="hero-btn-trailer">
+                        Watch Trailer
+                      </Link>
+                    )
+                  )}
+                </>
+              );
+            })()}
             <Link href="/about" className="hero-btn-secondary">
               Find Your Way In
             </Link>
