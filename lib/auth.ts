@@ -18,6 +18,7 @@ import bcrypt from "bcryptjs";
 // Security utilities are dynamically imported inside callbacks to avoid
 // bundling node:crypto into the Edge runtime (used by middleware for JWT only).
 import { sendSecurityAlertEmail } from "@/lib/email";
+import { ensureWelcomeForUser } from "@/lib/onboarding/welcome";
 
 // Helper — extract raw request headers (no hashing — done in callbacks after dynamic import)
 function extractRawContext(request?: Request) {
@@ -228,6 +229,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             where: { id: dbUser.id },
             data:  { lastLoginAt: new Date(), lastLoginProvider: "google" },
           }).catch(() => {});
+
+          // Welcome flow — idempotent, only fires on first sign-in
+          void ensureWelcomeForUser(dbUser.id).catch(() => {});
 
           // Dynamic import — security utilities are server-only
           void import("@/lib/security").then(async (sec) => {

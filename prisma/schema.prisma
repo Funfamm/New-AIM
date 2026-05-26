@@ -201,6 +201,10 @@ model User {
   preferences   UserPreferences?
   notifications Notification[]
 
+  // Welcome onboarding — set once on first login/registration, never reset
+  welcomeEmailSentAt        DateTime?
+  welcomeNotificationSentAt DateTime?
+
   @@map("users")
 }
 

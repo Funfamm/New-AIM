@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import { getUserNotifications, markNotificationRead, markAllNotificationsRead } from "@/lib/actions/notifications";
+import { NotificationLink, NotificationTitle } from "./notification-link";
 import Link from "next/link";
 import { ChevronLeft, Bell } from "lucide-react";
 import NavWrapper from "@/components/nav-wrapper";
@@ -91,14 +92,29 @@ export default async function NotificationsPage() {
                           <span className="notifpage-type">{NOTIF_LABEL[n.type] ?? n.type}</span>
                           <span className="notifpage-time">{timeAgo(new Date(n.createdAt))}</span>
                         </div>
+                        {/* Clicking title marks notification as read */}
                         {n.href ? (
-                          <Link href={n.href} className="notifpage-item-title">{n.title}</Link>
+                          <NotificationLink
+                            id={n.id}
+                            href={n.href}
+                            read={n.read}
+                            className="notifpage-item-title"
+                          >
+                            {n.title}
+                          </NotificationLink>
                         ) : (
-                          <p className="notifpage-item-title">{n.title}</p>
+                          <NotificationTitle
+                            id={n.id}
+                            read={n.read}
+                            className="notifpage-item-title"
+                          >
+                            {n.title}
+                          </NotificationTitle>
                         )}
                         {n.body && <p className="notifpage-item-body">{n.body}</p>}
                       </div>
 
+                      {/* Dot button still available for explicit mark-as-read */}
                       <div className="notifpage-actions">
                         {!n.read && (
                           <form action={markRead}>

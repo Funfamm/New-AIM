@@ -85,6 +85,24 @@ function bulkBaseTemplate(opts: {
 </html>`;
 }
 
+// ── Shared helpers ────────────────────────────────────────────
+
+function htmlEsc(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+/**
+ * Renders a safe, email-client-compatible image block.
+ * Only called with http/https URLs (validated at action layer).
+ * Falls back gracefully if image fails to load (display:block keeps layout intact).
+ */
+function safeImageBlock(imageUrl: string | null | undefined, altText: string): string {
+  if (!imageUrl) return "";
+  return `<img src="${imageUrl}" alt="${htmlEsc(altText)}" width="440"
+    style="width:100%;max-width:440px;height:auto;border-radius:4px;
+           margin:0 0 20px;display:block;border:0;" />`;
+}
+
 // ── Email template builders ───────────────────────────────────
 
 export function buildNewReleaseEmail(opts: {
@@ -94,6 +112,7 @@ export function buildNewReleaseEmail(opts: {
   workType:       string;
   genres?:        string[];
   description?:   string | null;
+  imageUrl?:      string | null;
 }): { subject: string; html: string } {
   const watchHref  = opts.workType === "SERIES"
     ? `${APP_URL}/watch/${opts.workSlug}`
@@ -103,6 +122,7 @@ export function buildNewReleaseEmail(opts: {
   const genreText  = opts.genres?.slice(0, 3).join(" · ") ?? "";
 
   const body = `
+    ${safeImageBlock(opts.imageUrl, opts.workTitle)}
     ${genreText ? `<p style="margin:0 0 8px;font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#e8c97e;">${genreText}</p>` : ""}
     <p style="margin:0 0 16px;font-size:14px;color:#6b7280;line-height:1.6;">
       ${opts.description
@@ -146,6 +166,7 @@ export function buildNewEpisodeEmail(opts: {
   episodeTitle:   string;
   episodeNumber?: number | null;
   seasonNumber?:  number | null;
+  imageUrl?:      string | null;
 }): { subject: string; html: string } {
   const watchHref  = `${APP_URL}/watch/${opts.seriesSlug}`;
   const epLabel    = opts.seasonNumber && opts.episodeNumber
@@ -155,6 +176,7 @@ export function buildNewEpisodeEmail(opts: {
       : "New Episode";
 
   const body = `
+    ${safeImageBlock(opts.imageUrl, opts.episodeTitle)}
     <p style="margin:0 0 8px;font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#e8c97e;">
       ${opts.seriesTitle}
     </p>
@@ -184,6 +206,7 @@ export function buildAnnouncementEmail(opts: {
   body:           string;
   href?:          string | null;
   hrefLabel?:     string | null;
+  imageUrl?:      string | null;
 }): { subject: string; html: string } {
   const ctaHtml = opts.href
     ? `<a href="${opts.href}"
@@ -194,6 +217,7 @@ export function buildAnnouncementEmail(opts: {
     : "";
 
   const bodyHtml = `
+    ${safeImageBlock(opts.imageUrl, opts.title)}
     <p style="margin:0 0 20px;font-size:14px;color:#6b7280;line-height:1.6;">${opts.body}</p>
     ${ctaHtml}`;
 

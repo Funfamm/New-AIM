@@ -56,7 +56,7 @@ export default async function AdminOutreachPage({ searchParams }: Props) {
     // Published non-episode works (for New Release type)
     prisma.work.findMany({
       where:   { status: "PUBLISHED", type: { not: "EPISODE" } },
-      select:  { id: true, title: true, type: true },
+      select:  { id: true, title: true, type: true, posterUrl: true },
       orderBy: { updatedAt: "desc" },
       take:    100,
     }),
@@ -72,6 +72,7 @@ export default async function AdminOutreachPage({ searchParams }: Props) {
         title:         true,
         episodeNumber: true,
         seasonNumber:  true,
+        posterUrl:     true,
         parent:        { select: { title: true } },
       },
       orderBy: [{ updatedAt: "desc" }],
@@ -172,6 +173,7 @@ export default async function AdminOutreachPage({ searchParams }: Props) {
             title:         e.title,
             episodeNumber: e.episodeNumber,
             seasonNumber:  e.seasonNumber,
+            posterUrl:     e.posterUrl ?? null,
             seriesTitle:   e.parent?.title ?? null,
           }))}
         />

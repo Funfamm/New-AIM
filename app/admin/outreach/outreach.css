@@ -240,28 +240,162 @@
   color: var(--color-brand-accent);
 }
 
-/* ── Channel checkboxes ──────────────────────── */
+/* ── Channel selector ────────────────────────── */
 
-.outreach-channels {
+.outreach-channel-grid {
   display: flex;
-  gap: 1.5rem;
   flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
-.outreach-channel-row {
+.outreach-channel-btn {
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.4rem 0.9rem;
+  background: var(--color-brand-surface);
+  border: 1px solid var(--color-brand-border);
+  border-radius: 6px;
+  color: var(--color-brand-muted);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.outreach-channel-btn:hover:not(.outreach-channel-btn--active):not(.outreach-channel-btn--disabled) {
+  border-color: var(--color-brand-light);
+  color: var(--color-brand-light);
+}
+.outreach-channel-btn--active {
+  background: rgba(232,201,126,0.08);
+  border-color: var(--color-brand-accent);
+  color: var(--color-brand-accent);
+}
+.outreach-channel-btn--disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+
+/* ── Image URL field ─────────────────────────── */
+
+.outreach-img-input-row {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: 0.82rem;
-  color: var(--color-brand-light);
+}
+.outreach-img-input-row .outreach-input {
+  flex: 1;
+}
+.outreach-img-clear {
+  flex-shrink: 0;
+  background: none;
+  border: 1px solid var(--color-brand-border);
+  border-radius: 4px;
+  color: var(--color-brand-muted);
+  font-size: 0.75rem;
+  padding: 0.38rem 0.6rem;
   cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  line-height: 1;
+}
+.outreach-img-clear:hover {
+  color: var(--color-brand-red);
+  border-color: var(--color-brand-red);
+}
+.outreach-img-preview {
+  margin-top: 0.5rem;
+  border-radius: 4px;
+  overflow: hidden;
+  max-width: 320px;
+  border: 1px solid var(--color-brand-border);
+  background: var(--color-brand-surface);
+}
+.outreach-img-preview img {
+  width: 100%;
+  display: block;
+  height: auto;
+  max-height: 160px;
+  object-fit: cover;
 }
 
-.outreach-channel-row input[type="checkbox"] {
-  width: 15px;
-  height: 15px;
-  accent-color: var(--color-brand-accent);
-  cursor: pointer;
+/* ── Preview panel ───────────────────────────── */
+
+.outreach-preview {
+  border: 1px solid var(--color-brand-border);
+  border-radius: 8px;
+  padding: 1rem;
+  background: rgba(255,255,255,0.015);
+}
+.outreach-preview-inapp {
+  background: var(--color-brand-dark);
+  border: 1px solid var(--color-brand-border);
+  border-radius: 8px;
+  padding: 0.875rem;
+  margin-bottom: 0.75rem;
+}
+.outreach-preview-inapp-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 0.35rem;
+}
+.outreach-preview-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.outreach-preview-type {
+  font-size: 0.63rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--color-brand-muted);
+  margin: 0 0 0.2rem;
+}
+.outreach-preview-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-brand-white);
+  margin: 0;
+  line-height: 1.35;
+}
+.outreach-preview-body {
+  font-size: 0.78rem;
+  color: var(--color-brand-muted);
+  margin: 0.2rem 0 0;
+  line-height: 1.45;
+  padding-left: 1.85rem;
+  max-width: 52ch;
+}
+.outreach-preview-cta {
+  display: inline-block;
+  margin-top: 0.5rem;
+  margin-left: 1.85rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-brand-accent);
+  border: 1px solid rgba(232,201,126,0.25);
+  border-radius: 4px;
+  padding: 0.2rem 0.6rem;
+}
+.outreach-preview-email {
+  border-top: 1px solid var(--color-brand-border);
+  padding-top: 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.outreach-preview-email--warn { opacity: 0.7; }
+.outreach-preview-email-label {
+  font-size: 0.63rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--color-brand-muted);
+  margin: 0 0 0.1rem;
+}
+.outreach-preview-email-detail {
+  font-size: 0.75rem;
+  color: var(--color-brand-muted);
+  margin: 0;
 }
 
 /* ── Submit + warn ───────────────────────────── */
