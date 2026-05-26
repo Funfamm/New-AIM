@@ -8,6 +8,7 @@ import Image from "next/image";
 import "./dashboard.css";
 import {
   Clock, Play, LogOut, X, Bell, Settings, ChevronRight, Bookmark,
+  Film, Clapperboard, Megaphone, Timer, User, Wrench,
 } from "lucide-react";
 import NavWrapper from "@/components/nav-wrapper";
 import Footer from "@/components/footer";
@@ -21,14 +22,17 @@ const TYPE_LABEL: Record<string, string> = {
   BRANDING: "Branding", CAMPAIGN: "Campaign", CASE_STUDY: "Case Study",
 };
 
-const NOTIF_ICON: Record<string, string> = {
-  NEW_RELEASE: "🎬",
-  NEW_EPISODE: "🎞️",
-  ANNOUNCEMENT: "📣",
-  WATCH_PROGRESS: "⏱️",
-  ACCOUNT: "👤",
-  SYSTEM: "⚙️",
-};
+function NotifIcon({ type }: { type: string }) {
+  switch (type) {
+    case "NEW_RELEASE":    return <Film size={15} />;
+    case "NEW_EPISODE":    return <Clapperboard size={15} />;
+    case "ANNOUNCEMENT":   return <Megaphone size={15} />;
+    case "WATCH_PROGRESS": return <Timer size={15} />;
+    case "ACCOUNT":        return <User size={15} />;
+    case "SYSTEM":         return <Wrench size={15} />;
+    default:               return <Bell size={15} />;
+  }
+}
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -46,7 +50,7 @@ export default async function DashboardPage() {
   return (
     <>
       <NavWrapper />
-      <div style={{ paddingTop: "68px" }}>
+      <div className="nav-offset">
         <main className="dashboard-page">
           <div className="container-app">
 
@@ -218,7 +222,7 @@ export default async function DashboardPage() {
                 <ul className="notif-list">
                   {notifications.slice(0, 10).map((n) => (
                     <li key={n.id} className={`notif-item${n.read ? "" : " notif-item--unread"}`}>
-                      <span className="notif-icon" aria-hidden="true">{NOTIF_ICON[n.type] ?? "🔔"}</span>
+                      <span className="notif-icon" aria-hidden="true"><NotifIcon type={n.type} /></span>
                       <div className="notif-body">
                         {n.href ? (
                           <Link href={n.href} className="notif-title">{n.title}</Link>

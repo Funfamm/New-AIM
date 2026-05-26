@@ -114,6 +114,11 @@ a {
   .container-app { padding-inline: 4rem; }
 }
 
+/* ── Nav clearance utility ─────────────────────────── */
+/* Applied to the wrapper div directly below <NavWrapper> on pages that
+   do not use the shared (public) layout (e.g. dashboard routes). */
+.nav-offset { padding-top: 68px; }
+
 /* ── Film rail ─────────────────────────────────────── */
 .rail-track {
   display: flex;

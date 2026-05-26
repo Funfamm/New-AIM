@@ -1,5 +1,6 @@
 import { registerUser, signInWithGoogle } from "@/lib/actions/auth";
 import Link from "next/link";
+import { Film, Users, MessageSquare } from "lucide-react";
 import type { Metadata } from "next";
 import "./register.css";
 
@@ -34,15 +35,15 @@ export default async function RegisterPage({
         {/* Three quick wins */}
         <ul className="auth-perks">
           <li className="auth-perk">
-            <span className="auth-perk-icon" aria-hidden="true">🎬</span>
+            <span className="auth-perk-icon" aria-hidden="true"><Film size={15} /></span>
             Watch full films free
           </li>
           <li className="auth-perk">
-            <span className="auth-perk-icon" aria-hidden="true">🎭</span>
+            <span className="auth-perk-icon" aria-hidden="true"><Users size={15} /></span>
             Apply for casting opportunities
           </li>
           <li className="auth-perk">
-            <span className="auth-perk-icon" aria-hidden="true">💬</span>
+            <span className="auth-perk-icon" aria-hidden="true"><MessageSquare size={15} /></span>
             Join the community
           </li>
         </ul>

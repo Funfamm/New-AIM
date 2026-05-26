@@ -190,7 +190,7 @@
 }
 .notif-item:last-child { border-bottom: none; }
 .notif-item--unread { background: rgba(232,201,126,0.04); }
-.notif-icon { font-size: 1rem; flex-shrink: 0; line-height: 1.5; }
+.notif-icon { display: flex; align-items: center; color: var(--color-brand-accent); flex-shrink: 0; margin-top: 0.15rem; }
 .notif-body { flex: 1; min-width: 0; }
 .notif-title {
   font-family: var(--font-body); font-size: 0.875rem; font-weight: 500;

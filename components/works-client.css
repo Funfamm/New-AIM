@@ -126,9 +126,9 @@
   color: var(--color-brand-muted); margin-bottom: 0.5rem;
 }
 .wc-rail-title {
-  font-family: var(--font-body);
-  font-size: 1.375rem;
-  font-weight: 700; letter-spacing: -0.01em; line-height: 1.2;
+  font-family: var(--font-display);
+  font-size: clamp(1.375rem, 2.5vw, 1.75rem);
+  font-weight: 700; letter-spacing: -0.02em; line-height: 1.1;
   color: var(--color-brand-white); margin: 0;
 }
 
