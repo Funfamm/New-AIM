@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { isAdminRole } from "@/lib/auth-guard";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft, Mail } from "lucide-react";
@@ -16,7 +17,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function TemplateEditPage({ params }: Props) {
   const session = await auth();
-  if (!session?.user || session.user.role !== "ADMIN") notFound();
+  if (!session?.user || !isAdminRole(session.user.role)) notFound();
 
   const { id } = await params;
   const isNew = id === "new";

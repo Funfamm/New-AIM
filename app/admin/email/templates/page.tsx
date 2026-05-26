@@ -1,5 +1,6 @@
 import { listTemplates, ensureSystemEmailTemplates } from "@/lib/actions/email-templates";
 import { auth } from "@/lib/auth";
+import { isAdminRole } from "@/lib/auth-guard";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft, Mail, Plus } from "lucide-react";
@@ -23,7 +24,7 @@ function statusBadge(t: { isSystem: boolean; isActive: boolean }) {
 
 export default async function EmailTemplatesPage() {
   const session = await auth();
-  if (!session?.user || session.user.role !== "ADMIN") notFound();
+  if (!session?.user || !isAdminRole(session.user.role)) notFound();
 
   // Idempotent — creates missing default templates on first visit, skips existing ones
   await ensureSystemEmailTemplates();

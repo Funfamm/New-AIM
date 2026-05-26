@@ -3,6 +3,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { isAdminRole } from "@/lib/auth-guard";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
@@ -28,7 +29,7 @@ function fmtDate(d: Date) {
 
 export default async function AdminOutreachPage({ searchParams }: Props) {
   const session = await auth();
-  if (!session?.user || session.user.role !== "ADMIN") notFound();
+  if (!session?.user || !isAdminRole(session.user.role)) notFound();
 
   const { tab: tabRaw } = await searchParams;
   const tab: Tab =

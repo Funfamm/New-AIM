@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { isAdminRole } from "@/lib/auth-guard";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft, BellRing } from "lucide-react";
@@ -20,7 +21,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function CtaEditPage({ params, searchParams }: Props) {
   const session = await auth();
-  if (!session?.user || session.user.role !== "ADMIN") redirect("/login");
+  if (!session?.user || !isAdminRole(session.user.role)) redirect("/login");
 
   const { ctaId } = await params;
   const { workId: qWorkId } = await searchParams;

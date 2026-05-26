@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { isAdminRole } from "@/lib/auth-guard";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { BellRing, Plus, CheckCircle2, Circle, Pencil } from "lucide-react";
@@ -10,7 +11,7 @@ export const metadata: Metadata = { title: "Admin — Notify Me CTAs" };
 
 export default async function NotifyMeCtasPage() {
   const session = await auth();
-  if (!session?.user || session.user.role !== "ADMIN") redirect("/login");
+  if (!session?.user || !isAdminRole(session.user.role)) redirect("/login");
 
   const ctas = await prisma.notifyMeCta.findMany({
     orderBy: { createdAt: "desc" },
