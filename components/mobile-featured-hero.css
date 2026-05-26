@@ -60,7 +60,14 @@
   border-radius: 10px;
   overflow: hidden;
   background: var(--color-brand-surface);
+  /* Vertical scroll stays with the browser; horizontal swipe goes to JS */
+  touch-action: pan-y;
+  /* Prevent image/text drag ghosts during swipe */
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: grab;
 }
+.mfh-slides:active { cursor: grabbing; }
 
 /* ── Individual slide — all absolutely fill the container ── */
 .mfh-slide {
@@ -230,23 +237,69 @@
 }
 .mfh-btn-save:disabled { opacity: 0.6; cursor: default; }
 
-/* ── Dot indicators ── */
+/* ── Prev / Next arrow buttons ── */
+.mfh-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(10,10,10,0.55);
+  border: 1px solid rgba(255,255,255,0.18);
+  color: var(--color-brand-white);
+  cursor: pointer;
+  opacity: 0.72;
+  transition: opacity 0.15s, background 0.15s;
+  touch-action: manipulation;
+  /* Keep above the card-content overlay but below nothing */
+  pointer-events: auto;
+}
+.mfh-nav:hover { opacity: 1; background: rgba(10,10,10,0.82); }
+.mfh-nav--prev { left: 0.625rem; }
+.mfh-nav--next { right: 0.625rem; }
+/* Reduce motion: arrows still show and work, just no opacity animation */
+@media (prefers-reduced-motion: reduce) {
+  .mfh-nav { transition: none; }
+}
+
+/* ── Dot indicators (now <button> elements) ── */
 .mfh-dots {
   display: flex;
   justify-content: center;
-  gap: 0.4rem;
+  align-items: center;
+  gap: 0.5rem;
   padding-bottom: 0.25rem;
 }
 .mfh-dot {
+  /* Reset button defaults */
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  touch-action: manipulation;
+  /* Dot shape */
   width: 5px;
   height: 5px;
   border-radius: 50%;
   background: rgba(255,255,255,0.28);
+  flex-shrink: 0;
   transition: background 0.25s, transform 0.25s;
+  /* Larger invisible hit area (WCAG 2.5.5: 24×24 min) */
+  outline-offset: 8px;
+  position: relative;
+}
+.mfh-dot::after {
+  content: "";
+  position: absolute;
+  inset: -8px;
 }
 .mfh-dot--active {
   background: var(--color-brand-accent);
-  transform: scale(1.35);
+  transform: scale(1.45);
 }
 @media (prefers-reduced-motion: reduce) {
   .mfh-dot { transition: none; }

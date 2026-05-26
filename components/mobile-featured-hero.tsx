@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Play } from "lucide-react";
+import { Play, ChevronLeft, ChevronRight } from "lucide-react";
 import SaveButton from "./save-button";
 import "./mobile-featured-hero.css";
 
@@ -37,22 +37,90 @@ type Props = {
   availableTypes: string[];
 };
 
+const ROTATE_MS = 7000; // auto-rotation interval
+const RESUME_MS = 3000; // pause after interaction before resuming
+
 export default function MobileFeaturedHero({ items, isLoggedIn, savedIds, availableTypes }: Props) {
   const [active, setActive] = useState(0);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const count = items.length;
+
+  const timerRef   = useRef<ReturnType<typeof setInterval> | null>(null);
+  const resumeRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reducedRef = useRef(false); // prefers-reduced-motion
+  const startXRef  = useRef<number | null>(null); // pointer start X for swipe
+  const draggedRef = useRef(false); // true when pointer moved >8px horizontal
+
+  // ── Timer helpers ────────────────────────────────────────
+  function clearTimer() {
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+  }
+  function clearResume() {
+    if (resumeRef.current) { clearTimeout(resumeRef.current); resumeRef.current = null; }
+  }
+  function startAutoPlay() {
+    if (count <= 1 || reducedRef.current) return;
+    clearTimer();
+    timerRef.current = setInterval(() => setActive(p => (p + 1) % count), ROTATE_MS);
+  }
+  function pauseAndResume() {
+    clearTimer();
+    clearResume();
+    resumeRef.current = setTimeout(startAutoPlay, RESUME_MS);
+  }
 
   useEffect(() => {
-    if (items.length <= 1) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    timerRef.current = setInterval(() => {
-      setActive((prev) => (prev + 1) % items.length);
-    }, 7000);
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [items.length]);
+    reducedRef.current = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    startAutoPlay();
+    return () => { clearTimer(); clearResume(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [count]);
 
-  if (!items.length) return null;
+  if (!count) return null;
+
+  // ── Pointer / swipe handlers ─────────────────────────────
+  function onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    if (count <= 1) return;
+    // Let button clicks (nav arrows, save, dots) pass through untracked
+    if ((e.target as HTMLElement).closest("button")) return;
+    startXRef.current = e.clientX;
+    draggedRef.current = false;
+    clearTimer();
+    clearResume();
+  }
+
+  function onPointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    if (startXRef.current === null) return;
+    if (Math.abs(e.clientX - startXRef.current) > 8) draggedRef.current = true;
+  }
+
+  function onPointerUp(e: React.PointerEvent<HTMLDivElement>) {
+    if (startXRef.current === null) { pauseAndResume(); return; }
+    const dx = e.clientX - startXRef.current;
+    startXRef.current = null;
+    if (draggedRef.current && Math.abs(dx) > 50) {
+      // Real swipe — navigate; draggedRef stays true to suppress the upcoming click
+      setActive(p => dx < 0 ? (p + 1) % count : ((p - 1) + count) % count);
+    } else {
+      // Genuine tap — let click fire normally
+      draggedRef.current = false;
+    }
+    pauseAndResume();
+  }
+
+  function onPointerCancel() {
+    startXRef.current = null;
+    draggedRef.current = false;
+    pauseAndResume();
+  }
+
+  // Prevent card-link navigation when the gesture was a swipe, not a tap
+  function onClickCapture(e: React.MouseEvent) {
+    if (draggedRef.current) {
+      draggedRef.current = false;
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }
 
   return (
     <section className="mfh" aria-label="Featured works">
@@ -60,13 +128,10 @@ export default function MobileFeaturedHero({ items, isLoggedIn, savedIds, availa
       {/* ── Category pills ── */}
       <div className="mfh-pills-wrap">
         <div className="mfh-pills">
-          {/* "All" pill — always shown */}
           <Link href="/works" className="mfh-pill">All</Link>
-
-          {/* Category pills — only if at least one requiredType has published content */}
           {PILL_DEFS
-            .filter((p) => p.requiredTypes.some((t) => availableTypes.includes(t)))
-            .map((p) => (
+            .filter(p => p.requiredTypes.some(t => availableTypes.includes(t)))
+            .map(p => (
               <Link key={p.label} href={`/works?collection=${p.collection}`} className="mfh-pill">
                 {p.label}
               </Link>
@@ -77,7 +142,14 @@ export default function MobileFeaturedHero({ items, isLoggedIn, savedIds, availa
 
       {/* ── Hero card stack ── */}
       <div className="mfh-slides-wrap">
-        <div className="mfh-slides">
+        <div
+          className="mfh-slides"
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerCancel={onPointerCancel}
+          onClickCapture={onClickCapture}
+        >
           {items.map((item, i) => {
             const isActive = i === active;
             const watchHref =
@@ -100,6 +172,7 @@ export default function MobileFeaturedHero({ items, isLoggedIn, savedIds, availa
                     className="mfh-card-link"
                     aria-label={`View details for ${item.title}`}
                     tabIndex={isActive ? 0 : -1}
+                    draggable={false}
                   />
 
                   {/* Poster image */}
@@ -110,6 +183,7 @@ export default function MobileFeaturedHero({ items, isLoggedIn, savedIds, availa
                         alt=""
                         className="mfh-img"
                         loading={i === 0 ? "eager" : "lazy"}
+                        draggable={false}
                       />
                     ) : (
                       <Image
@@ -120,6 +194,7 @@ export default function MobileFeaturedHero({ items, isLoggedIn, savedIds, availa
                         sizes="(max-width: 767px) 100vw"
                         quality={88}
                         priority={i === 0}
+                        draggable={false}
                       />
                     )}
                   </div>
@@ -137,12 +212,12 @@ export default function MobileFeaturedHero({ items, isLoggedIn, savedIds, availa
                     <h2 className="mfh-title">{item.title}</h2>
                     <div className="mfh-actions">
                       {item.requiresAuth && !isLoggedIn ? (
-                        <Link href={signInHref} className="mfh-btn-play">
+                        <Link href={signInHref} className="mfh-btn-play" tabIndex={isActive ? 0 : -1}>
                           <Play size={14} fill="currentColor" />
                           Sign In to Watch
                         </Link>
                       ) : (
-                        <Link href={watchHref} className="mfh-btn-play">
+                        <Link href={watchHref} className="mfh-btn-play" tabIndex={isActive ? 0 : -1}>
                           <Play size={14} fill="currentColor" />
                           {item.type === "SERIES" ? "Watch Series" : "Watch"}
                         </Link>
@@ -166,15 +241,42 @@ export default function MobileFeaturedHero({ items, isLoggedIn, savedIds, availa
               </div>
             );
           })}
+
+          {/* Prev / Next arrow buttons — inside .mfh-slides at z-index 10 */}
+          {count > 1 && (
+            <>
+              <button
+                type="button"
+                className="mfh-nav mfh-nav--prev"
+                aria-label="Previous poster"
+                onClick={() => { setActive(p => ((p - 1) + count) % count); pauseAndResume(); }}
+              >
+                <ChevronLeft size={18} />
+              </button>
+              <button
+                type="button"
+                className="mfh-nav mfh-nav--next"
+                aria-label="Next poster"
+                onClick={() => { setActive(p => (p + 1) % count); pauseAndResume(); }}
+              >
+                <ChevronRight size={18} />
+              </button>
+            </>
+          )}
         </div>
 
-        {/* Dot indicators */}
-        {items.length > 1 && (
-          <div className="mfh-dots" aria-hidden="true">
+        {/* Clickable dot indicators */}
+        {count > 1 && (
+          <div className="mfh-dots" role="tablist" aria-label="Featured works slides">
             {items.map((_, i) => (
-              <span
+              <button
                 key={i}
+                type="button"
+                role="tab"
+                aria-selected={i === active}
+                aria-label={`Go to slide ${i + 1} of ${count}`}
                 className={`mfh-dot${i === active ? " mfh-dot--active" : ""}`}
+                onClick={() => { setActive(i); pauseAndResume(); }}
               />
             ))}
           </div>
