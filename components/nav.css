@@ -1,12 +1,26 @@
 /* ── Fixed header ── */
+/*
+  backdrop-filter is intentionally on ::before, NOT on .nav-header itself.
+  Applying backdrop-filter to the element creates a new containing block for
+  position:fixed descendants (Chrome/WebKit spec behaviour), which traps
+  .nav-overlay and .nav-sidebar inside the 68 px header strip instead of
+  covering the full viewport. Moving it to ::before preserves the frosted-glass
+  look while letting the overlay/sidebar escape to the root stacking context.
+*/
 .nav-header {
-  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  position: fixed; top: 0; left: 0; right: 0; z-index: 160;
+  border-bottom: 1px solid var(--color-brand-border);
+}
+.nav-header::before {
+  content: "";
+  position: absolute; inset: 0;
   background: rgba(10,10,10,0.85);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--color-brand-border);
+  pointer-events: none;
 }
-.nav-inner { display: flex; align-items: center; justify-content: space-between; height: 68px; }
+/* nav-inner must be positioned so it renders above the ::before pseudo-element */
+.nav-inner { display: flex; align-items: center; justify-content: space-between; height: 68px; position: relative; }
 
 /* ── Logo ── */
 .nav-logo {

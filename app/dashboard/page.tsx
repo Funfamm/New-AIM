@@ -4,6 +4,7 @@ import { getDashboardSavedWorks, unsaveWork } from "@/lib/actions/watchlist";
 import { getUserNotifications, markAllNotificationsRead, getUnreadNotificationCount } from "@/lib/actions/notifications";
 import { logoutUser } from "@/lib/actions/auth";
 import Link from "next/link";
+import Image from "next/image";
 import "./dashboard.css";
 import {
   Clock, Play, LogOut, X, Bell, Settings, ChevronRight, Bookmark,
@@ -90,7 +91,7 @@ export default async function DashboardPage() {
               </div>
               {progress.length > 0 ? (
                 <div className="progress-grid">
-                  {progress.map((p) => {
+                  {progress.slice(0, 8).map((p) => {
                     const watchHref =
                       p.work.type === "EPISODE" || p.work.type === "SERIES"
                         ? `/watch/${p.work.slug}`
@@ -101,7 +102,14 @@ export default async function DashboardPage() {
                     return (
                       <Link key={p.id} href={watchHref} className="progress-card">
                         {p.work.posterUrl ? (
-                          <img src={p.work.posterUrl} alt={p.work.title} className="progress-poster" loading="lazy" />
+                          <Image
+                            src={p.work.posterUrl}
+                            alt={p.work.title}
+                            width={54}
+                            height={80}
+                            className="progress-poster"
+                            loading="lazy"
+                          />
                         ) : (
                           <div className="progress-poster-placeholder">
                             {p.work.title.charAt(0)}
@@ -145,15 +153,17 @@ export default async function DashboardPage() {
               </div>
               {savedWorks.length > 0 ? (
                 <div className="watchlist-grid">
-                  {savedWorks.map((item) => {
+                  {savedWorks.slice(0, 8).map((item) => {
                     const removeAction = unsaveWork.bind(null, item.work.id);
                     return (
                       <div key={item.id} className="watchlist-card">
                         <Link href={`/works/${item.work.slug}`} className="watchlist-link">
                           {item.work.posterUrl ? (
-                            <img
+                            <Image
                               src={item.work.posterUrl}
                               alt={item.work.title}
+                              width={54}
+                              height={80}
                               className="progress-poster"
                               loading="lazy"
                             />
@@ -206,7 +216,7 @@ export default async function DashboardPage() {
                   </Link>
                 </div>
                 <ul className="notif-list">
-                  {notifications.slice(0, 5).map((n) => (
+                  {notifications.slice(0, 10).map((n) => (
                     <li key={n.id} className={`notif-item${n.read ? "" : " notif-item--unread"}`}>
                       <span className="notif-icon" aria-hidden="true">{NOTIF_ICON[n.type] ?? "🔔"}</span>
                       <div className="notif-body">
