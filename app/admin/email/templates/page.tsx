@@ -1,4 +1,4 @@
-import { listTemplates } from "@/lib/actions/email-templates";
+import { listTemplates, ensureSystemEmailTemplates } from "@/lib/actions/email-templates";
 import { auth } from "@/lib/auth";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -25,6 +25,8 @@ export default async function EmailTemplatesPage() {
   const session = await auth();
   if (!session?.user || session.user.role !== "ADMIN") notFound();
 
+  // Idempotent — creates missing default templates on first visit, skips existing ones
+  await ensureSystemEmailTemplates();
   const templates = await listTemplates();
 
   return (

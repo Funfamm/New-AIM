@@ -10,21 +10,23 @@ import "./notifications.css";
 export const metadata: Metadata = { title: "Notifications — AIM Studio" };
 
 const NOTIF_ICON: Record<string, string> = {
-  NEW_RELEASE: "🎬",
-  NEW_EPISODE: "🎞️",
+  NEW_RELEASE:  "🎬",
+  NEW_EPISODE:  "🎞️",
   ANNOUNCEMENT: "📣",
   WATCH_PROGRESS: "⏱️",
-  ACCOUNT: "👤",
-  SYSTEM: "⚙️",
+  ACCOUNT:  "👤",
+  SYSTEM:   "⚙️",
+  SECURITY: "🔒",
 };
 
 const NOTIF_LABEL: Record<string, string> = {
-  NEW_RELEASE: "New Release",
-  NEW_EPISODE: "New Episode",
+  NEW_RELEASE:  "New Release",
+  NEW_EPISODE:  "New Episode",
   ANNOUNCEMENT: "Announcement",
   WATCH_PROGRESS: "Watch Progress",
-  ACCOUNT: "Account",
-  SYSTEM: "System",
+  ACCOUNT:  "Account",
+  SYSTEM:   "System",
+  SECURITY: "Security Alert",
 };
 
 function timeAgo(date: Date): string {

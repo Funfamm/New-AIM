@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { createWork, updateWork } from "@/lib/actions/works";
 import WorkForm from "@/components/admin/work-form";
 import SeriesEpisodesPanel from "@/components/admin/series-episodes-panel";
+import ReleaseEmailButton from "./release-email-button";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { BellRing } from "lucide-react";
@@ -67,6 +68,12 @@ export default async function AdminWorkFormPage({ params, searchParams }: Props)
 
   const action = isNew ? createWork : updateWork.bind(null, id);
 
+  // ACS configured check — env var stays server-side, only boolean reaches client
+  const acsReady = !!(
+    process.env.ACS_CONNECTION_STRING &&
+    process.env.ACS_SENDER_ADDRESS
+  );
+
   return (
     <>
       <WorkForm
@@ -95,6 +102,30 @@ export default async function AdminWorkFormPage({ params, searchParams }: Props)
             <BellRing size={14} />
             {ctaRow ? `Manage CTA${ctaRow.isEnabled ? " (Active)" : " (Disabled)"}` : "Set Up Notify Me CTA"}
           </Link>
+        </div>
+      )}
+
+      {/* Release email — only for published, non-episode works */}
+      {!isNew && work && work.status === "PUBLISHED" && work.type !== "EPISODE" && (
+        <div style={{ marginTop: "1rem", padding: "1.25rem 1.5rem", background: "var(--color-brand-dark)", border: "1px solid var(--color-brand-border)", borderRadius: 4 }}>
+          <p style={{ fontFamily: "var(--font-body)", fontSize: "0.8125rem", color: "var(--color-brand-muted)", margin: "0 0 0.4rem" }}>Release Email</p>
+          <p style={{ fontFamily: "var(--font-body)", fontSize: "0.8125rem", color: "var(--color-brand-muted)", margin: "0 0 0.75rem", lineHeight: 1.5 }}>
+            Queue a bulk email to all opted-in registered users announcing this release.
+            Emails are sent when you process the queue from{" "}
+            <Link href="/admin/email" style={{ color: "var(--color-brand-accent)" }}>Admin → Email</Link>.
+          </p>
+          <ReleaseEmailButton workId={id} emailType="release" acsReady={acsReady} />
+        </div>
+      )}
+
+      {/* Episode email — only for published episodes with a parent series */}
+      {!isNew && work && work.status === "PUBLISHED" && work.type === "EPISODE" && work.parentId && (
+        <div style={{ marginTop: "1rem", padding: "1.25rem 1.5rem", background: "var(--color-brand-dark)", border: "1px solid var(--color-brand-border)", borderRadius: 4 }}>
+          <p style={{ fontFamily: "var(--font-body)", fontSize: "0.8125rem", color: "var(--color-brand-muted)", margin: "0 0 0.4rem" }}>Episode Email</p>
+          <p style={{ fontFamily: "var(--font-body)", fontSize: "0.8125rem", color: "var(--color-brand-muted)", margin: "0 0 0.75rem", lineHeight: 1.5 }}>
+            Queue a bulk email to opted-in users announcing this episode.
+          </p>
+          <ReleaseEmailButton workId={id} emailType="episode" acsReady={acsReady} />
         </div>
       )}
     </>

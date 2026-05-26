@@ -20,6 +20,20 @@ type SendOptions = {
   metadata?: Record<string, unknown>;
 };
 
+// ── Safety-critical email types ───────────────────────────────
+// These types must NOT be blocked by marketing suppression.
+// A user who unsubscribed from newsletters still needs to receive
+// password resets and security alerts for account safety.
+// Bulk/marketing emails (NEW_RELEASE, ANNOUNCEMENT, etc.) are routed
+// through lib/bulk-email.ts and always respect suppression — correct.
+
+const BYPASS_SUPPRESSION_TYPES = new Set<EmailType>([
+  "PASSWORD_RESET",
+  "SECURITY_ALERT",
+  "ADMIN_ALERT",
+  "ACCOUNT",
+]);
+
 // ── Suppression check ─────────────────────────────────────────
 
 async function isSuppressed(email: string): Promise<boolean> {
@@ -135,8 +149,13 @@ export async function sendEmail(opts: SendOptions): Promise<void> {
   const toNorm = to.toLowerCase().trim();
   const isDev  = process.env.NODE_ENV !== "production";
 
-  // Suppression check — skip suppressed addresses silently
-  if (await isSuppressed(toNorm)) {
+  // Suppression check — bypass for account-safety types (password reset, security alerts).
+  // Marketing unsubscribe must never prevent a user receiving their own reset link.
+  // Bulk marketing emails (NEW_RELEASE, ANNOUNCEMENT, etc.) go through lib/bulk-email.ts
+  // which always enforces suppression — this bypass only applies to transactional Graph sends.
+  const bypassSuppression = BYPASS_SUPPRESSION_TYPES.has(type);
+
+  if (!bypassSuppression && (await isSuppressed(toNorm))) {
     await logEmail({ to: toNorm, subject, type, provider: "GRAPH", status: "SUPPRESSED" });
     return;
   }
