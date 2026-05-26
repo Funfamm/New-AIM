@@ -16,7 +16,9 @@ import {
   buildAnnouncementEmail,
   buildNewReleaseEmail,
   buildNewEpisodeEmail,
+  buildSeasonDropEmail,
   checkSelectedBulkProvider,
+  type ReleaseStage,
 } from "@/lib/bulk-email";
 import type { NotificationType } from "@prisma/client";
 
@@ -259,39 +261,47 @@ export async function sendAnnouncement(
 }
 
 // ── Release Outreach ──────────────────────────────────────────
-// Wraps release email logic with imageUrl support.
-// Uses same re-send guard as sendNewReleaseEmail.
+// Wraps release email logic with imageUrl + releaseStage support.
+// campaignId is stage-scoped so the same work can be emailed once
+// per stage (coming_soon → trailer_out → now_streaming).
 
 export async function sendReleaseOutreach(
-  workId:   string,
-  imageUrl?: string | null,
+  workId:        string,
+  imageUrl?:     string | null,
+  stageOverride?: ReleaseStage,
 ): Promise<OutreachResult> {
   await requireAdmin();
 
   const providerCheck = await checkSelectedBulkProvider();
-  if (!providerCheck.ok) {
-    return { queued: 0, suppressed: 0, skipped: 0, error: providerCheck.error };
-  }
+  if (!providerCheck.ok) return { queued: 0, suppressed: 0, skipped: 0, error: providerCheck.error };
   const settingsCheck = await checkBulkEmailSettings();
-  if (!settingsCheck.ok) {
-    return { queued: 0, suppressed: 0, skipped: 0, error: settingsCheck.error };
-  }
+  if (!settingsCheck.ok) return { queued: 0, suppressed: 0, skipped: 0, error: settingsCheck.error };
 
   const work = await prisma.work.findUnique({
     where:  { id: workId },
-    select: { id: true, slug: true, title: true, type: true, status: true, description: true, genres: true },
+    select: {
+      id: true, slug: true, title: true, type: true, status: true,
+      description: true, genres: true, trailerUrl: true, videoUrl: true,
+    },
   });
   if (!work)                       return { queued: 0, suppressed: 0, skipped: 0, error: "Work not found." };
   if (work.status !== "PUBLISHED") return { queued: 0, suppressed: 0, skipped: 0, error: "Only published works can trigger release emails." };
 
-  const campaignId = `new_release_${workId}`;
+  // Auto-detect stage from work's actual availability unless admin overrides
+  const releaseStage: ReleaseStage = stageOverride ??
+    (work.videoUrl   ? "now_streaming" :
+     work.trailerUrl ? "trailer_out"   : "coming_soon");
+
+  // Stage-scoped campaignId — allows one send per stage per work
+  const campaignId = `new_release_${workId}_${releaseStage}`;
   const existing = await prisma.emailQueue.count({
     where: { campaignId, status: { in: ["QUEUED", "SENT"] } },
   });
   if (existing > 0) {
+    const stageLabel = releaseStage === "coming_soon" ? "Coming Soon" : releaseStage === "trailer_out" ? "Trailer" : "Now Streaming";
     return {
       queued: 0, suppressed: 0, skipped: 0,
-      error: `A release email for this work has already been queued or sent (${existing} row${existing === 1 ? "" : "s"} found).`,
+      error: `A "${stageLabel}" email for this work has already been queued or sent (${existing} row${existing === 1 ? "" : "s"}).`,
     };
   }
 
@@ -319,8 +329,92 @@ export async function sendReleaseOutreach(
       workTitle:      work.title,
       workSlug:       work.slug,
       workType:       work.type,
+      releaseStage,
       genres:         work.genres,
       description:    work.description,
+      imageUrl:       safeImageUrl,
+    }),
+  });
+
+  revalidatePath("/admin/outreach");
+  return { queued: result.queued, suppressed: result.suppressed, skipped: result.skipped };
+}
+
+// ── Season Drop Outreach ──────────────────────────────────────
+// Industry-standard: one email per season drop, not per episode.
+// Audience: users with newEpisodeNotifications enabled.
+// campaignId is scoped to series + season — one send per season.
+
+export async function sendSeasonDropOutreach(
+  seriesId:     string,
+  seasonNumber: number,
+  imageUrl?:    string | null,
+): Promise<OutreachResult> {
+  await requireAdmin();
+
+  const providerCheck = await checkSelectedBulkProvider();
+  if (!providerCheck.ok) return { queued: 0, suppressed: 0, skipped: 0, error: providerCheck.error };
+  const settingsCheck = await checkBulkEmailSettings();
+  if (!settingsCheck.ok) return { queued: 0, suppressed: 0, skipped: 0, error: settingsCheck.error };
+
+  const series = await prisma.work.findUnique({
+    where:  { id: seriesId },
+    select: { id: true, slug: true, title: true, type: true, status: true, posterUrl: true },
+  });
+  if (!series)                       return { queued: 0, suppressed: 0, skipped: 0, error: "Series not found." };
+  if (series.type !== "SERIES")      return { queued: 0, suppressed: 0, skipped: 0, error: "Selected work is not a series." };
+  if (series.status !== "PUBLISHED") return { queued: 0, suppressed: 0, skipped: 0, error: "Series must be published." };
+
+  const episodes = await prisma.work.findMany({
+    where: { parentId: seriesId, seasonNumber, status: "PUBLISHED", type: "EPISODE" },
+    select: { id: true },
+  });
+  if (episodes.length === 0) {
+    return {
+      queued: 0, suppressed: 0, skipped: 0,
+      error: `No published episodes found for Season ${seasonNumber} of "${series.title}".`,
+    };
+  }
+
+  const campaignId = `season_drop_${seriesId}_s${seasonNumber}`;
+  const existing = await prisma.emailQueue.count({
+    where: { campaignId, status: { in: ["QUEUED", "SENT"] } },
+  });
+  if (existing > 0) {
+    return {
+      queued: 0, suppressed: 0, skipped: 0,
+      error: `A Season ${seasonNumber} email for "${series.title}" has already been queued or sent.`,
+    };
+  }
+
+  const users = await prisma.user.findMany({
+    where: {
+      status: "ACTIVE",
+      email:  { not: "" },
+      OR: [
+        { preferences: null },
+        { preferences: { newEpisodeNotifications: true } },
+      ],
+    },
+    select: { email: true, name: true },
+  });
+  if (users.length === 0) return { queued: 0, suppressed: 0, skipped: 0, error: "No eligible recipients." };
+
+  // Use provided imageUrl first, fall back to series poster
+  const safeImageUrl = (imageUrl && isSafeUrl(imageUrl))
+    ? imageUrl
+    : (series.posterUrl ?? null);
+
+  const result = await enqueueBulkForRecipients({
+    recipients: users,
+    type:       "NEW_EPISODE",
+    campaignId,
+    buildEmail: (r) => buildSeasonDropEmail({
+      recipientEmail: r.email,
+      seriesTitle:    series.title,
+      seriesSlug:     series.slug,
+      seasonNumber,
+      episodeCount:   episodes.length,
       imageUrl:       safeImageUrl,
     }),
   });

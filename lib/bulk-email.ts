@@ -22,6 +22,13 @@ import { prisma } from "@/lib/prisma";
 import { buildUnsubscribeUrl, buildPreferencesUrl } from "@/lib/unsubscribe";
 import type { EmailType, EmailProvider, Prisma } from "@prisma/client";
 
+// ── Release stage ─────────────────────────────────────────────
+// Describes the availability state of a work at time of email send.
+// coming_soon  — no trailer, no video (in production / announced only)
+// trailer_out  — trailer URL present but no full video yet
+// now_streaming — full video available
+export type ReleaseStage = "coming_soon" | "trailer_out" | "now_streaming";
+
 const APP_URL   = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 const FROM_NAME = "AIM Studio";
 
@@ -167,51 +174,99 @@ export function buildNewReleaseEmail(opts: {
   workTitle:      string;
   workSlug:       string;
   workType:       string;
+  releaseStage?:  ReleaseStage;
   genres?:        string[];
   description?:   string | null;
   imageUrl?:      string | null;
 }): { subject: string; html: string } {
+  const stage      = opts.releaseStage ?? "now_streaming";
   const watchHref  = opts.workType === "SERIES"
     ? `${APP_URL}/watch/${opts.workSlug}`
     : `${APP_URL}/watch/${opts.workSlug}?full=1`;
   const detailHref = `${APP_URL}/works/${opts.workSlug}`;
   const typeLabel  = opts.workType === "SERIES" ? "New Series" : "New Release";
   const genreText  = opts.genres?.slice(0, 3).join(" · ") ?? "";
+  const descText   = opts.description
+    ? opts.description.slice(0, 200) + (opts.description.length > 200 ? "…" : "")
+    : null;
+
+  let subject:   string;
+  let leadText:  string;
+  let ctaBlock:  string;
+  let preheader: string;
+
+  if (stage === "coming_soon") {
+    subject   = `Coming Soon: ${opts.workTitle}`;
+    leadText  = descText ?? `${opts.workTitle} is coming to AIM Studio. Stay tuned.`;
+    preheader = `Coming soon to AIM Studio — ${opts.workTitle}`;
+    ctaBlock  = `
+      <a href="${detailHref}"
+         style="display:inline-block;background:#e8c97e;color:#0a0a0a;font-size:13px;font-weight:700;
+                letter-spacing:0.04em;text-decoration:none;padding:11px 24px;border-radius:3px;">
+        View Details
+      </a>`;
+  } else if (stage === "trailer_out") {
+    subject   = `Watch the Trailer: ${opts.workTitle}`;
+    leadText  = descText ?? `The first trailer for ${opts.workTitle} is here.`;
+    preheader = `The trailer for ${opts.workTitle} is here`;
+    ctaBlock  = `
+      <table cellpadding="0" cellspacing="0" style="margin:0 0 16px;">
+        <tr>
+          <td style="padding-right:8px;">
+            <a href="${detailHref}"
+               style="display:inline-block;background:#e8c97e;color:#0a0a0a;font-size:13px;font-weight:700;
+                      letter-spacing:0.04em;text-decoration:none;padding:11px 24px;border-radius:3px;">
+              Watch Trailer
+            </a>
+          </td>
+          <td>
+            <a href="${detailHref}"
+               style="display:inline-block;color:#e5e7eb;font-size:13px;font-weight:500;
+                      text-decoration:none;padding:11px 20px;border:1px solid #3a3a3a;border-radius:3px;">
+              View Details
+            </a>
+          </td>
+        </tr>
+      </table>`;
+  } else {
+    // now_streaming
+    subject   = `${typeLabel}: ${opts.workTitle}`;
+    leadText  = descText ?? `${opts.workTitle} is now available to watch on AIM Studio.`;
+    preheader = `${typeLabel} on AIM Studio — ${opts.workTitle}`;
+    ctaBlock  = `
+      <table cellpadding="0" cellspacing="0" style="margin:0 0 16px;">
+        <tr>
+          <td style="padding-right:8px;">
+            <a href="${watchHref}"
+               style="display:inline-block;background:#e8c97e;color:#0a0a0a;font-size:13px;font-weight:700;
+                      letter-spacing:0.04em;text-decoration:none;padding:11px 24px;border-radius:3px;">
+              ${opts.workType === "SERIES" ? "Watch Series" : "Watch Now"}
+            </a>
+          </td>
+          <td>
+            <a href="${detailHref}"
+               style="display:inline-block;color:#e5e7eb;font-size:13px;font-weight:500;
+                      text-decoration:none;padding:11px 20px;border:1px solid #3a3a3a;border-radius:3px;">
+              View Details
+            </a>
+          </td>
+        </tr>
+      </table>`;
+  }
 
   const body = `
     ${safeImageBlock(opts.imageUrl, opts.workTitle)}
     ${genreText ? `<p style="margin:0 0 8px;font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#e8c97e;">${genreText}</p>` : ""}
-    <p style="margin:0 0 16px;font-size:14px;color:#6b7280;line-height:1.6;">
-      ${opts.description
-        ? opts.description.slice(0, 200) + (opts.description.length > 200 ? "…" : "")
-        : `${opts.workTitle} is now available to watch on AIM Studio.`}
-    </p>
-    <table cellpadding="0" cellspacing="0" style="margin:0 0 16px;">
-      <tr>
-        <td style="padding-right:8px;">
-          <a href="${watchHref}"
-             style="display:inline-block;background:#e8c97e;color:#0a0a0a;font-size:13px;font-weight:700;
-                    letter-spacing:0.04em;text-decoration:none;padding:11px 24px;border-radius:3px;">
-            ${opts.workType === "SERIES" ? "Watch Series" : "Watch Now"}
-          </a>
-        </td>
-        <td>
-          <a href="${detailHref}"
-             style="display:inline-block;color:#e5e7eb;font-size:13px;font-weight:500;
-                    text-decoration:none;padding:11px 20px;border:1px solid #3a3a3a;border-radius:3px;">
-            View Details
-          </a>
-        </td>
-      </tr>
-    </table>`;
+    <p style="margin:0 0 16px;font-size:14px;color:#6b7280;line-height:1.6;">${leadText}</p>
+    ${ctaBlock}`;
 
   return {
-    subject: `${typeLabel}: ${opts.workTitle}`,
-    html:    bulkBaseTemplate({
+    subject,
+    html: bulkBaseTemplate({
       title:          opts.workTitle,
       bodyHtml:       body,
       recipientEmail: opts.recipientEmail,
-      preheader:      `${typeLabel} on AIM Studio — ${opts.workTitle}`,
+      preheader,
     }),
   };
 }
@@ -253,6 +308,57 @@ export function buildNewEpisodeEmail(opts: {
       bodyHtml:       body,
       recipientEmail: opts.recipientEmail,
       preheader:      `${epLabel} of ${opts.seriesTitle} is now streaming`,
+    }),
+  };
+}
+
+export function buildSeasonDropEmail(opts: {
+  recipientEmail: string;
+  seriesTitle:    string;
+  seriesSlug:     string;
+  seasonNumber:   number;
+  episodeCount:   number;
+  imageUrl?:      string | null;
+}): { subject: string; html: string } {
+  const watchHref   = `${APP_URL}/watch/${opts.seriesSlug}`;
+  const detailHref  = `${APP_URL}/works/${opts.seriesSlug}`;
+  const seasonLabel = `Season ${opts.seasonNumber}`;
+  const epText      = `${opts.episodeCount} episode${opts.episodeCount === 1 ? "" : "s"}`;
+
+  const body = `
+    ${safeImageBlock(opts.imageUrl, opts.seriesTitle)}
+    <p style="margin:0 0 8px;font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#e8c97e;">
+      ${htmlEsc(opts.seriesTitle)}
+    </p>
+    <p style="margin:0 0 20px;font-size:14px;color:#6b7280;line-height:1.6;">
+      ${htmlEsc(seasonLabel)} is now streaming — ${epText} available.
+    </p>
+    <table cellpadding="0" cellspacing="0" style="margin:0 0 16px;">
+      <tr>
+        <td style="padding-right:8px;">
+          <a href="${watchHref}"
+             style="display:inline-block;background:#e8c97e;color:#0a0a0a;font-size:13px;font-weight:700;
+                    letter-spacing:0.04em;text-decoration:none;padding:11px 24px;border-radius:3px;">
+            Watch ${htmlEsc(seasonLabel)}
+          </a>
+        </td>
+        <td>
+          <a href="${detailHref}"
+             style="display:inline-block;color:#e5e7eb;font-size:13px;font-weight:500;
+                    text-decoration:none;padding:11px 20px;border:1px solid #3a3a3a;border-radius:3px;">
+            View Details
+          </a>
+        </td>
+      </tr>
+    </table>`;
+
+  return {
+    subject: `${opts.seriesTitle} — ${seasonLabel} is now streaming`,
+    html:    bulkBaseTemplate({
+      title:          `${opts.seriesTitle} — ${seasonLabel}`,
+      bodyHtml:       body,
+      recipientEmail: opts.recipientEmail,
+      preheader:      `${seasonLabel} of ${opts.seriesTitle} — ${epText} now streaming`,
     }),
   };
 }

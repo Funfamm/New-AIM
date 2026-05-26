@@ -7,21 +7,31 @@
 //  - Live preview panel: in-app notification card + email channel hint
 //  - Release / Episode now call sendReleaseOutreach / sendEpisodeOutreach (imageUrl support)
 
-import { useTransition, useState } from "react";
+import { useTransition, useState, useMemo } from "react";
 import {
   sendAnnouncement,
   sendReleaseOutreach,
-  sendEpisodeOutreach,
+  sendSeasonDropOutreach,
 } from "@/lib/actions/outreach";
 import type { OutreachResult, AudienceType } from "@/lib/actions/outreach";
+import type { ReleaseStage } from "@/lib/bulk-email";
 
-type PublishedWork    = { id: string; title: string; type: string; posterUrl?: string | null };
+type PublishedWork    = {
+  id:          string;
+  title:       string;
+  type:        string;
+  posterUrl?:  string | null;
+  trailerUrl?: string | null;
+  videoUrl?:   string | null;
+};
 type PublishedEpisode = {
   id:            string;
   title:         string;
   episodeNumber: number | null;
   seasonNumber:  number | null;
   seriesTitle:   string | null;
+  seriesId:      string | null;
+  seriesSlug:    string | null;
   posterUrl?:    string | null;
 };
 
@@ -39,9 +49,21 @@ type ChannelType = "both" | "inapp" | "email";
 const TYPES: { id: ComposeType; label: string; available: boolean }[] = [
   { id: "announcement", label: "Announcement",  available: true  },
   { id: "release",      label: "New Release",   available: true  },
-  { id: "episode",      label: "New Episode",   available: true  },
+  { id: "episode",      label: "Season Drop",   available: true  },
   { id: "studio",       label: "Studio Update", available: false },
 ];
+
+const STAGE_LABELS: Record<ReleaseStage, string> = {
+  coming_soon:   "In Production",
+  trailer_out:   "Trailer Available",
+  now_streaming: "Now Streaming",
+};
+
+function detectStage(work: PublishedWork): ReleaseStage {
+  if (work.videoUrl)   return "now_streaming";
+  if (work.trailerUrl) return "trailer_out";
+  return "coming_soon";
+}
 
 const AUDIENCE_OPTIONS: { id: AudienceType; label: string; hint: string }[] = [
   { id: "all",        label: "All users",        hint: "All active registered users" },
@@ -93,6 +115,13 @@ export default function OutreachComposeForm({
   const [selectedWorkId, setSelectedWorkId] = useState("");
   const [imageUrl,       setImageUrl]       = useState("");
 
+  // New Release: optional stage override (null = auto-detect)
+  const [releaseStageOverride, setReleaseStageOverride] = useState<ReleaseStage | "">("");
+
+  // Season Drop: series + season selection
+  const [selectedSeriesId,     setSelectedSeriesId]     = useState("");
+  const [selectedSeasonNumber, setSelectedSeasonNumber] = useState<number | "">("");
+
   // CTA (announcement only — controlled for paired validation)
   const [ctaUrl,   setCtaUrl]   = useState("");
   const [ctaLabel, setCtaLabel] = useState("");
@@ -100,6 +129,36 @@ export default function OutreachComposeForm({
   const [pending, startTransition] = useTransition();
   const [result,  setResult]       = useState<OutreachResult | null>(null);
   const [formKey, setFormKey]      = useState(0);
+
+  // ── Season Drop derived data ─────────────────────────────────
+  const { seriesList, seasonsBySeriesId } = useMemo(() => {
+    const seriesMap = new Map<string, { id: string; title: string; posterUrl?: string | null }>();
+    const seasonsMap = new Map<string, Map<number, PublishedEpisode[]>>();
+
+    for (const ep of publishedEpisodes) {
+      if (!ep.seriesId || !ep.seriesTitle) continue;
+      if (!seriesMap.has(ep.seriesId)) {
+        seriesMap.set(ep.seriesId, { id: ep.seriesId, title: ep.seriesTitle, posterUrl: ep.posterUrl });
+      }
+      if (!seasonsMap.has(ep.seriesId)) seasonsMap.set(ep.seriesId, new Map());
+      const sn = ep.seasonNumber ?? 0;
+      const map = seasonsMap.get(ep.seriesId)!;
+      if (!map.has(sn)) map.set(sn, []);
+      map.get(sn)!.push(ep);
+    }
+
+    const seriesList = Array.from(seriesMap.values()).sort((a, b) => a.title.localeCompare(b.title));
+    return { seriesList, seasonsBySeriesId: seasonsMap };
+  }, [publishedEpisodes]);
+
+  const currentSeasons: [number, PublishedEpisode[]][] = selectedSeriesId
+    ? Array.from((seasonsBySeriesId.get(selectedSeriesId) ?? new Map()).entries()).sort(([a], [b]) => a - b)
+    : [];
+
+  const currentSeasonEpisodes: PublishedEpisode[] =
+    selectedSeriesId && selectedSeasonNumber !== ""
+      ? (seasonsBySeriesId.get(selectedSeriesId)?.get(selectedSeasonNumber) ?? [])
+      : [];
 
   // ── Derived ─────────────────────────────────────────────────
   const ctaError =
@@ -117,19 +176,35 @@ export default function OutreachComposeForm({
   const emailChannelDisabled = emailDisabledReason !== null;
 
   // Preview data
-  const selectedWork    = publishedWorks.find((w) => w.id === selectedWorkId);
-  const selectedEpisode = publishedEpisodes.find((e) => e.id === selectedWorkId);
+  const selectedWork   = publishedWorks.find((w) => w.id === selectedWorkId);
+  const selectedSeries = seriesList.find((s) => s.id === selectedSeriesId);
+
+  const effectiveStage: ReleaseStage =
+    releaseStageOverride ? releaseStageOverride :
+    selectedWork ? detectStage(selectedWork) : "now_streaming";
 
   const previewTitle =
     composeType === "announcement" ? (annTitle  || "Notification title preview") :
-    composeType === "release"      ? (selectedWork?.title    || "New Release") :
-    composeType === "episode"      ? (selectedEpisode?.title || "New Episode") :
+    composeType === "release"      ? (selectedWork?.title || "New Release") :
+    composeType === "episode"      ? (
+      selectedSeries && selectedSeasonNumber !== ""
+        ? `${selectedSeries.title} — Season ${selectedSeasonNumber}`
+        : "Season Drop"
+    ) :
     "Notification title preview";
 
   const previewBody =
     composeType === "announcement" ? (annBody || "Your notification message will appear here.") :
-    composeType === "release"      ? "A new film has just dropped — watch it now." :
-    composeType === "episode"      ? "A new episode is now available. Watch it now." :
+    composeType === "release"      ? (
+      effectiveStage === "coming_soon" ? "Coming soon — save the date." :
+      effectiveStage === "trailer_out" ? "Watch the trailer and add it to your list." :
+      "A new film has just dropped — watch it now."
+    ) :
+    composeType === "episode"      ? (
+      currentSeasonEpisodes.length > 0
+        ? `Season ${selectedSeasonNumber} is now streaming — ${currentSeasonEpisodes.length} episode${currentSeasonEpisodes.length !== 1 ? "s" : ""} available.`
+        : "A new season is now available. Watch it now."
+    ) :
     "";
 
   const previewIcon =
@@ -139,8 +214,18 @@ export default function OutreachComposeForm({
 
   const previewTypeLabel =
     composeType === "release" ? "New Release" :
-    composeType === "episode" ? "New Episode" :
+    composeType === "episode" ? "Season Drop" :
     "Announcement";
+
+  const previewEmailSubject =
+    composeType === "release" && selectedWork ? (
+      effectiveStage === "coming_soon" ? `Coming Soon: ${selectedWork.title}` :
+      effectiveStage === "trailer_out" ? `Watch the Trailer: ${selectedWork.title}` :
+      `New Release: ${selectedWork.title}`
+    ) :
+    composeType === "episode" && selectedSeries && selectedSeasonNumber !== ""
+      ? `${selectedSeries.title} — Season ${selectedSeasonNumber} is now streaming`
+      : previewTitle;
 
   // Show email preview when channel includes email (or for release/episode which are email-only)
   const showEmailPreview =
@@ -156,6 +241,9 @@ export default function OutreachComposeForm({
     setAnnBody("");
     setSelectedWorkId("");
     setImageUrl("");
+    setReleaseStageOverride("");
+    setSelectedSeriesId("");
+    setSelectedSeasonNumber("");
     setCtaUrl("");
     setCtaLabel("");
   }
@@ -166,6 +254,9 @@ export default function OutreachComposeForm({
     setResult(null);
     setSelectedWorkId("");
     setImageUrl("");
+    setReleaseStageOverride("");
+    setSelectedSeriesId("");
+    setSelectedSeasonNumber("");
     setCtaUrl("");
     setCtaLabel("");
     setAnnTitle("");
@@ -174,14 +265,23 @@ export default function OutreachComposeForm({
 
   function handleWorkChange(workId: string) {
     setSelectedWorkId(workId);
-    // Auto-populate imageUrl from the work's posterUrl
-    if (composeType === "release") {
-      const work = publishedWorks.find((w) => w.id === workId);
-      setImageUrl(work?.posterUrl ?? "");
-    } else if (composeType === "episode") {
-      const ep = publishedEpisodes.find((e) => e.id === workId);
-      setImageUrl(ep?.posterUrl ?? "");
-    }
+    setReleaseStageOverride("");
+    const work = publishedWorks.find((w) => w.id === workId);
+    setImageUrl(work?.posterUrl ?? "");
+  }
+
+  function handleSeriesChange(seriesId: string) {
+    setSelectedSeriesId(seriesId);
+    setSelectedSeasonNumber("");
+    setImageUrl("");
+  }
+
+  function handleSeasonChange(sn: number) {
+    setSelectedSeasonNumber(sn);
+    // Auto-populate image from first episode poster or series poster
+    const eps = seasonsBySeriesId.get(selectedSeriesId)?.get(sn) ?? [];
+    const poster = eps.find((e) => e.posterUrl)?.posterUrl ?? "";
+    setImageUrl(poster);
   }
 
   function handleChannelChange(ch: ChannelType) {
@@ -204,10 +304,11 @@ export default function OutreachComposeForm({
         r = await sendAnnouncement(formData);
       } else if (composeType === "release") {
         if (!selectedWorkId) { setResult({ error: "Select a published work." }); return; }
-        r = await sendReleaseOutreach(selectedWorkId, imageUrl || null);
+        r = await sendReleaseOutreach(selectedWorkId, imageUrl || null, releaseStageOverride || undefined);
       } else if (composeType === "episode") {
-        if (!selectedWorkId) { setResult({ error: "Select a published episode." }); return; }
-        r = await sendEpisodeOutreach(selectedWorkId, imageUrl || null);
+        if (!selectedSeriesId) { setResult({ error: "Select a series." }); return; }
+        if (selectedSeasonNumber === "") { setResult({ error: "Select a season." }); return; }
+        r = await sendSeasonDropOutreach(selectedSeriesId, selectedSeasonNumber as number, imageUrl || null);
       } else {
         r = { error: "This message type is coming in a future phase." };
       }
@@ -289,7 +390,7 @@ export default function OutreachComposeForm({
         <div className="outreach-preview-email">
           <p className="outreach-preview-email-label">Email (ACS bulk)</p>
           <p className="outreach-preview-email-detail">
-            Subject: {previewTitle}
+            Subject: {previewEmailSubject}
           </p>
           {imgValid && (
             <p className="outreach-preview-email-detail">🖼 Image banner included</p>
@@ -533,13 +634,39 @@ export default function OutreachComposeForm({
             )}
           </div>
 
+          {/* Stage detection + override */}
+          {selectedWork && (
+            <div className="outreach-field">
+              <label className="outreach-label">Release Stage</label>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
+                <span className={`outreach-stage-badge outreach-stage-badge--${detectStage(selectedWork)}`}>
+                  {STAGE_LABELS[detectStage(selectedWork)]}
+                </span>
+                <select
+                  className="outreach-select"
+                  style={{ flex: "0 1 220px" }}
+                  value={releaseStageOverride}
+                  onChange={(e) => setReleaseStageOverride(e.target.value as ReleaseStage | "")}
+                >
+                  <option value="">Auto-detected</option>
+                  <option value="coming_soon">Override: In Production</option>
+                  <option value="trailer_out">Override: Trailer Available</option>
+                  <option value="now_streaming">Override: Now Streaming</option>
+                </select>
+              </div>
+              <p className="outreach-hint" style={{ marginTop: "0.3rem" }}>
+                Auto-detected from work URLs. Override if the work state differs.
+              </p>
+            </div>
+          )}
+
           {/* Image URL with auto-populated poster */}
           {imageField}
 
           <p className="outreach-hint">
             Queues a bulk email to all opted-in users announcing this release.
             Selecting a work auto-fills the image URL with its poster if available.
-            Uses the same re-send guard as the quick-action on the work edit page.
+            Stage determines subject line and CTA — re-send is allowed per stage.
           </p>
 
           {/* Preview — shown once a work is selected */}
@@ -560,7 +687,7 @@ export default function OutreachComposeForm({
         </form>
       )}
 
-      {/* ══ New Episode form ════════════════════════════════════ */}
+      {/* ══ Season Drop form ════════════════════════════════════ */}
       {composeType === "episode" && (
         <form key={`episode-${formKey}`} onSubmit={handleSubmit} className="outreach-form">
           {!acsReady && (
@@ -572,45 +699,69 @@ export default function OutreachComposeForm({
             </p>
           )}
 
+          {/* Series selector */}
           <div className="outreach-field">
-            <label className="outreach-label" htmlFor="oc-episode-work">Published Episode *</label>
-            {publishedEpisodes.length === 0 ? (
+            <label className="outreach-label" htmlFor="oc-series">Series *</label>
+            {seriesList.length === 0 ? (
               <p style={{ fontSize: "0.82rem", color: "var(--color-brand-muted)" }}>
-                No published episodes found.
+                No published series found. Publish a series with episodes first.
               </p>
             ) : (
               <select
-                id="oc-episode-work"
+                id="oc-series"
                 className="outreach-select"
-                value={selectedWorkId}
-                onChange={(e) => handleWorkChange(e.target.value)}
+                value={selectedSeriesId}
+                onChange={(e) => handleSeriesChange(e.target.value)}
                 required
               >
-                <option value="">— Select an episode —</option>
-                {publishedEpisodes.map((ep) => {
-                  const epLabel =
-                    ep.seasonNumber && ep.episodeNumber ? `S${ep.seasonNumber}E${ep.episodeNumber}` :
-                    ep.episodeNumber ? `Ep ${ep.episodeNumber}` : "";
-                  return (
-                    <option key={ep.id} value={ep.id}>
-                      {ep.seriesTitle ? `${ep.seriesTitle} — ` : ""}{ep.title}{epLabel ? ` (${epLabel})` : ""}
-                    </option>
-                  );
-                })}
+                <option value="">— Select a series —</option>
+                {seriesList.map((s) => (
+                  <option key={s.id} value={s.id}>{s.title}</option>
+                ))}
               </select>
             )}
           </div>
 
-          {/* Image URL with auto-populated poster */}
-          {imageField}
+          {/* Season selector — only shown after series is selected */}
+          {selectedSeriesId && (
+            <div className="outreach-field">
+              <label className="outreach-label" htmlFor="oc-season">Season *</label>
+              {currentSeasons.length === 0 ? (
+                <p style={{ fontSize: "0.82rem", color: "var(--color-brand-muted)" }}>
+                  No published seasons found for this series.
+                </p>
+              ) : (
+                <select
+                  id="oc-season"
+                  className="outreach-select"
+                  value={selectedSeasonNumber === "" ? "" : String(selectedSeasonNumber)}
+                  onChange={(e) =>
+                    e.target.value ? handleSeasonChange(Number(e.target.value)) : setSelectedSeasonNumber("")
+                  }
+                  required
+                >
+                  <option value="">— Select a season —</option>
+                  {currentSeasons.map(([sn, eps]) => (
+                    <option key={sn} value={sn}>
+                      Season {sn} — {eps.length} episode{eps.length !== 1 ? "s" : ""}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+          )}
+
+          {/* Image URL — only shown when series + season are selected */}
+          {selectedSeriesId && selectedSeasonNumber !== "" && imageField}
 
           <p className="outreach-hint">
-            Queues a bulk email to opted-in users announcing this episode.
-            Selecting an episode auto-fills the image URL with its poster if available.
+            One email per season — sent to users with episode notifications enabled.
+            Selecting a season auto-fills the image from episode posters when available.
+            Re-send is blocked per season so users are never emailed twice for the same drop.
           </p>
 
-          {/* Preview — shown once an episode is selected */}
-          {selectedWorkId && previewPanel}
+          {/* Preview — shown once series + season are selected */}
+          {selectedSeriesId && selectedSeasonNumber !== "" && previewPanel}
 
           {result?.error && <p className="outreach-error">⚠ {result.error}</p>}
           {result && !result.error && (
@@ -619,10 +770,10 @@ export default function OutreachComposeForm({
 
           <button
             type="submit"
-            disabled={pending || !selectedWorkId}
+            disabled={pending || !selectedSeriesId || selectedSeasonNumber === ""}
             className="outreach-submit-btn"
           >
-            {pending ? "Queuing…" : "Queue Episode Email"}
+            {pending ? "Queuing…" : "Queue Season Drop Email"}
           </button>
         </form>
       )}

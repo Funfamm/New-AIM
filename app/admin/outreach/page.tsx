@@ -57,11 +57,11 @@ export default async function AdminOutreachPage({ searchParams }: Props) {
     // Published non-episode works (for New Release type)
     prisma.work.findMany({
       where:   { status: "PUBLISHED", type: { not: "EPISODE" } },
-      select:  { id: true, title: true, type: true, posterUrl: true },
+      select:  { id: true, title: true, type: true, posterUrl: true, trailerUrl: true, videoUrl: true },
       orderBy: { updatedAt: "desc" },
       take:    100,
     }),
-    // Published episodes with a parent series (for New Episode type)
+    // Published episodes with a parent series (for Season Drop type)
     prisma.work.findMany({
       where: {
         status:   "PUBLISHED",
@@ -74,10 +74,10 @@ export default async function AdminOutreachPage({ searchParams }: Props) {
         episodeNumber: true,
         seasonNumber:  true,
         posterUrl:     true,
-        parent:        { select: { title: true } },
+        parent:        { select: { id: true, title: true, slug: true } },
       },
-      orderBy: [{ updatedAt: "desc" }],
-      take:    100,
+      orderBy: [{ parent: { title: "asc" } }, { seasonNumber: "asc" }, { episodeNumber: "asc" }],
+      take:    200,
     }),
     // History tab: last 50 announcements
     prisma.announcement.findMany({
@@ -170,7 +170,6 @@ export default async function AdminOutreachPage({ searchParams }: Props) {
             (settings?.bulkEmailSendingEnabled  ?? false) &&
             (settings?.notificationEmailEnabled ?? false)
           }
-          publishedWorks={publishedWorks}
           publishedEpisodes={publishedEpisodes.map((e) => ({
             id:            e.id,
             title:         e.title,
@@ -178,6 +177,16 @@ export default async function AdminOutreachPage({ searchParams }: Props) {
             seasonNumber:  e.seasonNumber,
             posterUrl:     e.posterUrl ?? null,
             seriesTitle:   e.parent?.title ?? null,
+            seriesId:      e.parent?.id    ?? null,
+            seriesSlug:    e.parent?.slug  ?? null,
+          }))}
+          publishedWorks={publishedWorks.map((w) => ({
+            id:         w.id,
+            title:      w.title,
+            type:       w.type,
+            posterUrl:  w.posterUrl  ?? null,
+            trailerUrl: w.trailerUrl ?? null,
+            videoUrl:   w.videoUrl   ?? null,
           }))}
         />
       )}
