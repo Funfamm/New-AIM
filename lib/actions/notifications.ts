@@ -116,3 +116,27 @@ export async function markAllNotificationsRead() {
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/notifications");
 }
+
+/** Hard-delete a single notification — ownership-verified. */
+export async function clearNotification(notificationId: string) {
+  const userId = await requireUser();
+  await prisma.notification.deleteMany({ where: { id: notificationId, userId } });
+  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/notifications");
+}
+
+/** Hard-delete all read notifications for the current user. */
+export async function clearReadNotifications() {
+  const userId = await requireUser();
+  await prisma.notification.deleteMany({ where: { userId, read: true } });
+  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/notifications");
+}
+
+/** Hard-delete ALL notifications for the current user. */
+export async function clearAllNotifications() {
+  const userId = await requireUser();
+  await prisma.notification.deleteMany({ where: { userId } });
+  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/notifications");
+}

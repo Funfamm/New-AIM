@@ -1,6 +1,6 @@
-import { auth } from "@/lib/auth";
-import { getUserNotifications, markNotificationRead, markAllNotificationsRead } from "@/lib/actions/notifications";
+import { getUserNotifications } from "@/lib/actions/notifications";
 import { NotificationLink, NotificationTitle } from "./notification-link";
+import { NotifItemActions, NotifBulkActions } from "./notif-clear-actions";
 import Link from "next/link";
 import { ChevronLeft, Bell } from "lucide-react";
 import NavWrapper from "@/components/nav-wrapper";
@@ -11,23 +11,23 @@ import "./notifications.css";
 export const metadata: Metadata = { title: "Notifications — AIM Studio" };
 
 const NOTIF_ICON: Record<string, string> = {
-  NEW_RELEASE:  "🎬",
-  NEW_EPISODE:  "🎞️",
-  ANNOUNCEMENT: "📣",
+  NEW_RELEASE:    "🎬",
+  NEW_EPISODE:    "🎞️",
+  ANNOUNCEMENT:   "📣",
   WATCH_PROGRESS: "⏱️",
-  ACCOUNT:  "👤",
-  SYSTEM:   "⚙️",
-  SECURITY: "🔒",
+  ACCOUNT:        "👤",
+  SYSTEM:         "⚙️",
+  SECURITY:       "🔒",
 };
 
 const NOTIF_LABEL: Record<string, string> = {
-  NEW_RELEASE:  "New Release",
-  NEW_EPISODE:  "New Episode",
-  ANNOUNCEMENT: "Announcement",
+  NEW_RELEASE:    "New Release",
+  NEW_EPISODE:    "New Episode",
+  ANNOUNCEMENT:   "Announcement",
   WATCH_PROGRESS: "Watch Progress",
-  ACCOUNT:  "Account",
-  SYSTEM:   "System",
-  SECURITY: "Security Alert",
+  ACCOUNT:        "Account",
+  SYSTEM:         "System",
+  SECURITY:       "Security Alert",
 };
 
 function timeAgo(date: Date): string {
@@ -43,11 +43,11 @@ function timeAgo(date: Date): string {
 }
 
 export default async function NotificationsPage() {
-  await auth(); // middleware already guards; this confirms session for page
+  // getUserNotifications already requires auth internally
   const notifications = await getUserNotifications();
 
-  const unread = notifications.filter((n) => !n.read);
-  const hasUnread = unread.length > 0;
+  const hasUnread = notifications.some((n) => !n.read);
+  const hasRead   = notifications.some((n) => n.read);
 
   return (
     <>
@@ -65,14 +65,14 @@ export default async function NotificationsPage() {
               <h1 className="notifpage-title">
                 <Bell size={20} /> Notifications
               </h1>
-              {hasUnread && (
-                <form action={markAllNotificationsRead}>
-                  <button type="submit" className="notifpage-mark-all">
-                    Mark all as read
-                  </button>
-                </form>
-              )}
             </div>
+
+            {/* ── Bulk actions (client) ── */}
+            <NotifBulkActions
+              hasUnread={hasUnread}
+              hasRead={hasRead}
+              hasAny={notifications.length > 0}
+            />
 
             {notifications.length === 0 ? (
               <div className="notifpage-empty">
@@ -81,52 +81,42 @@ export default async function NotificationsPage() {
               </div>
             ) : (
               <ul className="notifpage-list">
-                {notifications.map((n) => {
-                  const markRead = markNotificationRead.bind(null, n.id);
-                  return (
-                    <li key={n.id} className={`notifpage-item${n.read ? "" : " notifpage-item--unread"}`}>
-                      <span className="notifpage-icon" aria-hidden="true">{NOTIF_ICON[n.type] ?? "🔔"}</span>
+                {notifications.map((n) => (
+                  <li key={n.id} className={`notifpage-item${n.read ? "" : " notifpage-item--unread"}`}>
+                    <span className="notifpage-icon" aria-hidden="true">
+                      {NOTIF_ICON[n.type] ?? "🔔"}
+                    </span>
 
-                      <div className="notifpage-body">
-                        <div className="notifpage-meta">
-                          <span className="notifpage-type">{NOTIF_LABEL[n.type] ?? n.type}</span>
-                          <span className="notifpage-time">{timeAgo(new Date(n.createdAt))}</span>
-                        </div>
-                        {/* Clicking title marks notification as read */}
-                        {n.href ? (
-                          <NotificationLink
-                            id={n.id}
-                            href={n.href}
-                            read={n.read}
-                            className="notifpage-item-title"
-                          >
-                            {n.title}
-                          </NotificationLink>
-                        ) : (
-                          <NotificationTitle
-                            id={n.id}
-                            read={n.read}
-                            className="notifpage-item-title"
-                          >
-                            {n.title}
-                          </NotificationTitle>
-                        )}
-                        {n.body && <p className="notifpage-item-body">{n.body}</p>}
+                    <div className="notifpage-body">
+                      <div className="notifpage-meta">
+                        <span className="notifpage-type">{NOTIF_LABEL[n.type] ?? n.type}</span>
+                        <span className="notifpage-time">{timeAgo(new Date(n.createdAt))}</span>
                       </div>
+                      {n.href ? (
+                        <NotificationLink
+                          id={n.id}
+                          href={n.href}
+                          read={n.read}
+                          className="notifpage-item-title"
+                        >
+                          {n.title}
+                        </NotificationLink>
+                      ) : (
+                        <NotificationTitle
+                          id={n.id}
+                          read={n.read}
+                          className="notifpage-item-title"
+                        >
+                          {n.title}
+                        </NotificationTitle>
+                      )}
+                      {n.body && <p className="notifpage-item-body">{n.body}</p>}
+                    </div>
 
-                      {/* Dot button still available for explicit mark-as-read */}
-                      <div className="notifpage-actions">
-                        {!n.read && (
-                          <form action={markRead}>
-                            <button type="submit" className="notifpage-read-btn" aria-label="Mark as read">
-                              <span className="notifpage-dot" />
-                            </button>
-                          </form>
-                        )}
-                      </div>
-                    </li>
-                  );
-                })}
+                    {/* Per-item actions: mark read + delete */}
+                    <NotifItemActions id={n.id} read={n.read} />
+                  </li>
+                ))}
               </ul>
             )}
 

@@ -54,6 +54,12 @@ export async function isWorkSaved(workId: string): Promise<boolean> {
   return row != null;
 }
 
+export async function clearAllSavedWorks() {
+  const userId = await requireUser();
+  await prisma.savedWork.deleteMany({ where: { userId } });
+  revalidatePath("/dashboard");
+}
+
 export async function getSavedWorks() {
   const userId = await requireUser();
   return prisma.savedWork.findMany({

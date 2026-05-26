@@ -68,6 +68,80 @@ a.notifpage-item-title:hover { color: var(--color-brand-accent); }
   color: var(--color-brand-muted); margin: 0; line-height: 1.6;
 }
 
+/* ── Bulk header actions ── */
+.notifpage-bulk-actions {
+  display: flex; align-items: center; gap: 0.5rem;
+  flex-wrap: wrap; margin-bottom: 1rem;
+}
+.notifpage-bulk-btn {
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  background: none; border: 1px solid var(--color-brand-border);
+  border-radius: 3px; padding: 0.35rem 0.75rem;
+  font-family: var(--font-body); font-size: 0.75rem; font-weight: 500;
+  color: var(--color-brand-muted); cursor: pointer; transition: all 0.15s;
+}
+.notifpage-bulk-btn:hover { color: var(--color-brand-white); border-color: var(--color-brand-muted); }
+.notifpage-bulk-btn--warn:hover { color: var(--color-brand-accent); border-color: var(--color-brand-accent); }
+.notifpage-bulk-btn--danger:hover { color: var(--color-brand-red); border-color: var(--color-brand-red); }
+.notifpage-bulk-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ── Per-item actions ── */
+.notifpage-item-actions {
+  flex-shrink: 0; display: flex; align-items: center; gap: 0.1rem;
+  opacity: 0; transition: opacity 0.15s;
+}
+.notifpage-item:hover .notifpage-item-actions,
+.notifpage-item:focus-within .notifpage-item-actions { opacity: 1; }
+.notifpage-action-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: 3px;
+  background: none; border: none; cursor: pointer;
+  color: var(--color-brand-muted); transition: all 0.15s;
+}
+.notifpage-action-btn:hover { color: var(--color-brand-white); background: rgba(255,255,255,0.06); }
+.notifpage-action-btn--danger:hover { color: var(--color-brand-red); background: rgba(192,57,43,0.08); }
+.notifpage-action-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── Confirmation dialog ── */
+.notifpage-confirm-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 1.5rem;
+}
+.notifpage-confirm {
+  background: var(--color-brand-dark); border: 1px solid var(--color-brand-border);
+  border-radius: 8px; padding: 1.75rem 2rem; max-width: 380px; width: 100%;
+}
+.notifpage-confirm-msg {
+  font-family: var(--font-body); font-size: 1rem; font-weight: 600;
+  color: var(--color-brand-white); margin: 0 0 0.5rem;
+}
+.notifpage-confirm-sub {
+  font-family: var(--font-body); font-size: 0.82rem;
+  color: var(--color-brand-muted); margin: 0 0 1.5rem; line-height: 1.6;
+}
+.notifpage-confirm-actions {
+  display: flex; gap: 0.75rem; justify-content: flex-end;
+}
+.notifpage-confirm-cancel {
+  background: none; border: 1px solid var(--color-brand-border);
+  border-radius: 3px; padding: 0.5rem 1.25rem;
+  font-family: var(--font-body); font-size: 0.82rem; font-weight: 500;
+  color: var(--color-brand-muted); cursor: pointer; transition: all 0.15s;
+}
+.notifpage-confirm-cancel:hover { color: var(--color-brand-white); border-color: var(--color-brand-muted); }
+.notifpage-confirm-ok {
+  background: var(--color-brand-red); border: 1px solid var(--color-brand-red);
+  border-radius: 3px; padding: 0.5rem 1.25rem;
+  font-family: var(--font-body); font-size: 0.82rem; font-weight: 600;
+  color: #fff; cursor: pointer; transition: opacity 0.15s;
+}
+.notifpage-confirm-ok:hover { opacity: 0.85; }
+.notifpage-confirm-ok:disabled,
+.notifpage-confirm-cancel:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ── Legacy dot (kept for notification-link compat) ── */
 .notifpage-actions { flex-shrink: 0; display: flex; align-items: center; }
 .notifpage-read-btn {
   background: none; border: none; cursor: pointer;
@@ -75,8 +149,7 @@ a.notifpage-item-title:hover { color: var(--color-brand-accent); }
 }
 .notifpage-dot {
   display: block; width: 8px; height: 8px; border-radius: 50%;
-  background: var(--color-brand-accent);
-  transition: opacity 0.2s;
+  background: var(--color-brand-accent); transition: opacity 0.2s;
 }
 .notifpage-read-btn:hover .notifpage-dot { opacity: 0.4; }
 

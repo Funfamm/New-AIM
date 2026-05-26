@@ -8,6 +8,10 @@ export function isAdminRole(role?: string | null): boolean {
   return role === "ADMIN" || role === "SUPER_ADMIN";
 }
 
+export function isSuperAdmin(role?: string | null): boolean {
+  return role === "SUPER_ADMIN";
+}
+
 export async function requireAdmin() {
   const session = await auth();
   if (!session?.user || !isAdminRole(session.user.role)) {

@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import NavWrapper from "@/components/nav-wrapper";
 import Footer from "@/components/footer";
+import { RemoveProgressBtn, ResetProgressBtn, ClearContinueWatchingBtn, ClearMyListBtn } from "./history-actions";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Dashboard — AIM Studio" };
@@ -92,6 +93,7 @@ export default async function DashboardPage() {
             <section id="continue-watching" className="dashboard-section">
               <div className="section-head">
                 <h2 className="section-heading">Continue Watching</h2>
+                {progress.length > 0 && <ClearContinueWatchingBtn />}
               </div>
               {progress.length > 0 ? (
                 <div className="progress-grid">
@@ -104,38 +106,44 @@ export default async function DashboardPage() {
                       ? Math.min(100, (p.seconds / (p.work.duration * 60)) * 100)
                       : null;
                     return (
-                      <Link key={p.id} href={watchHref} className="progress-card">
-                        {p.work.posterUrl ? (
-                          <Image
-                            src={p.work.posterUrl}
-                            alt={p.work.title}
-                            width={54}
-                            height={80}
-                            className="progress-poster"
-                            loading="lazy"
-                          />
-                        ) : (
-                          <div className="progress-poster-placeholder">
-                            {p.work.title.charAt(0)}
-                          </div>
-                        )}
-                        <div className="progress-info">
-                          <p className="progress-type">{TYPE_LABEL[p.work.type] ?? p.work.type}</p>
-                          <h3 className="progress-title">{p.work.title}</h3>
-                          <div className="progress-meta">
-                            <Clock size={12} />
-                            {Math.floor(p.seconds / 60)}m {p.seconds % 60}s watched
-                          </div>
-                          {pct !== null && (
-                            <div className="progress-bar-wrap" aria-label={`${Math.round(pct)}% watched`}>
-                              <div className="progress-bar-fill" style={{ width: `${pct}%` }} />
+                      <div key={p.id} className="progress-card-wrap">
+                        <Link href={watchHref} className="progress-card">
+                          {p.work.posterUrl ? (
+                            <Image
+                              src={p.work.posterUrl}
+                              alt={p.work.title}
+                              width={54}
+                              height={80}
+                              className="progress-poster"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <div className="progress-poster-placeholder">
+                              {p.work.title.charAt(0)}
                             </div>
                           )}
+                          <div className="progress-info">
+                            <p className="progress-type">{TYPE_LABEL[p.work.type] ?? p.work.type}</p>
+                            <h3 className="progress-title">{p.work.title}</h3>
+                            <div className="progress-meta">
+                              <Clock size={12} />
+                              {Math.floor(p.seconds / 60)}m {p.seconds % 60}s watched
+                            </div>
+                            {pct !== null && (
+                              <div className="progress-bar-wrap" aria-label={`${Math.round(pct)}% watched`}>
+                                <div className="progress-bar-fill" style={{ width: `${pct}%` }} />
+                              </div>
+                            )}
+                          </div>
+                          <div className="progress-play" aria-hidden="true">
+                            <Play size={18} fill="currentColor" />
+                          </div>
+                        </Link>
+                        <div className="progress-card-actions">
+                          <ResetProgressBtn workId={p.work.id} title={p.work.title} />
+                          <RemoveProgressBtn workId={p.work.id} title={p.work.title} />
                         </div>
-                        <div className="progress-play" aria-hidden="true">
-                          <Play size={18} fill="currentColor" />
-                        </div>
-                      </Link>
+                      </div>
                     );
                   })}
                 </div>
@@ -154,6 +162,7 @@ export default async function DashboardPage() {
                   <Bookmark size={16} style={{ display: "inline", verticalAlign: "middle", marginRight: "0.4rem" }} />
                   My List
                 </h2>
+                {savedWorks.length > 0 && <ClearMyListBtn />}
               </div>
               {savedWorks.length > 0 ? (
                 <div className="watchlist-grid">

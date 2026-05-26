@@ -218,6 +218,76 @@ a.notif-title:hover { color: var(--color-brand-accent); }
 }
 .notif-mark-all-btn:hover { color: var(--color-brand-white); }
 
+/* ── Section clear button ── */
+.section-clear-btn {
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  background: none; border: 1px solid var(--color-brand-border);
+  border-radius: 3px; padding: 0.3rem 0.65rem;
+  font-family: var(--font-body); font-size: 0.72rem; font-weight: 500;
+  color: var(--color-brand-muted); cursor: pointer; transition: all 0.15s;
+  flex-shrink: 0;
+}
+.section-clear-btn:hover { color: var(--color-brand-red); border-color: var(--color-brand-red); }
+.section-clear-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── Progress card with actions overlay ── */
+.progress-card-wrap {
+  position: relative;
+}
+.progress-card-actions {
+  position: absolute; top: 0.5rem; right: 0.5rem;
+  display: flex; gap: 0.2rem;
+  opacity: 0; transition: opacity 0.15s;
+}
+.progress-card-wrap:hover .progress-card-actions { opacity: 1; }
+.dash-card-remove-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; border-radius: 3px;
+  background: rgba(10,10,10,0.75); border: 1px solid var(--color-brand-border);
+  color: var(--color-brand-muted); cursor: pointer; transition: all 0.15s;
+  backdrop-filter: blur(4px);
+}
+.dash-card-remove-btn:hover { color: var(--color-brand-red); border-color: var(--color-brand-red); }
+.dash-card-remove-btn--reset:hover { color: var(--color-brand-accent); border-color: var(--color-brand-accent); }
+.dash-card-remove-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── Confirm dialog ── */
+.dash-confirm-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 1.5rem;
+}
+.dash-confirm {
+  background: var(--color-brand-dark); border: 1px solid var(--color-brand-border);
+  border-radius: 8px; padding: 1.75rem 2rem; max-width: 380px; width: 100%;
+}
+.dash-confirm-msg {
+  font-family: var(--font-body); font-size: 1rem; font-weight: 600;
+  color: var(--color-brand-white); margin: 0 0 0.5rem;
+}
+.dash-confirm-sub {
+  font-family: var(--font-body); font-size: 0.82rem;
+  color: var(--color-brand-muted); margin: 0 0 1.5rem; line-height: 1.6;
+}
+.dash-confirm-actions { display: flex; gap: 0.75rem; justify-content: flex-end; }
+.dash-confirm-cancel {
+  background: none; border: 1px solid var(--color-brand-border);
+  border-radius: 3px; padding: 0.5rem 1.25rem;
+  font-family: var(--font-body); font-size: 0.82rem; font-weight: 500;
+  color: var(--color-brand-muted); cursor: pointer; transition: all 0.15s;
+}
+.dash-confirm-cancel:hover { color: var(--color-brand-white); border-color: var(--color-brand-muted); }
+.dash-confirm-ok {
+  background: var(--color-brand-red); border: 1px solid var(--color-brand-red);
+  border-radius: 3px; padding: 0.5rem 1.25rem;
+  font-family: var(--font-body); font-size: 0.82rem; font-weight: 600;
+  color: #fff; cursor: pointer; transition: opacity 0.15s;
+}
+.dash-confirm-ok:hover { opacity: 0.85; }
+.dash-confirm-ok:disabled,
+.dash-confirm-cancel:disabled { opacity: 0.45; cursor: not-allowed; }
+
 /* ── Settings shortcuts ── */
 .settings-shortcuts {
   border: 1px solid var(--color-brand-border);

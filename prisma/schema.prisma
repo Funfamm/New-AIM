@@ -658,6 +658,12 @@ model AdminSettings {
   // Purge
   allowHardPurgeForSuperAdmin Boolean @default(true)
 
+  // ── Retention / Cleanup ───────────────────────
+  emailLogRetentionDays         Int @default(90)   // keep email logs N days
+  emailQueueRetentionDays       Int @default(30)   // keep completed/failed queue rows N days
+  notificationRetentionDays     Int @default(90)   // auto-clear read notifications after N days
+  visitorEventRetentionDays     Int @default(90)   // keep raw analytics events N days
+
   updatedAt DateTime @updatedAt
 
   @@map("admin_settings")

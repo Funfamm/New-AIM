@@ -1,8 +1,8 @@
 "use server";
-// Server Actions for watch progress — save and retrieve resume position
 
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { revalidatePath } from "next/cache";
 
 // ── Save progress ─────────────────────────────────────────────
 export async function saveWatchProgress(
@@ -35,6 +35,47 @@ export async function getWatchProgress(workId: string): Promise<number> {
   });
 
   return record?.seconds ?? 0;
+}
+
+// ── Remove one item from Continue Watching ────────────────────
+export async function removeWatchProgress(workId: string) {
+  const session = await auth();
+  if (!session?.user?.id) return;
+  await prisma.watchProgress.deleteMany({
+    where: { userId: session.user.id, workId },
+  });
+  revalidatePath("/dashboard");
+}
+
+// ── Reset progress for a specific work (restart from 0) ───────
+export async function resetWatchProgress(workId: string) {
+  const session = await auth();
+  if (!session?.user?.id) return;
+  await prisma.watchProgress.updateMany({
+    where: { userId: session.user.id, workId },
+    data: { seconds: 0, completed: false },
+  });
+  revalidatePath("/dashboard");
+}
+
+// ── Clear all Continue Watching (incomplete) ──────────────────
+export async function clearContinueWatching() {
+  const session = await auth();
+  if (!session?.user?.id) return;
+  await prisma.watchProgress.deleteMany({
+    where: { userId: session.user.id, completed: false },
+  });
+  revalidatePath("/dashboard");
+}
+
+// ── Clear entire watch history (all records) ──────────────────
+export async function clearWatchHistory() {
+  const session = await auth();
+  if (!session?.user?.id) return;
+  await prisma.watchProgress.deleteMany({
+    where: { userId: session.user.id },
+  });
+  revalidatePath("/dashboard");
 }
 
 // ── Get all progress for user dashboard ───────────────────────
