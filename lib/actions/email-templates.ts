@@ -1,6 +1,6 @@
 ﻿"use server";
 
-import { requireAdmin } from "@/lib/auth-guard";
+import { requireAdmin, isAdminRole } from "@/lib/auth-guard";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -298,7 +298,7 @@ export type TemplateResult = {
 
 export async function listTemplates() {
   const session = await auth();
-  if (!session?.user || session.user.role !== "ADMIN") redirect("/");
+  if (!session?.user || !isAdminRole(session.user.role)) redirect("/");
 
   return prisma.emailTemplate.findMany({
     orderBy: [{ isSystem: "desc" }, { type: "asc" }, { name: "asc" }],
@@ -314,7 +314,7 @@ export async function listTemplates() {
 
 export async function getTemplate(id: string) {
   const session = await auth();
-  if (!session?.user || session.user.role !== "ADMIN") redirect("/");
+  if (!session?.user || !isAdminRole(session.user.role)) redirect("/");
   return prisma.emailTemplate.findUnique({ where: { id } });
 }
 
