@@ -111,7 +111,7 @@ export default async function AdminUsersPage({
     users,
   ] = await Promise.all([
     prisma.user.count(),
-    prisma.user.count({ where: { role: { in: ["ADMIN", "SUPER_ADMIN"] } } }),
+    prisma.user.count({ where: { role: { not: "USER" } } }),
     prisma.user.count({ where: { status: "SUSPENDED" } }),
     prisma.user.count({ where: { accounts: { some: { provider: "google" } } } }),
     prisma.user.count({ where: { password: { not: null } } }),
