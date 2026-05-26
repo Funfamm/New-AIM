@@ -22,7 +22,7 @@ const LOGO_PATH  = resolve(root, "public", "images", "SP_Logo.jpg");
 
 // Gold fill used if contain-resize ever adds padding (should never be needed
 // since the source is square, but keeps the colour consistent if it is).
-const GOLD_BG = { r: 201, g: 168, b: 76 };
+const GOLD_BG = { r: 201, g: 168, b: 76, alpha: 255 };
 
 // ─── ICO builder (PNG-in-ICO, supported by all modern browsers) ──
 function buildICO(entries /* Array<{ size, png: Buffer }> */) {
