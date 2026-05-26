@@ -1,10 +1,14 @@
-// Admin Security — event log + alert management
-// Server component. Paginated event log. Client AlertActions for resolve/dismiss.
+// Admin Security — admin management + event log + alert management
+// Server component. Paginated event log. Client AlertActions + admin management forms.
 
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { AlertActions } from "./alert-actions";
+import DemoteAdminButton from "./demote-admin-button";
+import CreateAdminForm from "./create-admin-form";
+import { DisplayNameForm, PasswordForm } from "./self-forms";
 import "./security-page.css";
 
 export const metadata: Metadata = { title: "Admin — Security" };
@@ -16,13 +20,16 @@ export default async function SecurityPage({
 }: {
   searchParams: Promise<Record<string, string>>;
 }) {
-  const sp = await searchParams;
+  const [session, sp] = await Promise.all([auth(), searchParams]);
+  const isSuperAdmin = session?.user?.role === "SUPER_ADMIN";
+
   const evPage      = Math.max(1, parseInt(sp.page ?? "1", 10));
   const alertFilter = sp.alerts ?? "open"; // "open" | "all"
 
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
   const [
+    admins,
     openAlertsCount,
     highEventsCount,
     blockedLoginsCount,
@@ -30,6 +37,11 @@ export default async function SecurityPage({
     alerts,
     events,
   ] = await Promise.all([
+    prisma.user.findMany({
+      where:   { role: { in: ["ADMIN", "SUPER_ADMIN"] } },
+      select:  { id: true, name: true, email: true, role: true, createdAt: true },
+      orderBy: { createdAt: "asc" },
+    }),
     prisma.securityAlert.count({ where: { status: "OPEN" } }),
     prisma.securityEvent.count({
       where: { severity: { in: ["HIGH", "CRITICAL"] }, createdAt: { gte: sevenDaysAgo } },
@@ -62,6 +74,8 @@ export default async function SecurityPage({
   const totalPages = Math.ceil(totalEventsCount / EV_PAGE_SIZE);
   const pagingAlerts = sp.alerts ? `&alerts=${sp.alerts}` : "";
 
+  const currentUser = admins.find((a) => a.id === session?.user?.id);
+
   return (
     <div className="admin-page">
 
@@ -69,6 +83,77 @@ export default async function SecurityPage({
       <div className="admin-page-header">
         <h1 className="admin-page-title">Security</h1>
       </div>
+
+      {/* ══════════════════════════════════════════════════════
+          ADMIN MANAGEMENT  (shown to all admins)
+         ══════════════════════════════════════════════════════ */}
+
+      {/* ── Admin Roster ── */}
+      <div className="sec-section">
+        <h2 className="sec-section-title">Admin Roster</h2>
+        <div className="sec-roster">
+          {admins.map((admin) => {
+            const isSelf     = admin.id === session?.user?.id;
+            const isSA       = admin.role === "SUPER_ADMIN";
+            const letter     = (admin.name ?? admin.email ?? "?")[0].toUpperCase();
+            return (
+              <div key={admin.id} className="sec-roster-card">
+                <div
+                  className="sec-roster-avatar"
+                  style={{
+                    background: isSA
+                      ? "linear-gradient(135deg, #f59e0b, #ef4444)"
+                      : "linear-gradient(135deg, #3b82f6, #a855f7)",
+                  }}
+                >
+                  {letter}
+                </div>
+                <div className="sec-roster-info">
+                  <p className="sec-roster-name">
+                    {admin.name ?? "—"}
+                    {isSelf && <span className="sec-roster-you"> (you)</span>}
+                  </p>
+                  <p className="sec-roster-email">{admin.email}</p>
+                  <span className={`sec-roster-pill ${isSA ? "sec-roster-pill--sa" : "sec-roster-pill--pa"}`}>
+                    {isSA ? "👑 Super Admin" : "🛡️ Power Admin"}
+                  </span>
+                </div>
+                {/* Demote — SUPER_ADMIN only, cannot demote self or another SA */}
+                {isSuperAdmin && !isSelf && !isSA && (
+                  <DemoteAdminButton adminId={admin.id} adminName={admin.name ?? admin.email} />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── Create Power Admin (SUPER_ADMIN only) ── */}
+      {isSuperAdmin && (
+        <div className="sec-section">
+          <h2 className="sec-section-title">🛡️ Create Power Admin</h2>
+          <p className="sec-section-hint">
+            Creates a new admin account or promotes an existing member by email.
+          </p>
+          <CreateAdminForm />
+        </div>
+      )}
+
+      {/* ── Self-Service: Display Name + Password ── */}
+      <div className="sec-section sec-section--split">
+        <div className="sec-self-block">
+          <h2 className="sec-section-title">Display Name</h2>
+          <DisplayNameForm currentName={currentUser?.name ?? ""} />
+        </div>
+        <div className="sec-self-block">
+          <h2 className="sec-section-title">Change Password</h2>
+          <PasswordForm />
+        </div>
+      </div>
+
+      {/* ══════════════════════════════════════════════════════
+          SECURITY EVENTS + ALERTS  (existing sections below)
+         ══════════════════════════════════════════════════════ */}
 
       {/* ── Stats ── */}
       <div className="ustat-row">

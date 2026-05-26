@@ -43,7 +43,11 @@ export async function changeUserRole(
     if (adminCount <= 1) return { ok: false, error: "Cannot demote the last admin." };
   }
 
-  await prisma.user.update({ where: { id: userId }, data: { role: newRole } });
+  // Increment tokenVersion to invalidate the target's existing JWT immediately
+  await prisma.user.update({
+    where: { id: userId },
+    data:  { role: newRole, tokenVersion: { increment: 1 } },
+  });
 
   void writeAudit({
     actorId:    actor.id!,
@@ -84,9 +88,10 @@ export async function suspendUser(
     if (activeAdminCount <= 1) return { ok: false, error: "Cannot suspend the last active admin." };
   }
 
+  // Increment tokenVersion to kick the suspended user's active session immediately
   await prisma.user.update({
     where: { id: userId },
-    data: { status: "SUSPENDED", suspendedAt: new Date(), suspendedBy: actor.id },
+    data:  { status: "SUSPENDED", suspendedAt: new Date(), suspendedBy: actor.id, tokenVersion: { increment: 1 } },
   });
 
   void writeAudit({
@@ -268,9 +273,10 @@ export async function deactivateUser(
     if (activeAdminCount <= 1) return { ok: false, error: "Cannot deactivate the last active admin." };
   }
 
+  // Increment tokenVersion to revoke deactivated user's session immediately
   await prisma.user.update({
     where: { id: userId },
-    data:  { status: "DEACTIVATED", deletedAt: new Date(), deletedById: actor.id },
+    data:  { status: "DEACTIVATED", deletedAt: new Date(), deletedById: actor.id, tokenVersion: { increment: 1 } },
   });
 
   void writeAudit({

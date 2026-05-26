@@ -205,7 +205,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           })();
         }
 
-        return { id: user.id, email: user.email, name: user.name, role: user.role };
+        return { id: user.id, email: user.email, name: user.name, role: user.role, tokenVersion: user.tokenVersion };
       },
     }),
   ],
@@ -270,25 +270,31 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (account?.type === "oauth") {
           const dbUser = await prisma.user.findUnique({
             where: { id: user.id! },
-            select: { role: true },
+            select: { role: true, tokenVersion: true },
           });
-          token.role = dbUser?.role ?? "USER";
+          token.role         = dbUser?.role         ?? "USER";
+          token.tokenVersion = dbUser?.tokenVersion ?? 0;
         } else {
-          token.role = (user as { role?: string }).role ?? "USER";
+          token.role         = (user as { role?: string }).role ?? "USER";
+          token.tokenVersion = (user as { tokenVersion?: number }).tokenVersion ?? 0;
         }
       } else if (token?.id) {
-        // ── Subsequent requests — verify user still exists ───────
+        // ── Subsequent requests — verify user still exists + token not revoked ──
         // Skipped in Edge runtime (middleware) where Prisma is unavailable.
-        // Runs in Node.js on every server-component/action auth() call:
-        // returning null clears the session cookie so purged users
-        // become guests on their next page render.
+        // Runs in Node.js on every server-component/action auth() call.
+        // Returning null clears the session cookie immediately — demoted/suspended
+        // users become guests on their next page render.
         if (process.env.NEXT_RUNTIME !== "edge") {
           try {
-            const exists = await prisma.user.findUnique({
+            const dbUser = await prisma.user.findUnique({
               where:  { id: token.id as string },
-              select: { id: true },
+              select: { id: true, role: true, tokenVersion: true },
             });
-            if (!exists) return null;
+            if (!dbUser) return null;
+            // Revoke if tokenVersion has been incremented (demotion / suspension)
+            if (dbUser.tokenVersion !== (token.tokenVersion as number ?? 0)) return null;
+            // Keep role in token current (role changes take effect immediately)
+            token.role = dbUser.role;
           } catch {
             // DB temporarily unreachable — trust the JWT rather than
             // locking everyone out.

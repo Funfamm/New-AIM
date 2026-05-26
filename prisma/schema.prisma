@@ -206,6 +206,9 @@ model User {
   welcomeEmailSentAt        DateTime?
   welcomeNotificationSentAt DateTime?
 
+  // Session invalidation — increment to instantly revoke all existing JWTs
+  tokenVersion  Int        @default(0)
+
   @@map("users")
 }
 
