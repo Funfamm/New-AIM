@@ -792,11 +792,115 @@
   margin: 0;
 }
 
+/* ── Header right button group ── */
+.vi-header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+/* ── Collapsed header variant ── */
+.vi-header--collapsed {
+  border-radius: 4px;
+}
+
+/* ── Collapse / Expand button ── */
+.vi-collapse-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--color-brand-muted);
+  background: none;
+  border: 1px solid var(--color-brand-border);
+  border-radius: 3px;
+  padding: 0.35rem 0.65rem;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+.vi-collapse-btn:hover { color: var(--color-brand-white); border-color: rgba(255,255,255,0.25); }
+
+/* ── Per-session online / offline status dot ── */
+.vi-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.vi-status-dot--on {
+  background: #4ade80;
+  box-shadow: 0 0 0 2px rgba(74,222,128,0.2);
+  animation: vi-pulse 2s ease-in-out infinite;
+}
+.vi-status-dot--off {
+  background: var(--color-brand-border);
+}
+
+/* ── Role badges ── */
+.vi-role {
+  display: inline-block;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 1px 4px;
+  border-radius: 2px;
+  margin-left: 0.3rem;
+  vertical-align: middle;
+  line-height: 1.4;
+}
+.vi-role--admin { background: rgba(232,201,126,0.12); color: var(--color-brand-accent); }
+.vi-role--super { background: rgba(192,57,43,0.12);   color: var(--color-brand-red); }
+.vi-role--user  { background: var(--color-brand-surface); color: var(--color-brand-muted); }
+
+/* ── Session row: last page + platform duration columns ── */
+.vi-session-lastpg {
+  font-family: monospace;
+  font-size: 0.7rem;
+  color: var(--color-brand-muted);
+  flex-shrink: 0;
+  width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vi-session-dur {
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-brand-muted);
+  flex-shrink: 0;
+  width: 60px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* ── Journey: per-page dwell duration ── */
+.vi-event-pg-dur {
+  font-family: var(--font-body);
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+  color: #4ade80;
+  flex-shrink: 0;
+  width: 60px;
+  text-align: right;
+  white-space: nowrap;
+}
+.vi-event-pg-dur--empty {
+  color: var(--color-brand-border);
+}
+
 /* ── Responsive: hide wide columns on small screens ── */
 @media (max-width: 768px) {
   .vi-session-browser,
   .vi-session-geo,
-  .vi-session-count { display: none; }
+  .vi-session-count,
+  .vi-session-lastpg,
+  .vi-session-dur   { display: none; }
   .vi-feed-path,
   .vi-feed-geo,
   .vi-feed-device   { display: none; }

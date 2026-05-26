@@ -18,12 +18,14 @@ import { trackEvent, getOrCreateSession, parseUserAgent } from "@/lib/analytics"
 import type { AnalyticsEventType, Prisma } from "@prisma/client";
 
 const VALID_TYPES = new Set<string>([
-  "PAGE_VIEW", "WORK_VIEW", "TRAILER_CLICK",
+  "PAGE_VIEW", "PAGE_LEAVE",                          // navigation / dwell
+  "WORK_VIEW", "TRAILER_CLICK",
   "WATCH_START", "WATCH_PROGRESS", "WATCH_COMPLETE",
   "EPISODE_START", "EPISODE_COMPLETE",
   "SIGN_IN", "SIGN_UP", "SIGN_OUT",
   "SAVE_WORK", "UNSAVE_WORK",
   "NOTIFICATION_OPEN", "SETTINGS_UPDATE",
+  "CTA_IMPRESSION", "CTA_SIGNUP",                     // notify-me CTA
 ]);
 
 export async function POST(request: NextRequest) {
@@ -61,9 +63,10 @@ export async function POST(request: NextRequest) {
     const session = await auth();
     const userId  = session?.user?.id ?? undefined;
 
-    // Find or start a visitor session
+    // Find or start a visitor session — userId links the session to a member account
     const sessionId = await getOrCreateSession({
       visitorId,
+      userId,
       landingPage: typeof path === "string" ? path.slice(0, 512) : undefined,
       referrer:    request.headers.get("referer")?.slice(0, 512) ?? undefined,
       country, region, city,

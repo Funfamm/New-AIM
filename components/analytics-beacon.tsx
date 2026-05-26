@@ -1,37 +1,66 @@
 "use client";
 
 /**
- * Fires a PAGE_VIEW analytics event via navigator.sendBeacon on every
- * client-side navigation. Renders nothing — zero visual footprint.
+ * Fires PAGE_VIEW and PAGE_LEAVE analytics events via navigator.sendBeacon.
  *
- * sendBeacon is non-blocking and queued by the browser, so it never
- * affects page paint, navigation speed, or 4G performance.
+ * PAGE_VIEW  — fires on every client-side navigation (including initial load).
+ * PAGE_LEAVE — fires when the user navigates away or closes the tab.
+ *              metadata.durationSeconds = time spent on that page (capped at 30 min).
  *
- * usePathname is already in the bundle (Nav uses it), so this component
- * adds effectively zero new bytes to the shared JS chunk.
+ * Both events are non-blocking (sendBeacon is queued by the browser).
+ * No mouse/keyboard tracking. No large payloads. 4G-safe.
  */
 
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
 
+const API = "/api/analytics";
+
+function send(type: string, path: string, meta?: Record<string, number>) {
+  if (typeof navigator === "undefined" || !("sendBeacon" in navigator)) return;
+  navigator.sendBeacon(
+    API,
+    new Blob(
+      [JSON.stringify(meta ? { type, path, metadata: meta } : { type, path })],
+      { type: "application/json" }
+    )
+  );
+}
+
 export default function AnalyticsBeacon() {
   const pathname = usePathname();
-  const lastPath = useRef("");
+  const lastPathRef  = useRef<string>("");
+  const enteredAtRef = useRef<number>(Date.now());
 
   useEffect(() => {
-    // Skip if the path hasn't changed (StrictMode double-invoke guard)
-    if (pathname === lastPath.current) return;
-    lastPath.current = pathname;
+    // Skip on StrictMode double-invoke
+    if (pathname === lastPathRef.current) return;
 
-    if (typeof navigator === "undefined" || !("sendBeacon" in navigator)) return;
+    const prevPath = lastPathRef.current;
+    const now = Date.now();
 
-    navigator.sendBeacon(
-      "/api/analytics",
-      new Blob(
-        [JSON.stringify({ type: "PAGE_VIEW", path: pathname })],
-        { type: "application/json" }
-      )
-    );
+    // Fire PAGE_LEAVE for the previous path before switching
+    if (prevPath) {
+      const dur = Math.min(Math.round((now - enteredAtRef.current) / 1000), 1800);
+      if (dur >= 1) send("PAGE_LEAVE", prevPath, { durationSeconds: dur });
+    }
+
+    // Fire PAGE_VIEW for the incoming path
+    send("PAGE_VIEW", pathname);
+    lastPathRef.current = pathname;
+    enteredAtRef.current = now;
+
+    // Also fire PAGE_LEAVE when the tab closes or user navigates to a different domain
+    function onPageHide() {
+      const dur = Math.min(
+        Math.round((Date.now() - enteredAtRef.current) / 1000),
+        1800
+      );
+      if (dur >= 1) send("PAGE_LEAVE", pathname, { durationSeconds: dur });
+    }
+
+    window.addEventListener("pagehide", onPageHide);
+    return () => window.removeEventListener("pagehide", onPageHide);
   }, [pathname]);
 
   return null;

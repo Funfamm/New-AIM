@@ -61,6 +61,7 @@ const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
 
 export async function getOrCreateSession(opts: {
   visitorId: string;
+  userId?: string;       // populated for logged-in users; links session to member
   landingPage?: string;
   referrer?: string;
   country?: string;
@@ -81,9 +82,17 @@ export async function getOrCreateSession(opts: {
   });
 
   if (existing) {
-    // Touch lastSeenAt — fire-and-forget so it doesn't delay the response
+    // Touch lastSeenAt and userId (covers login-after-visit: guest → member).
+    // Only set userId if provided so we never accidentally clear an existing link.
+    // Fire-and-forget so it never delays the response.
     prisma.visitorSession
-      .update({ where: { id: existing.id }, data: { lastSeenAt: new Date() } })
+      .update({
+        where: { id: existing.id },
+        data: {
+          lastSeenAt: new Date(),
+          ...(opts.userId ? { userId: opts.userId } : {}),
+        },
+      })
       .catch(() => {});
     return existing.id;
   }
@@ -92,6 +101,7 @@ export async function getOrCreateSession(opts: {
   const created = await prisma.visitorSession.create({
     data: {
       visitorId:   opts.visitorId,
+      userId:      opts.userId,
       landingPage: opts.landingPage,
       referrer:    opts.referrer,
       country:     opts.country,

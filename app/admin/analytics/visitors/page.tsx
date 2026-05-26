@@ -124,11 +124,32 @@ export default async function VisitorsPage() {
     userIds.length > 0
       ? await prisma.user.findMany({
           where: { id: { in: userIds } },
-          select: { id: true, name: true, email: true },
+          select: {
+            id: true, name: true, email: true, role: true,
+            accounts: { select: { provider: true }, take: 2 },
+          },
         })
       : [];
-  const userMap: Record<string, { id: string; name: string | null; email: string }> =
-    Object.fromEntries(users.map((u) => [u.id, u]));
+
+  type UserInfo = {
+    id: string; name: string | null; email: string;
+    role: string; loginMethod: string;
+  };
+  const userMap: Record<string, UserInfo> = Object.fromEntries(
+    users.map((u) => [
+      u.id,
+      {
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        role: u.role as string,
+        loginMethod:
+          u.accounts.length === 0 ? "email"
+          : u.accounts.length > 1 ? "multi"
+          : u.accounts[0].provider,
+      },
+    ])
+  );
 
   // Serialize all Date fields for client components
   const serializedSessions = recentSessions.map((s) => ({
@@ -190,6 +211,7 @@ export default async function VisitorsPage() {
         onlineCount={onlineCount}
         onlineMembers={onlineMembersCount}
         onlineGuests={onlineGuests}
+        onlineCutISO={onlineCut.toISOString()}
       />
 
       {/* ── Summary stats ── */}
