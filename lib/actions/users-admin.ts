@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin, requireSuperAdmin, isAdminRole } from "@/lib/auth-guard";
 import { revalidatePath } from "next/cache";
 import { randomBytes, createHash } from "crypto";
-import { sendPasswordResetEmail } from "@/lib/email";
+import { sendPasswordResetEmail, sendAccountEmail } from "@/lib/email";
 import { writeAudit } from "@/lib/audit";
 import { writeSecurityEvent, createSecurityAlert } from "@/lib/security";
 import type { Role } from "@prisma/client";
@@ -113,6 +113,14 @@ export async function suspendUser(
     message: "Your AIM Studio account has been temporarily suspended. Contact support if you believe this is an error.",
   });
 
+  // ACCOUNT email — Graph transactional, bypasses suppression
+  void sendAccountEmail({
+    to:      target.email,
+    subject: "Your AIM Studio account has been suspended",
+    title:   "Account suspended",
+    body:    "Your AIM Studio account has been temporarily suspended by an administrator. If you believe this is an error, please contact us through the site.",
+  }).catch(() => {});
+
   revalidatePath("/admin/users");
   return { ok: true };
 }
@@ -145,6 +153,18 @@ export async function unsuspendUser(
     type: "USER_UNSUSPENDED", severity: "INFO",
     email: target?.email,
   });
+
+  // ACCOUNT email — notify user their access has been restored
+  if (target?.email) {
+    void sendAccountEmail({
+      to:      target.email,
+      subject: "Your AIM Studio account has been restored",
+      title:   "Account restored",
+      body:    "Your AIM Studio account access has been restored. You can sign in and continue as normal.",
+      ctaUrl:  `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/login`,
+      ctaLabel: "Sign In",
+    }).catch(() => {});
+  }
 
   revalidatePath("/admin/users");
   return { ok: true };

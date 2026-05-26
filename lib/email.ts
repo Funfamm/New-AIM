@@ -319,3 +319,39 @@ export async function sendWelcomeEmail(to: string, name?: string | null): Promis
     type:    "WELCOME",
   });
 }
+
+// ── Account notification email ─────────────────────────────────
+// Sent for account-level changes: suspension, restoration, etc.
+// Uses Microsoft Graph (transactional). Bypasses suppression (ACCOUNT type).
+// Never used for marketing. No tracking pixel.
+
+export async function sendAccountEmail(opts: {
+  to:       string;
+  subject:  string;
+  title:    string;
+  body:     string;
+  ctaUrl?:  string;
+  ctaLabel?: string;
+}): Promise<void> {
+  const ctaHtml = opts.ctaUrl
+    ? `<a href="${opts.ctaUrl}"
+         style="display:inline-block;background:#e8c97e;color:#0a0a0a;font-size:14px;font-weight:600;
+                text-decoration:none;padding:12px 28px;border-radius:6px;margin-top:20px;">
+        ${opts.ctaLabel ?? "View Account"}
+       </a>`
+    : "";
+
+  const html = `
+    <p style="margin:0 0 16px;font-size:14px;color:#6b7280;line-height:1.6;">${opts.body}</p>
+    ${ctaHtml}
+    <p style="margin:24px 0 0;font-size:12px;color:#6b7280;line-height:1.6;">
+      If you have questions about your account, contact us through the site.
+    </p>`;
+
+  await sendEmail({
+    to:      opts.to,
+    subject: opts.subject,
+    html:    baseTemplate(opts.title, html),
+    type:    "ACCOUNT",
+  });
+}

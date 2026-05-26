@@ -12,7 +12,7 @@ import { prisma } from "@/lib/prisma";
 import {
   enqueueBulkForRecipients,
   buildNotifyMeFollowupEmail,
-  isAcsConfigured,
+  checkSelectedBulkProvider,
 } from "@/lib/bulk-email";
 
 
@@ -28,12 +28,10 @@ export async function sendNotifyMeFollowupEmails(
 ): Promise<FollowupResult> {
   await requireAdmin();
 
-  // ACS must be configured for bulk sends
-  if (!isAcsConfigured()) {
-    return {
-      queued: 0, suppressed: 0, skipped: 0,
-      error: "Bulk email provider (ACS) is not configured.",
-    };
+  // Selected bulk provider must be configured
+  const providerCheck = await checkSelectedBulkProvider();
+  if (!providerCheck.ok) {
+    return { queued: 0, suppressed: 0, skipped: 0, error: providerCheck.error };
   }
 
   // Admin settings: both sending flags must be on
@@ -45,7 +43,7 @@ export async function sendNotifyMeFollowupEmails(
     return { queued: 0, suppressed: 0, skipped: 0, error: "Email sending is disabled in Admin Settings." };
   }
   if (!settings?.bulkEmailSendingEnabled) {
-    return { queued: 0, suppressed: 0, skipped: 0, error: "Bulk email sending is disabled in Admin Settings → Bulk Email (ACS)." };
+    return { queued: 0, suppressed: 0, skipped: 0, error: "Bulk email sending is disabled in Admin Settings → Email." };
   }
 
   // Load the CTA and its work

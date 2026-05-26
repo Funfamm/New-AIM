@@ -18,10 +18,14 @@ function fmtDate(d: Date) {
 }
 
 export default async function TabOverview() {
-  const [recentLogs, suppCount, queuedCount] = await Promise.all([
+  const [recentLogs, suppCount, queuedCount, bulkSettings] = await Promise.all([
     prisma.emailLog.findMany({ orderBy: { createdAt: "desc" }, take: 8 }),
     prisma.emailSuppression.count({ where: { active: true } }),
     prisma.emailQueue.count({ where: { status: "QUEUED" } }),
+    prisma.adminSettings.findUnique({
+      where:  { id: "singleton" },
+      select: { primaryBulkProvider: true },
+    }),
   ]);
 
   const graphConfigured = !!(
@@ -34,6 +38,15 @@ export default async function TabOverview() {
   const smtpConfigured = !!(process.env.SMTP_HOST && process.env.SMTP_USER);
   const fromEmail = process.env.GRAPH_EMAIL_SENDER ?? "—";
   const acsSender = process.env.ACS_SENDER_ADDRESS ?? "—";
+
+  const activeBulkProvider = (bulkSettings?.primaryBulkProvider ?? "acs").toUpperCase();
+  const bulkProviderLabel  =
+    activeBulkProvider === "GRAPH" ? "Graph (temporary)" :
+    activeBulkProvider === "ACS"   ? "ACS" :
+    activeBulkProvider === "SMTP"  ? "SMTP (not implemented)" : activeBulkProvider;
+  const bulkProviderOk =
+    activeBulkProvider === "GRAPH" ? graphConfigured :
+    activeBulkProvider === "ACS"   ? acsConfigured   : false;
 
   const sentCount   = recentLogs.filter((l) => l.status === "SENT").length;
   const failedCount = recentLogs.filter((l) => l.status === "FAILED").length;
@@ -90,32 +103,32 @@ export default async function TabOverview() {
               <li>Password reset</li>
               <li>Welcome email</li>
               <li>Security alerts</li>
-              <li>Account alerts</li>
+              <li>Account notifications</li>
               <li>Admin alerts</li>
             </ul>
           </div>
           <div className="email-routing-col">
-            <p className="email-routing-head">ACS → Bulk / Marketing</p>
+            <p className="email-routing-head">
+              {activeBulkProvider === "GRAPH" ? "Graph (selected)" : activeBulkProvider} → Bulk
+            </p>
             <ul className="email-routing-list">
               <li>New release announcements</li>
               <li>New episode notifications</li>
               <li>Studio announcements</li>
               <li>Notify Me follow-ups</li>
-              <li>Future campaigns</li>
             </ul>
           </div>
           <div className="email-routing-col">
             <p className="email-routing-head">SMTP → Emergency fallback</p>
             <ul className="email-routing-list">
-              <li>Not used in normal operation</li>
-              <li>Manual override only</li>
+              <li>Not implemented — select Graph or ACS</li>
             </ul>
           </div>
         </div>
-        {!acsConfigured && (
+        {!bulkProviderOk && (
           <p className="email-hint" style={{ marginTop: "0.75rem", color: "#f59e0b" }}>
-            ⚠ Bulk email provider (ACS) is not configured. Bulk sends are disabled until
-            ACS_CONNECTION_STRING and ACS_SENDER_ADDRESS are set.
+            ⚠ Active bulk provider ({activeBulkProvider}) is not configured. Bulk sends will fail until
+            the provider is configured or switched in Email Settings → Settings tab.
           </p>
         )}
       </section>
@@ -124,28 +137,39 @@ export default async function TabOverview() {
       <section className="email-section">
         <h2 className="email-section-title">Email types</h2>
         <div className="email-types-grid">
-          {[
-            { type: "PASSWORD_RESET",     trigger: "Forgot password form",              provider: "Graph", wired: true  },
-            { type: "WELCOME",            trigger: "After account creation",            provider: "Graph", wired: true  },
-            { type: "SECURITY_ALERT",     trigger: "Suspicious login / security event", provider: "Graph", wired: true  },
-            { type: "ADMIN_ALERT",        trigger: "Admin test button",                 provider: "Graph", wired: true  },
-            { type: "NEW_RELEASE",        trigger: "Admin broadcasts new work",         provider: "ACS",   wired: false },
-            { type: "NEW_EPISODE",        trigger: "Admin broadcasts new episode",      provider: "ACS",   wired: false },
-            { type: "ANNOUNCEMENT",       trigger: "Admin sends studio announcement",   provider: "ACS",   wired: false },
-            { type: "NOTIFY_ME_FOLLOWUP", trigger: "Admin triggers CTA follow-up",      provider: "ACS",   wired: false },
-            { type: "ACCOUNT",            trigger: "Account changes",                   provider: "Graph", wired: false },
-            { type: "FUTURE_CAMPAIGN",    trigger: "Newsletter / campaigns (future)",   provider: "ACS",   wired: false },
-          ].map((t) => (
+          {([
+            { type: "PASSWORD_RESET",     trigger: "Forgot password form",                    provider: "Graph",               wired: true  },
+            { type: "WELCOME",            trigger: "After account creation",                  provider: "Graph",               wired: true  },
+            { type: "SECURITY_ALERT",     trigger: "Suspicious login / security event",       provider: "Graph",               wired: true  },
+            { type: "ACCOUNT",            trigger: "Account suspend / restore events",        provider: "Graph",               wired: true  },
+            { type: "ADMIN_ALERT",        trigger: "Admin test button",                       provider: "Graph",               wired: true  },
+            { type: "NEW_RELEASE",        trigger: "Outreach / Work edit page",               provider: bulkProviderLabel,     wired: true  },
+            { type: "NEW_EPISODE",        trigger: "Outreach / Episode edit page",            provider: bulkProviderLabel,     wired: true  },
+            { type: "ANNOUNCEMENT",       trigger: "Outreach compose",                        provider: bulkProviderLabel,     wired: true  },
+            { type: "NOTIFY_ME_FOLLOWUP", trigger: "Notify Me CTA page / Outreach",          provider: bulkProviderLabel,     wired: true  },
+          ] as const).map((t) => (
             <div key={t.type} className="email-type-row">
-              <span className={`email-type-dot ${t.wired ? "email-type-dot--on" : "email-type-dot--off"}`} />
+              <span className="email-type-dot email-type-dot--on" />
               <span className="email-type-name">{t.type}</span>
               <span className="email-type-trigger">{t.trigger}</span>
               <span className="email-type-provider">{t.provider}</span>
-              <span className={`email-type-badge ${t.wired ? "" : "email-type-badge--future"}`}>
-                {t.wired ? "Active" : "Planned"}
-              </span>
+              <span className="email-type-badge">Active</span>
             </div>
           ))}
+        </div>
+
+        {/* Future / not yet available */}
+        <p className="email-hint" style={{ marginTop: "1rem", marginBottom: "0.5rem" }}>
+          Not yet available
+        </p>
+        <div className="email-types-grid">
+          <div className="email-type-row">
+            <span className="email-type-dot email-type-dot--off" />
+            <span className="email-type-name">FUTURE_CAMPAIGN</span>
+            <span className="email-type-trigger">Custom studio broadcast — not yet built</span>
+            <span className="email-type-provider">—</span>
+            <span className="email-type-badge email-type-badge--future">Future</span>
+          </div>
         </div>
       </section>
 

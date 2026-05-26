@@ -4,7 +4,7 @@
 // NEW_RELEASE: queues a bulk email to opted-in registered users.
 // NEW_EPISODE: queues a bulk email to opted-in registered users.
 //
-// Both use ACS via enqueueBulkForRecipients().
+// Both use the selected bulk provider (AdminSettings.primaryBulkProvider).
 // Admin processes the queue from /admin/email.
 // No email is sent inline — everything goes through the queue.
 
@@ -16,7 +16,7 @@ import {
   enqueueBulkForRecipients,
   buildNewReleaseEmail,
   buildNewEpisodeEmail,
-  isAcsConfigured,
+  checkSelectedBulkProvider,
 } from "@/lib/bulk-email";
 
 
@@ -38,8 +38,9 @@ export async function sendNewReleaseEmail(
 ): Promise<ReleaseEmailResult> {
   await requireAdmin();
 
-  if (!isAcsConfigured()) {
-    return { queued: 0, suppressed: 0, skipped: 0, error: "Bulk email provider (ACS) is not configured." };
+  const providerCheck = await checkSelectedBulkProvider();
+  if (!providerCheck.ok) {
+    return { queued: 0, suppressed: 0, skipped: 0, error: providerCheck.error };
   }
 
   const settings = await prisma.adminSettings.findUnique({
@@ -50,7 +51,7 @@ export async function sendNewReleaseEmail(
     return { queued: 0, suppressed: 0, skipped: 0, error: "Email sending is disabled in Admin Settings." };
   }
   if (!settings?.bulkEmailSendingEnabled) {
-    return { queued: 0, suppressed: 0, skipped: 0, error: "Bulk email sending is disabled in Admin Settings → Bulk Email (ACS)." };
+    return { queued: 0, suppressed: 0, skipped: 0, error: "Bulk email sending is disabled in Admin Settings → Email." };
   }
   if (!settings?.notificationEmailEnabled) {
     return { queued: 0, suppressed: 0, skipped: 0, error: "Notification emails are disabled in Admin Settings → Email." };
@@ -131,8 +132,9 @@ export async function sendNewEpisodeEmail(
 ): Promise<ReleaseEmailResult> {
   await requireAdmin();
 
-  if (!isAcsConfigured()) {
-    return { queued: 0, suppressed: 0, skipped: 0, error: "Bulk email provider (ACS) is not configured." };
+  const providerCheck = await checkSelectedBulkProvider();
+  if (!providerCheck.ok) {
+    return { queued: 0, suppressed: 0, skipped: 0, error: providerCheck.error };
   }
 
   const settings = await prisma.adminSettings.findUnique({
@@ -143,7 +145,7 @@ export async function sendNewEpisodeEmail(
     return { queued: 0, suppressed: 0, skipped: 0, error: "Email sending is disabled in Admin Settings." };
   }
   if (!settings?.bulkEmailSendingEnabled) {
-    return { queued: 0, suppressed: 0, skipped: 0, error: "Bulk email sending is disabled in Admin Settings → Bulk Email (ACS)." };
+    return { queued: 0, suppressed: 0, skipped: 0, error: "Bulk email sending is disabled in Admin Settings → Email." };
   }
   if (!settings?.notificationEmailEnabled) {
     return { queued: 0, suppressed: 0, skipped: 0, error: "Notification emails are disabled in Admin Settings → Email." };

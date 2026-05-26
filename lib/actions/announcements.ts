@@ -9,7 +9,7 @@ import { requireAdmin } from "@/lib/auth-guard";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createBulkInAppNotification } from "@/lib/notifications";
-import { enqueueBulkForRecipients, buildAnnouncementEmail, isAcsConfigured } from "@/lib/bulk-email";
+import { enqueueBulkForRecipients, buildAnnouncementEmail, checkSelectedBulkProvider } from "@/lib/bulk-email";
 import type { NotificationType } from "@prisma/client";
 
 // ── Create draft announcement ─────────────────────────────────
@@ -84,16 +84,17 @@ export async function publishAnnouncement(
     created = result.created;
   }
 
-  // Bulk email queue (ACS)
+  // Bulk email queue (selected bulk provider)
   let queued = 0;
   if (announcement.sendEmail) {
-    if (!isAcsConfigured()) {
+    const providerCheck = await checkSelectedBulkProvider();
+    if (!providerCheck.ok) {
       // In-app was already sent — partial success
       revalidatePath("/admin/outreach");
       return {
         created,
         queued: 0,
-        error: "In-app notifications sent, but bulk email provider (ACS) is not configured. Email not queued.",
+        error: `In-app notifications sent, but email not queued: ${providerCheck.error}`,
       };
     }
 
