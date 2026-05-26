@@ -116,7 +116,8 @@ export default async function WatchPage({ params, searchParams }: Props) {
   const trailerRequiresAuth = work.requiresLoginToViewTrailer;
 
   // Determine which guard applies to this visit
-  const isTrailerVisit = !isEpisode && !wantFull; // not full=1 and not an episode → trailer mode
+  // TRAILER-type works are always trailers regardless of URL params
+  const isTrailerVisit = work.type === "TRAILER" || (!isEpisode && !wantFull);
   const requiresAuth   = isTrailerVisit ? trailerRequiresAuth : mainRequiresAuth;
 
   if (requiresAuth && !session?.user) {
@@ -125,12 +126,15 @@ export default async function WatchPage({ params, searchParams }: Props) {
   }
 
   // Video selection
+  // TRAILER-type works store the clip in videoUrl (there is no separate trailerUrl)
   const videoUrl = isEpisode
+    ? work.videoUrl
+    : work.type === "TRAILER"
     ? work.videoUrl
     : wantFull && work.videoUrl
     ? work.videoUrl
     : work.trailerUrl;
-  const isTrailer = !isEpisode && (!wantFull || !work.videoUrl);
+  const isTrailer = work.type === "TRAILER" || (!isEpisode && (!wantFull || !work.videoUrl));
 
   const isYouTube = videoUrl?.includes("youtube.com") || videoUrl?.includes("youtu.be");
   const isVimeo   = videoUrl?.includes("vimeo.com");
@@ -341,8 +345,8 @@ export default async function WatchPage({ params, searchParams }: Props) {
                 </Link>
               )}
 
-              {/* Trailer → Full Film upsell */}
-              {isTrailer && work.videoUrl && (
+              {/* Trailer → Full Film upsell — not for TRAILER-type works (videoUrl IS the trailer) */}
+              {isTrailer && work.type !== "TRAILER" && work.videoUrl && (
                 <div className="watch-upsell">
                   {mainRequiresAuth && !session?.user ? (
                     <>
