@@ -223,7 +223,11 @@ export default function MobileFeaturedHero({ items, isLoggedIn, savedIds, availa
                     )}
                     <h2 className="mfh-title">{item.title}</h2>
                     <div className="mfh-actions">
-                      {item.requiresAuth && !isLoggedIn ? (
+                      {!hasPlayable && !hasTrailer ? (
+                        <Link href={`/works/${item.slug}`} className="mfh-btn-play" tabIndex={isActive ? 0 : -1}>
+                          View Details
+                        </Link>
+                      ) : item.requiresAuth && !isLoggedIn ? (
                         <Link href={signInHref} className="mfh-btn-play" tabIndex={isActive ? 0 : -1}>
                           <Play size={14} fill="currentColor" />
                           Sign In to Watch

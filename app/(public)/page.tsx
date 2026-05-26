@@ -15,16 +15,20 @@ const HOME_SELECT = {
   trailerUrl: true, requiresLoginToViewTrailer: true, videoUrl: true,
 } as const;
 
+import type { WorkStatus } from "@prisma/client";
+
+const HOME_STATUSES: { in: WorkStatus[] } = { in: ["PUBLISHED", "UPCOMING", "IN_PRODUCTION"] };
+
 async function getHomeWorks() {
   const [featured, newReleases] = await Promise.all([
     prisma.work.findMany({
-      where: { status: "PUBLISHED", showOnHome: true, featured: true, type: { not: "EPISODE" } },
+      where: { status: HOME_STATUSES, showOnHome: true, featured: true, type: { not: "EPISODE" } },
       orderBy: { order: "asc" },
       take: 6,
       select: HOME_SELECT,
     }),
     prisma.work.findMany({
-      where: { status: "PUBLISHED", showOnHome: true, type: { not: "EPISODE" } },
+      where: { status: HOME_STATUSES, showOnHome: true, type: { not: "EPISODE" } },
       orderBy: { createdAt: "desc" },
       take: 8,
       select: HOME_SELECT,
@@ -35,7 +39,7 @@ async function getHomeWorks() {
 
 async function getPublishedTypes(): Promise<string[]> {
   const rows = await prisma.work.findMany({
-    where: { status: "PUBLISHED", type: { not: "EPISODE" } },
+    where: { status: HOME_STATUSES, type: { not: "EPISODE" } },
     select: { type: true },
     distinct: ["type"],
   });
@@ -142,6 +146,7 @@ export default async function HomePage() {
               const hasFullVideo = p.type !== "TRAILER" && !!p.videoUrl;
               const hasTrailer   = !!p.trailerUrl;
               const hasPlayable  = p.type === "SERIES" || hasFullVideo;
+              const hasAnything  = hasPlayable || hasTrailer;
               const watchHref = p.type === "SERIES"
                 ? `/watch/${p.slug}`
                 : hasFullVideo
@@ -154,13 +159,19 @@ export default async function HomePage() {
                 : "Watch Trailer";
               return (
                 <>
-                  {p.requiresAuth && !userId ? (
-                    <Link href={`/login?from=${encodeURIComponent(watchHref)}`} className="hero-btn-primary">
-                      <Play size={16} fill="currentColor" /> Sign In to Watch
-                    </Link>
+                  {hasAnything ? (
+                    p.requiresAuth && !userId ? (
+                      <Link href={`/login?from=${encodeURIComponent(watchHref)}`} className="hero-btn-primary">
+                        <Play size={16} fill="currentColor" /> Sign In to Watch
+                      </Link>
+                    ) : (
+                      <Link href={watchHref} className="hero-btn-primary">
+                        <Play size={16} fill="currentColor" /> {watchLabel}
+                      </Link>
+                    )
                   ) : (
-                    <Link href={watchHref} className="hero-btn-primary">
-                      <Play size={16} fill="currentColor" /> {watchLabel}
+                    <Link href={`/works/${p.slug}`} className="hero-btn-primary">
+                      View Details
                     </Link>
                   )}
                   {/* Secondary "Watch Trailer" only when there is both full content and a trailer */}
