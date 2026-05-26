@@ -93,6 +93,16 @@ export async function savePlaybackSettings(formData: FormData) {
   });
 }
 
+// ── Section 5b: Bulk Email (ACS) ─────────────────────────────
+export async function saveBulkEmailSettings(formData: FormData) {
+  await requireAdmin();
+  await upsert({
+    bulkEmailSendingEnabled:  formData.get("bulkEmailSendingEnabled")  === "true",
+    testBulkEmailRecipient:   (formData.get("testBulkEmailRecipient") as string) || null,
+    // primaryBulkProvider is always "acs" — not user-configurable
+  });
+}
+
 // ── Section 6: Security / Auth ────────────────────────────────
 
 export async function saveSecuritySettings(

@@ -3,6 +3,7 @@
 
 import {
   saveEmailSettings,
+  saveBulkEmailSettings,
   saveContentAccessSettings,
   saveFeatureSettings,
   saveNotificationSettings,
@@ -89,6 +90,7 @@ export default async function SettingsPage() {
 
   const graphOk = !!(process.env.AZURE_CLIENT_ID && process.env.AZURE_CLIENT_SECRET &&
     process.env.AZURE_TENANT_ID && process.env.GRAPH_EMAIL_SENDER);
+  const acsOk = !!(process.env.ACS_CONNECTION_STRING && process.env.ACS_SENDER_ADDRESS);
 
   return (
     <div className="stg-shell">
@@ -139,6 +141,55 @@ export default async function SettingsPage() {
         <TextField name="testEmailRecipient" label="Test email recipient" value={s.testEmailRecipient}
           placeholder="Leave blank to send to current admin account" type="email"
           note="Used by the 'Send Test Email' button on the Email page" />
+
+        <div className="stg-actions">
+          <SaveButton />
+        </div>
+      </form>
+
+      {/* ── 1b. Bulk Email (ACS) ── */}
+      <form action={saveBulkEmailSettings} className="stg-section">
+        <SectionHeader
+          title="Bulk Email — ACS"
+          desc="Azure Communication Services for mass sends: new releases, announcements, Notify Me follow-ups. Never used for transactional email."
+        />
+
+        <div className="stg-env-row">
+          <span className="stg-env-label">ACS provider</span>
+          <span className={`stg-env-badge ${acsOk ? "stg-env-badge--ok" : "stg-env-badge--warn"}`}>
+            {acsOk ? "Configured ✓" : "Not configured"}
+          </span>
+        </div>
+        {!acsOk && (
+          <p className="stg-section-note">
+            Set <code>ACS_CONNECTION_STRING</code> and <code>ACS_SENDER_ADDRESS</code> in your environment to enable bulk sending.
+            Connection strings are never shown here.
+          </p>
+        )}
+
+        <div className="stg-fields">
+          <CheckRow
+            name="bulkEmailSendingEnabled"
+            checked={s.bulkEmailSendingEnabled}
+            label="Bulk email sending enabled"
+            note={acsOk
+              ? "Allow admin-triggered bulk sends via ACS"
+              : "ACS not configured — enabling this has no effect until credentials are set"}
+          />
+        </div>
+
+        <TextField
+          name="testBulkEmailRecipient"
+          label="Test bulk send recipient"
+          value={s.testBulkEmailRecipient}
+          placeholder="Leave blank to use admin alert email"
+          type="email"
+          note="Used when testing bulk email dispatch before a real send"
+        />
+
+        <p className="stg-section-note" style={{ marginTop: "0.75rem" }}>
+          Provider: <strong>Azure Communication Services</strong> (ACS) · Queue-based · Respects suppression list and user preferences.
+        </p>
 
         <div className="stg-actions">
           <SaveButton />

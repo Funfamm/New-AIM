@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft, BellRing } from "lucide-react";
 import CtaForm from "./cta-form";
+import FollowupButton from "./followup-button";
 import type { Metadata } from "next";
 import "./cta-edit.css";
 
@@ -110,6 +111,12 @@ export default async function CtaEditPage({ params, searchParams }: Props) {
     );
   }
 
+  // ACS configured check — env var never exposed to client
+  const acsConfigured = !!(
+    process.env.ACS_CONNECTION_STRING &&
+    process.env.ACS_SENDER_ADDRESS
+  );
+
   // Edit mode — fetch by ctaId
   const [cta, signupCount, recentSignups] = await Promise.all([
     prisma.notifyMeCta.findUnique({
@@ -151,6 +158,27 @@ export default async function CtaEditPage({ params, searchParams }: Props) {
         workTitle={cta.work.title}
         cta={{ ...cta, type: cta.type as string }}
       />
+
+      {/* Follow-up email */}
+      <div style={{ marginTop: "2rem" }}>
+        <h2 style={{
+          fontFamily: "var(--font-display)", fontSize: "1rem", fontWeight: 700,
+          color: "var(--color-brand-white)", marginBottom: "0.5rem",
+        }}>
+          Follow-up Email
+        </h2>
+        <p style={{
+          fontFamily: "var(--font-body)", fontSize: "0.8125rem",
+          color: "var(--color-brand-muted)", marginBottom: "0.75rem",
+        }}>
+          Queue a release-ready follow-up email to everyone who signed up for this CTA.
+        </p>
+        <FollowupButton
+          ctaId={ctaId}
+          signupCount={signupCount}
+          acsReady={acsConfigured}
+        />
+      </div>
 
       {/* Signups table */}
       <div className="cta-signups">

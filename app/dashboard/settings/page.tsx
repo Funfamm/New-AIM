@@ -148,6 +148,40 @@ export default async function SettingsPage({ searchParams }: Props) {
                     <input type="checkbox" name="studioUpdates"
                       defaultChecked={prefs.studioUpdates} className="settings-checkbox" />
                   </label>
+                  <div className="settings-divider" />
+                  <label className="settings-toggle-row">
+                    <div>
+                      <p className="settings-toggle-label">Notify Me follow-up emails</p>
+                      <p className="settings-toggle-desc">Email when a work you signed up for is released</p>
+                    </div>
+                    <input type="checkbox" name="notifyMeFollowupEmails"
+                      defaultChecked={prefs.notifyMeFollowupEmails} className="settings-checkbox" />
+                  </label>
+                  <label className="settings-toggle-row">
+                    <div>
+                      <p className="settings-toggle-label">Saved work updates</p>
+                      <p className="settings-toggle-desc">Notify me when a saved series gets new content</p>
+                    </div>
+                    <input type="checkbox" name="savedWorkNotifications"
+                      defaultChecked={prefs.savedWorkNotifications} className="settings-checkbox" />
+                  </label>
+                  <label className="settings-toggle-row">
+                    <div>
+                      <p className="settings-toggle-label">Watch reminders</p>
+                      <p className="settings-toggle-desc">Occasional prompts to resume something you started</p>
+                    </div>
+                    <input type="checkbox" name="watchReminderNotifications"
+                      defaultChecked={prefs.watchReminderNotifications} className="settings-checkbox" />
+                  </label>
+                  <div className="settings-toggle-row settings-toggle-row--plain">
+                    <div>
+                      <p className="settings-toggle-label">Security emails</p>
+                      <p className="settings-toggle-desc">
+                        Login alerts, password resets, and account security — always on
+                      </p>
+                    </div>
+                    <span className="settings-field-readonly" style={{ fontSize: "0.78rem" }}>Always on</span>
+                  </div>
                   <div className="settings-form-footer">
                     <button type="submit" className="settings-save-btn">Save</button>
                   </div>

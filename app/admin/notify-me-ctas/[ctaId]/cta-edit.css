@@ -1,4 +1,4 @@
-/* Admin — CTA create/edit page */
+/* Admin — CTA create/edit page + follow-up email section */
 
 .cta-edit-page {
   padding: 2rem 0;
@@ -259,3 +259,81 @@
   color: var(--color-brand-muted);
   margin: 0 0 1rem;
 }
+
+/* ── Follow-up email section ── */
+.cta-followup {
+  margin-top: 2rem;
+  border: 1px solid var(--color-brand-border);
+  border-radius: 4px;
+  padding: 1.25rem 1.5rem;
+  background: var(--color-brand-dark);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.cta-followup-desc {
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  color: var(--color-brand-muted);
+  margin: 0;
+  line-height: 1.55;
+}
+.cta-followup-desc strong { color: var(--color-brand-light); }
+
+.cta-followup-warn {
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  color: #f59e0b;
+  margin: 0;
+}
+
+.cta-followup-confirm {
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  color: var(--color-brand-light);
+  margin: 0;
+}
+
+.cta-followup-btn {
+  display: inline-flex; align-items: center;
+  font-family: var(--font-body); font-size: 0.875rem; font-weight: 600;
+  color: var(--color-brand-black); background: var(--color-brand-accent);
+  border: none; border-radius: 2px;
+  padding: 0.55rem 1.25rem; cursor: pointer;
+  transition: filter 0.15s; white-space: nowrap;
+  align-self: flex-start;
+}
+.cta-followup-btn:hover:not(:disabled) { filter: brightness(1.08); }
+.cta-followup-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.cta-followup-btn--confirm {
+  background: #f59e0b;
+}
+
+.cta-followup-cancel {
+  display: inline-flex; align-items: center;
+  font-family: var(--font-body); font-size: 0.8125rem; font-weight: 500;
+  color: var(--color-brand-muted);
+  background: none; border: none; cursor: pointer;
+  transition: color 0.15s; padding: 0;
+  align-self: flex-start;
+}
+.cta-followup-cancel:hover { color: var(--color-brand-light); }
+
+.cta-followup-ok {
+  font-family: var(--font-body); font-size: 0.8125rem;
+  color: #4ade80; margin: 0;
+  padding: 0.5rem 0.75rem;
+  background: rgba(74, 222, 128, 0.08);
+  border-radius: 3px;
+}
+
+.cta-followup-err {
+  font-family: var(--font-body); font-size: 0.8125rem;
+  color: var(--color-brand-red); margin: 0;
+  padding: 0.5rem 0.75rem;
+  background: rgba(192, 57, 43, 0.1);
+  border-radius: 3px;
+}
+

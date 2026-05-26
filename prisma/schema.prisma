@@ -103,13 +103,16 @@ enum EmailType {
   NEW_RELEASE
   NEW_EPISODE
   ADMIN_ALERT
-  SECURITY_ALERT  // NEW — sent on suspicious events
+  SECURITY_ALERT       // sent on suspicious events
   FUTURE_CAMPAIGN
+  ANNOUNCEMENT         // studio-wide broadcast
+  NOTIFY_ME_FOLLOWUP   // CTA release-ready follow-up
 }
 
 enum EmailProvider {
   GRAPH
   SMTP
+  ACS
   DEV_LOG
 }
 
@@ -117,6 +120,8 @@ enum EmailStatus {
   SENT
   FAILED
   SUPPRESSED
+  QUEUED
+  SKIPPED
 }
 
 // ── Security enums ─────────────────────────────────────────────
@@ -404,6 +409,12 @@ model UserPreferences {
   resumePlayback      Boolean @default(true)
   reducedMotion       Boolean @default(false)
 
+  // Notification / email opt-ins (communications system)
+  notifyMeFollowupEmails     Boolean @default(true)   // CTA release-ready emails
+  savedWorkNotifications     Boolean @default(true)   // new episode/update on saved work
+  watchReminderNotifications Boolean @default(false)  // resume-watching prompts
+  securityEmails             Boolean @default(true)   // always true; cannot be disabled
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -575,6 +586,10 @@ model AdminSettings {
   // ── Email ──────────────────────────────────
   emailSendingEnabled       Boolean @default(true)
   primaryEmailProvider      String  @default("graph")
+  // Bulk email (ACS) — separate from transactional Graph
+  primaryBulkProvider       String  @default("acs")
+  bulkEmailSendingEnabled   Boolean @default(false)
+  testBulkEmailRecipient    String?
   testEmailRecipient        String?
   fromDisplayName           String  @default("AIM Studio")
   replyToEmail              String?
@@ -757,6 +772,88 @@ model UserDevice {
   @@index([userId])
   @@index([fingerprintHash])
   @@map("user_devices")
+}
+
+// ─────────────────────────────────────────────
+// EMAIL TEMPLATE
+// Admin-editable named templates for each email type.
+// subject and bodyHtml support {{{variable}}} placeholders.
+// ─────────────────────────────────────────────
+
+model EmailTemplate {
+  id          String    @id @default(cuid())
+  name        String    @unique    // system key — e.g. "PASSWORD_RESET", "WELCOME"
+  label       String?              // human-readable display name
+  description String?              // what this template is used for
+  type        EmailType
+  subject     String
+  preheader   String?              // preview text shown in email clients after subject
+  bodyHtml    String    @db.Text
+  bodyText    String?   @db.Text   // plain-text fallback
+  isDefault   Boolean   @default(false)
+  isActive    Boolean   @default(true)
+  isSystem    Boolean   @default(false)  // system templates cannot be deleted
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("email_templates")
+}
+
+// ─────────────────────────────────────────────
+// EMAIL QUEUE
+// Buffer for all bulk sends (new release, new episode,
+// announcement, CTA follow-up). Processed in safe batches
+// by a background action — never sent inline with a request.
+// ─────────────────────────────────────────────
+
+model EmailQueue {
+  id          String        @id @default(cuid())
+  to          String
+  subject     String
+  bodyHtml    String        @db.Text
+  type        EmailType
+  provider    EmailProvider @default(ACS)
+  status      EmailStatus   @default(QUEUED)
+  campaignId  String?       // groups a batch send for reporting
+  retryCount  Int           @default(0)
+  maxRetries  Int           @default(3)
+  scheduledAt DateTime      @default(now())
+  processedAt DateTime?
+  error       String?
+  metadata    Json?
+  createdAt   DateTime      @default(now())
+
+  @@index([status])
+  @@index([scheduledAt])
+  @@index([campaignId])
+  @@index([to])
+  @@map("email_queue")
+}
+
+// ─────────────────────────────────────────────
+// ANNOUNCEMENT
+// Admin-created global broadcasts.
+// Can be shown in-app (creates Notification rows per user)
+// and optionally queued for email (bulk via ACS).
+// ─────────────────────────────────────────────
+
+model Announcement {
+  id          String           @id @default(cuid())
+  title       String
+  body        String
+  href        String?          // optional CTA link
+  hrefLabel   String?          // CTA button label
+  type        NotificationType @default(ANNOUNCEMENT)
+  sendInApp   Boolean          @default(true)
+  sendEmail   Boolean          @default(false)
+  emailSentAt DateTime?        // set when bulk email dispatch starts
+  publishedAt DateTime?        // null = draft; set when admin publishes
+  expiresAt   DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([publishedAt])
+  @@map("announcements")
 }
 
 // ─────────────────────────────────────────────

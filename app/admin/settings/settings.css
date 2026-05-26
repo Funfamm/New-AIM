@@ -87,6 +87,28 @@
   color: var(--color-brand-red);
 }
 
+.stg-env-badge--warn {
+  background: rgba(245, 158, 11, 0.12);
+  color: #f59e0b;
+}
+
+/* ── Section note — small helper text below a section description ── */
+.stg-section-note {
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  color: var(--color-brand-muted);
+  line-height: 1.55;
+  margin: 0.5rem 0 0;
+}
+.stg-section-note code {
+  font-family: monospace;
+  font-size: 0.8em;
+  background: var(--color-brand-surface);
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: var(--color-brand-light);
+}
+
 /* ── Field groups ── */
 .stg-fields {
   display: flex;
