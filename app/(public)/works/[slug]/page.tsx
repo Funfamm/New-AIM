@@ -247,8 +247,9 @@ export default async function WorkDetailPage({ params }: Props) {
               {/* CTAs */}
               <div className="detail-actions">
 
-                {/* Watch Trailer — ghost when full content also exists; primary when no full content */}
-                {work.trailerUrl && (
+                {/* Watch Trailer — ghost when full content also exists; primary when no full content.
+                    TRAILER-type works store their clip in videoUrl (no trailerUrl), so also trigger on that. */}
+                {(work.trailerUrl || (work.type === "TRAILER" && !!work.videoUrl)) && (
                   <div className={isSeries ? "detail-trailer-desktop-only" : undefined}>
                     {trailerLocked ? (
                       <Link
