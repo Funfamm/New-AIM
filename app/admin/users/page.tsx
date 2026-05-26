@@ -83,7 +83,8 @@ export default async function AdminUsersPage({
   searchParams: Promise<Record<string, string>>;
 }) {
   const [session, sp] = await Promise.all([auth(), searchParams]);
-  const actorId = session?.user?.id ?? "";
+  const actorId     = session?.user?.id   ?? "";
+  const sessionRole = session?.user?.role ?? "";
 
   const q      = sp.q      ?? "";
   const role   = sp.role   ?? "";
@@ -110,7 +111,7 @@ export default async function AdminUsersPage({
     users,
   ] = await Promise.all([
     prisma.user.count(),
-    prisma.user.count({ where: { role: "ADMIN" } }),
+    prisma.user.count({ where: { role: { in: ["ADMIN", "SUPER_ADMIN"] } } }),
     prisma.user.count({ where: { status: "SUSPENDED" } }),
     prisma.user.count({ where: { accounts: { some: { provider: "google" } } } }),
     prisma.user.count({ where: { password: { not: null } } }),
@@ -229,7 +230,7 @@ export default async function AdminUsersPage({
       <UsersFilters q={q} role={role} via={via} sort={sort} status={status} />
 
       {/* ── Interactive table (client component) ── */}
-      <UsersTable users={rows} isFiltered={isFiltered} />
+      <UsersTable users={rows} isFiltered={isFiltered} sessionRole={sessionRole} />
 
       {/* ── Pagination ── */}
       {totalPages > 1 && (

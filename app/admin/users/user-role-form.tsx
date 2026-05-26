@@ -31,6 +31,7 @@ export function UserRoleForm({ userId, currentRole, isSelf }: Props) {
       >
         <option value="USER">Member</option>
         <option value="ADMIN">Admin</option>
+        <option value="SUPER_ADMIN">Super Admin</option>
       </select>
       {isPending && <span className="urole-pending" />}
       {state?.error && (

@@ -1,5 +1,6 @@
-"use server";
+﻿"use server";
 
+import { requireAdmin } from "@/lib/auth-guard";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -287,10 +288,6 @@ export async function ensureSystemEmailTemplates(): Promise<void> {
   await prisma.emailTemplate.createMany({ data: templates, skipDuplicates: true });
 }
 
-async function requireAdmin() {
-  const session = await auth();
-  if (!session?.user || session.user.role !== "ADMIN") redirect("/");
-}
 
 export type TemplateResult = {
   error?: string;

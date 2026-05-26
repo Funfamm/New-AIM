@@ -1,19 +1,13 @@
-"use server";
+﻿"use server";
 
 // Server actions for admin announcement management.
 // Guards: requireAdmin() on every mutation.
 // No secrets exposed. No client bundle.
 
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth-guard";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-
-async function requireAdmin() {
-  const session = await auth();
-  if (!session?.user || session.user.role !== "ADMIN") redirect("/");
-  return session.user;
-}
 import { createBulkInAppNotification } from "@/lib/notifications";
 import { enqueueBulkForRecipients, buildAnnouncementEmail, isAcsConfigured } from "@/lib/bulk-email";
 import type { NotificationType } from "@prisma/client";

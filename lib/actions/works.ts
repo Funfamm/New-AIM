@@ -1,19 +1,12 @@
-"use server";
+﻿"use server";
 // Server Actions for Work CRUD — admin only
 
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth-guard";
 import { slugify } from "@/lib/utils";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { WorkType, WorkStatus } from "@prisma/client";
-
-async function requireAdmin() {
-  const session = await auth();
-  if (!session?.user || session.user.role !== "ADMIN") {
-    throw new Error("Unauthorized");
-  }
-}
 
 function parseFormData(formData: FormData) {
   const galleryRaw = (formData.get("galleryUrls") as string) ?? "";

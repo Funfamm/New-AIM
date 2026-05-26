@@ -1,7 +1,7 @@
-"use server";
+﻿"use server";
 
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/lib/auth";
+import { requireAdmin, requireSuperAdmin, isAdminRole } from "@/lib/auth-guard";
 import { revalidatePath } from "next/cache";
 import { randomBytes, createHash } from "crypto";
 import { sendPasswordResetEmail } from "@/lib/email";
@@ -9,22 +9,18 @@ import { writeAudit } from "@/lib/audit";
 import { writeSecurityEvent, createSecurityAlert } from "@/lib/security";
 import type { Role } from "@prisma/client";
 
-async function requireAdmin() {
-  const session = await auth();
-  if (!session?.user || session.user.role !== "ADMIN") throw new Error("Unauthorized");
-  return session.user;
-}
 
-// ── Change user role ──────────────────────────────────────────
+
+// ── Change user role (SUPER_ADMIN only) ───────────────────────
 export async function changeUserRole(
   userId: string,
   _prev: { ok: boolean; error?: string } | null,
   formData: FormData
 ): Promise<{ ok: boolean; error?: string }> {
-  const actor = await requireAdmin();
+  const actor = await requireSuperAdmin();
   const newRole = formData.get("role") as Role;
 
-  if (!["USER", "ADMIN"].includes(newRole)) return { ok: false, error: "Invalid role." };
+  if (!["USER", "ADMIN", "SUPER_ADMIN"].includes(newRole)) return { ok: false, error: "Invalid role." };
   if (userId === actor.id) return { ok: false, error: "You cannot change your own role." };
 
   // Fetch target for safety check + audit snapshot
@@ -35,9 +31,15 @@ export async function changeUserRole(
   if (!target) return { ok: false, error: "User not found." };
   if (target.role === newRole) { revalidatePath("/admin/users"); return { ok: true }; }
 
-  // Guard: demoting the last admin
-  if (newRole === "USER" && target.role === "ADMIN") {
-    const adminCount = await prisma.user.count({ where: { role: "ADMIN" } });
+  // Guard: cannot demote the last super admin
+  if (target.role === "SUPER_ADMIN" && newRole !== "SUPER_ADMIN") {
+    const superAdminCount = await prisma.user.count({ where: { role: "SUPER_ADMIN" } });
+    if (superAdminCount <= 1) return { ok: false, error: "Cannot demote the last Super Admin." };
+  }
+
+  // Guard: cannot remove the last admin-level user entirely
+  if (newRole === "USER" && isAdminRole(target.role)) {
+    const adminCount = await prisma.user.count({ where: { role: { in: ["ADMIN", "SUPER_ADMIN"] } } });
     if (adminCount <= 1) return { ok: false, error: "Cannot demote the last admin." };
   }
 
@@ -77,8 +79,8 @@ export async function suspendUser(
   if (!target) return { ok: false, error: "User not found." };
   if (target.status === "SUSPENDED") return { ok: false, error: "User is already suspended." };
 
-  if (target.role === "ADMIN") {
-    const activeAdminCount = await prisma.user.count({ where: { role: "ADMIN", status: "ACTIVE" } });
+  if (isAdminRole(target.role)) {
+    const activeAdminCount = await prisma.user.count({ where: { role: { in: ["ADMIN", "SUPER_ADMIN"] }, status: "ACTIVE" } });
     if (activeAdminCount <= 1) return { ok: false, error: "Cannot suspend the last active admin." };
   }
 
@@ -152,7 +154,7 @@ export async function bulkSuspend(userIds: string[]): Promise<void> {
   if (candidateIds.length === 0) return;
 
   const adminTargets = await prisma.user.findMany({
-    where: { id: { in: candidateIds }, role: "ADMIN", status: "ACTIVE" },
+    where: { id: { in: candidateIds }, role: { in: ["ADMIN", "SUPER_ADMIN"] }, status: "ACTIVE" },
     select: { id: true },
   });
   const adminIdSet = new Set(adminTargets.map((u) => u.id));
@@ -160,7 +162,7 @@ export async function bulkSuspend(userIds: string[]): Promise<void> {
 
   let adminIdsToSuspend: string[] = [];
   if (adminIdSet.size > 0) {
-    const activeAdminCount = await prisma.user.count({ where: { role: "ADMIN", status: "ACTIVE" } });
+    const activeAdminCount = await prisma.user.count({ where: { role: { in: ["ADMIN", "SUPER_ADMIN"] }, status: "ACTIVE" } });
     if (activeAdminCount - adminIdSet.size >= 1) {
       adminIdsToSuspend = Array.from(adminIdSet);
     }
@@ -261,8 +263,8 @@ export async function deactivateUser(
   if (!target) return { ok: false, error: "User not found." };
   if (target.status === "DEACTIVATED") return { ok: false, error: "User is already deactivated." };
 
-  if (target.role === "ADMIN") {
-    const activeAdminCount = await prisma.user.count({ where: { role: "ADMIN", status: "ACTIVE" } });
+  if (isAdminRole(target.role)) {
+    const activeAdminCount = await prisma.user.count({ where: { role: { in: ["ADMIN", "SUPER_ADMIN"] }, status: "ACTIVE" } });
     if (activeAdminCount <= 1) return { ok: false, error: "Cannot deactivate the last active admin." };
   }
 
@@ -346,9 +348,9 @@ export async function purgeUser(
   });
   if (!target) return { ok: false, error: "User not found." };
 
-  // Guard: cannot purge the last admin
-  if (target.role === "ADMIN") {
-    const adminCount = await prisma.user.count({ where: { role: "ADMIN" } });
+  // Guard: cannot purge the last admin-level account
+  if (isAdminRole(target.role)) {
+    const adminCount = await prisma.user.count({ where: { role: { in: ["ADMIN", "SUPER_ADMIN"] } } });
     if (adminCount <= 1) return { ok: false, error: "Cannot purge the last admin account." };
   }
 

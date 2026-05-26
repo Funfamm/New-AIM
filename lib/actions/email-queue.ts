@@ -1,10 +1,10 @@
-"use server";
+﻿"use server";
 
 // Admin-triggered email queue processor.
 // Processes up to BATCH_LIMIT queued bulk emails per invocation.
 // Never called from public routes — admin only.
 
-import { auth } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth-guard";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
@@ -12,10 +12,6 @@ import { processEmailQueueBatch, isAcsConfigured } from "@/lib/bulk-email";
 
 const BATCH_LIMIT = 50;
 
-async function requireAdmin() {
-  const session = await auth();
-  if (!session?.user || session.user.role !== "ADMIN") redirect("/");
-}
 
 export type QueueProcessResult = {
   processed: number;

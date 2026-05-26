@@ -34,9 +34,11 @@ export type UserRow = {
 interface Props {
   users: UserRow[];
   isFiltered: boolean;
+  sessionRole: string;
 }
 
-export function UsersTable({ users, isFiltered }: Props) {
+export function UsersTable({ users, isFiltered, sessionRole }: Props) {
+  const isSuperAdmin = sessionRole === "SUPER_ADMIN";
   const [selected, setSelected]   = useState<Set<string>>(new Set());
   const [error, setError]         = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -285,7 +287,13 @@ export function UsersTable({ users, isFiltered }: Props) {
 
                 {/* Role */}
                 <td>
-                  <UserRoleForm userId={u.id} currentRole={u.role} isSelf={u.isSelf} />
+                  {isSuperAdmin ? (
+                    <UserRoleForm userId={u.id} currentRole={u.role} isSelf={u.isSelf} />
+                  ) : (
+                    <span className={`role-badge role-badge--${u.role === "SUPER_ADMIN" ? "super" : u.role === "ADMIN" ? "admin" : "user"}`}>
+                      {u.role === "SUPER_ADMIN" ? "Super Admin" : u.role === "ADMIN" ? "Admin" : "Member"}
+                    </span>
+                  )}
                 </td>
 
                 {/* Login method */}

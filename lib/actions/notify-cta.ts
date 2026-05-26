@@ -1,15 +1,11 @@
-"use server";
+﻿"use server";
 
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth-guard";
 import { revalidatePath } from "next/cache";
 import type { CtaType } from "@prisma/client";
 
-async function requireAdmin() {
-  const session = await auth();
-  if (!session?.user || session.user.role !== "ADMIN") throw new Error("Unauthorized");
-  return session.user;
-}
+
 
 // ── Admin: upsert CTA for a work ─────────────────────────────────────────────
 export async function upsertCta(

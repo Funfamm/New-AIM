@@ -1,14 +1,10 @@
-"use server";
+﻿"use server";
 
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth-guard";
 import { revalidatePath } from "next/cache";
 import type { AdminSettings } from "@prisma/client";
 
-async function requireAdmin() {
-  const session = await auth();
-  if (!session?.user || session.user.role !== "ADMIN") throw new Error("Unauthorized");
-}
 
 // ── Read ──────────────────────────────────────────────────────
 export async function getSettings(): Promise<AdminSettings> {

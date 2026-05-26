@@ -79,7 +79,8 @@
 .badge--private     { background: rgba(248,113,113,0.1); color: #f87171; }
 .badge--upcoming    { background: rgba(232,201,126,0.1); color: var(--color-brand-accent); }
 .badge--production  { background: rgba(96,165,250,0.1);  color: #60a5fa; }
-.role-badge--admin { background: rgba(232,201,126,0.1); color: var(--color-brand-accent); }
+.role-badge--super { background: rgba(167,139,250,0.15); color: #a78bfa; }
+.role-badge--admin { background: rgba(232,201,126,0.1);  color: var(--color-brand-accent); }
 .role-badge--user  { background: rgba(148,163,184,0.08); color: var(--color-brand-muted); }
 
 /* ── Action buttons ── */

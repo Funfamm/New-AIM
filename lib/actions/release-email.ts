@@ -1,4 +1,4 @@
-"use server";
+﻿"use server";
 
 // Admin-triggered release email actions.
 // NEW_RELEASE: queues a bulk email to opted-in registered users.
@@ -8,7 +8,7 @@
 // Admin processes the queue from /admin/email.
 // No email is sent inline — everything goes through the queue.
 
-import { auth } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth-guard";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
@@ -19,10 +19,6 @@ import {
   isAcsConfigured,
 } from "@/lib/bulk-email";
 
-async function requireAdmin() {
-  const session = await auth();
-  if (!session?.user || session.user.role !== "ADMIN") redirect("/");
-}
 
 export type ReleaseEmailResult = {
   queued:     number;

@@ -1,16 +1,12 @@
-"use server";
+﻿"use server";
 
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth-guard";
 import { sendEmail } from "@/lib/email";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
-async function requireAdmin() {
-  const session = await auth();
-  if (!session?.user || session.user.role !== "ADMIN") throw new Error("Unauthorized");
-  return session.user;
-}
+
 
 // ── Test Graph email ──────────────────────────────────────────
 export async function testGraphEmail(): Promise<{ ok: boolean; message: string }> {

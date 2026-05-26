@@ -1,4 +1,4 @@
-"use server";
+﻿"use server";
 
 // Outreach Center — server actions.
 // sendAnnouncement:      create + publish atomically. Supports channel selection + imageUrl.
@@ -7,7 +7,7 @@
 // All admin-gated. No secrets exposed. No client bundle.
 
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth-guard";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createBulkInAppNotification } from "@/lib/notifications";
@@ -20,11 +20,6 @@ import {
 } from "@/lib/bulk-email";
 import type { NotificationType } from "@prisma/client";
 
-async function requireAdmin() {
-  const session = await auth();
-  if (!session?.user || session.user.role !== "ADMIN") redirect("/");
-  return session.user;
-}
 
 // ── URL safety helper ─────────────────────────────────────────
 // Only allow http/https — never javascript:, data:, etc.

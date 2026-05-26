@@ -1,11 +1,11 @@
-"use server";
+﻿"use server";
 
 // Trigger Notify Me follow-up emails for a CTA's signups.
 // Enqueues NOTIFY_ME_FOLLOWUP bulk emails via ACS queue.
 // Checks suppression list for every address.
 // For registered users: also checks notifyMeFollowupEmails preference.
 
-import { auth } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth-guard";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
@@ -15,10 +15,6 @@ import {
   isAcsConfigured,
 } from "@/lib/bulk-email";
 
-async function requireAdmin() {
-  const session = await auth();
-  if (!session?.user || session.user.role !== "ADMIN") redirect("/");
-}
 
 export type FollowupResult = {
   queued:     number;
