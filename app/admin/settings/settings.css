@@ -109,6 +109,32 @@
   color: var(--color-brand-light);
 }
 
+/* Info-only section — no form, just a redirect hint */
+.stg-section--info {
+  border-style: dashed;
+  opacity: 0.85;
+}
+
+.stg-link-btn {
+  display: inline-block;
+  margin-top: 0.85rem;
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.45rem 1rem;
+  border-radius: 4px;
+  border: 1px solid var(--color-brand-border);
+  background: var(--color-brand-surface);
+  color: var(--color-brand-accent);
+  text-decoration: none;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.stg-link-btn:hover {
+  border-color: var(--color-brand-accent);
+  background: rgba(232, 201, 126, 0.06);
+}
+
 /* ── Field groups ── */
 .stg-fields {
   display: flex;

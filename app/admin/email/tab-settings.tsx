@@ -21,27 +21,36 @@ export default async function TabSettings() {
   const graphOk = isGraphConfigured();
   const smtpOk  = isSmtpConfigured();
 
+  // SMTP is detected by env vars but bulk sending is not yet implemented —
+  // always surface as "Not implemented" to avoid misleading the admin.
+  const SMTP_IMPLEMENTED = false;
+
   const providers = [
     {
-      id:    "acs",
-      label: "Azure Communication Services (ACS)",
-      desc:  "Recommended for bulk. High deliverability, unsubscribe compliance built-in.",
-      ok:    acsOk,
-      hint:  acsOk ? null : "Set ACS_CONNECTION_STRING and ACS_SENDER_ADDRESS",
+      id:              "graph",
+      label:           "Microsoft Graph",
+      desc:            "Temporary bulk sender using the configured Microsoft mailbox. Recommended while ACS domain is not yet verified. Use smaller batch sizes.",
+      ok:              graphOk,
+      notImplemented:  false,
+      hint:            graphOk ? null : "Requires AZURE_CLIENT_ID, AZURE_CLIENT_SECRET, AZURE_TENANT_ID, GRAPH_EMAIL_SENDER",
     },
     {
-      id:    "graph",
-      label: "Microsoft Graph",
-      desc:  "Uses the same sender as transactional emails. Good fallback if ACS domain is unverified.",
-      ok:    graphOk,
-      hint:  graphOk ? null : "Requires AZURE_CLIENT_ID, AZURE_TENANT_ID, GRAPH_EMAIL_SENDER",
+      id:              "acs",
+      label:           "Azure Communication Services (ACS)",
+      desc:            "Recommended long-term bulk sender for production announcements, releases, and campaigns after the verified domain is ready.",
+      ok:              acsOk,
+      notImplemented:  false,
+      hint:            acsOk ? null : "Requires ACS_CONNECTION_STRING and ACS_SENDER_ADDRESS",
     },
     {
-      id:    "smtp",
-      label: "SMTP",
-      desc:  "Emergency fallback. Requires SMTP_HOST, SMTP_USER, and SMTP_PASS env vars.",
-      ok:    smtpOk,
-      hint:  smtpOk ? null : "Set SMTP_HOST and SMTP_USER",
+      id:              "smtp",
+      label:           "SMTP",
+      desc:            "Emergency fallback only. Requires SMTP_HOST, SMTP_USER env vars and full SMTP implementation.",
+      ok:              smtpOk && SMTP_IMPLEMENTED,
+      notImplemented:  !SMTP_IMPLEMENTED,
+      hint:            !SMTP_IMPLEMENTED
+        ? "SMTP bulk sending is not yet implemented. Select Graph or ACS."
+        : smtpOk ? null : "Set SMTP_HOST and SMTP_USER",
     },
   ];
 
@@ -78,8 +87,8 @@ export default async function TabSettings() {
                     className="eprovider-radio"
                   />
                   <span className="eprovider-label">{p.label}</span>
-                  <span className={`eprovider-badge ${p.ok ? "eprovider-badge--ok" : "eprovider-badge--warn"}`}>
-                    {p.ok ? "Configured" : "Not configured"}
+                  <span className={`eprovider-badge ${p.ok ? "eprovider-badge--ok" : p.notImplemented ? "eprovider-badge--dim" : "eprovider-badge--warn"}`}>
+                    {p.ok ? "Configured" : p.notImplemented ? "Not implemented" : "Not configured"}
                   </span>
                 </div>
                 <p className="eprovider-desc">{p.desc}</p>

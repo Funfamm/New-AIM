@@ -3,17 +3,20 @@
 //
 // Architecture:
 //   - All bulk sends go through EmailQueue first (never inline).
-//   - ACS (Azure Communication Services) is the configured bulk provider.
-//   - If ACS is not configured, queue functions still write rows but
-//     processEmailQueueBatch() returns an error — nothing is sent silently.
-//   - Microsoft Graph is NOT used for bulk. Graph = transactional only.
+//   - Active bulk provider is configured in AdminSettings.primaryBulkProvider.
+//     Admin selects: "graph" | "acs" | "smtp" in /admin/email?tab=settings.
+//   - Microsoft Graph can handle bulk while ACS domain is not yet verified.
+//   - ACS is the preferred long-term bulk provider (announcements, campaigns).
+//   - SMTP is an emergency fallback — currently not fully implemented.
+//   - If selected provider is not configured, sends fail with a clear error.
 //   - Every queued email respects EmailSuppression and UserPreferences.
 //   - Every send attempt is logged in EmailLog.
 //
 // Caller contract:
-//   1. Check user preference before calling enqueueFor*().
-//   2. Call enqueueFor*() — this writes EmailQueue rows in safe batches.
-//   3. Call processEmailQueueBatch() separately (admin trigger / cron).
+//   1. Call checkSelectedBulkProvider() to verify the active provider is ready.
+//   2. Check user preference before calling enqueueFor*().
+//   3. Call enqueueFor*() — this writes EmailQueue rows in safe batches.
+//   4. Call processEmailQueueBatch() separately (admin trigger / cron).
 
 import { prisma } from "@/lib/prisma";
 import { buildUnsubscribeUrl, buildPreferencesUrl } from "@/lib/unsubscribe";
@@ -39,6 +42,50 @@ export function isGraphConfigured(): boolean {
 
 export function isSmtpConfigured(): boolean {
   return !!(process.env.SMTP_HOST && process.env.SMTP_USER);
+}
+
+// ── Active provider readiness check ──────────────────────────
+// Reads AdminSettings.primaryBulkProvider and validates the selected
+// provider is configured. Returns a clear error if not ready.
+// Use this in outreach actions instead of isAcsConfigured() directly.
+
+export async function checkSelectedBulkProvider(): Promise<{
+  ok:       boolean;
+  provider: string;
+  error?:   string;
+}> {
+  const settings = await prisma.adminSettings.findUnique({
+    where:  { id: "singleton" },
+    select: { primaryBulkProvider: true },
+  });
+  const provider = ((settings?.primaryBulkProvider ?? "acs").toLowerCase()) as "acs" | "graph" | "smtp";
+
+  if (provider === "acs" && !isAcsConfigured()) {
+    return {
+      ok: false, provider,
+      error: "Bulk provider is set to ACS but ACS_CONNECTION_STRING / ACS_SENDER_ADDRESS are not configured. Switch to Graph in Email Settings.",
+    };
+  }
+  if (provider === "graph" && !isGraphConfigured()) {
+    return {
+      ok: false, provider,
+      error: "Bulk provider is set to Graph but Microsoft Graph credentials are not configured. Check AZURE_CLIENT_ID, AZURE_TENANT_ID, GRAPH_EMAIL_SENDER.",
+    };
+  }
+  if (provider === "smtp") {
+    if (!isSmtpConfigured()) {
+      return {
+        ok: false, provider,
+        error: "Bulk provider is set to SMTP but SMTP_HOST / SMTP_USER are not configured.",
+      };
+    }
+    // SMTP is detected as configured but sending is not yet implemented
+    return {
+      ok: false, provider,
+      error: "SMTP bulk sending is not yet implemented. Select ACS or Graph in Email Settings.",
+    };
+  }
+  return { ok: true, provider };
 }
 
 // ── Base email template (dark cinematic — matches lib/email.ts) ──

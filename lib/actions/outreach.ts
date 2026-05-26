@@ -16,7 +16,7 @@ import {
   buildAnnouncementEmail,
   buildNewReleaseEmail,
   buildNewEpisodeEmail,
-  isAcsConfigured,
+  checkSelectedBulkProvider,
 } from "@/lib/bulk-email";
 import type { NotificationType } from "@prisma/client";
 
@@ -112,7 +112,7 @@ async function checkBulkEmailSettings(): Promise<{ ok: boolean; error?: string }
     return { ok: false, error: "Email sending is disabled in Admin Settings." };
   }
   if (!settings?.bulkEmailSendingEnabled) {
-    return { ok: false, error: "Bulk email sending is disabled in Admin Settings → Bulk Email (ACS)." };
+    return { ok: false, error: "Bulk email sending is disabled in Admin Settings → Email." };
   }
   if (!settings?.notificationEmailEnabled) {
     return { ok: false, error: "Notification emails are disabled in Admin Settings → Email." };
@@ -188,9 +188,10 @@ export async function sendAnnouncement(
     created = inAppResult.created;
   }
 
-  // ── Email (ACS) ───────────────────────────────────────────────
+  // ── Email (bulk provider from AdminSettings) ──────────────────
   if (wantsEmail) {
-    if (!isAcsConfigured()) {
+    const providerCheck = await checkSelectedBulkProvider();
+    if (!providerCheck.ok) {
       await prisma.announcement.update({
         where: { id: announcement.id },
         data:  { recipientCount: created, emailQueuedCount: 0 },
@@ -200,8 +201,8 @@ export async function sendAnnouncement(
         created,
         queued: 0,
         error: wantsInApp
-          ? `In-app sent to ${created} user${created === 1 ? "" : "s"}. Bulk email provider (ACS) is not configured.`
-          : "Bulk email provider (ACS) is not configured.",
+          ? `In-app sent to ${created} user${created === 1 ? "" : "s"}. ${providerCheck.error}`
+          : providerCheck.error,
       };
     }
 
@@ -267,8 +268,9 @@ export async function sendReleaseOutreach(
 ): Promise<OutreachResult> {
   await requireAdmin();
 
-  if (!isAcsConfigured()) {
-    return { queued: 0, suppressed: 0, skipped: 0, error: "Bulk email provider (ACS) is not configured." };
+  const providerCheck = await checkSelectedBulkProvider();
+  if (!providerCheck.ok) {
+    return { queued: 0, suppressed: 0, skipped: 0, error: providerCheck.error };
   }
   const settingsCheck = await checkBulkEmailSettings();
   if (!settingsCheck.ok) {
@@ -335,8 +337,9 @@ export async function sendEpisodeOutreach(
 ): Promise<OutreachResult> {
   await requireAdmin();
 
-  if (!isAcsConfigured()) {
-    return { queued: 0, suppressed: 0, skipped: 0, error: "Bulk email provider (ACS) is not configured." };
+  const providerCheck = await checkSelectedBulkProvider();
+  if (!providerCheck.ok) {
+    return { queued: 0, suppressed: 0, skipped: 0, error: providerCheck.error };
   }
   const settingsCheck = await checkBulkEmailSettings();
   if (!settingsCheck.ok) {
