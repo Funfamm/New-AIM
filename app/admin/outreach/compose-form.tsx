@@ -15,6 +15,14 @@ import {
   sendSeasonDropOutreach,
 } from "@/lib/actions/outreach";
 import type { OutreachResult, AudienceType } from "@/lib/actions/outreach";
+
+// Format a scheduled Date as a human-readable label for the success message
+function fmtScheduled(iso: string): string {
+  const d = new Date(iso);
+  const date = new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric" }).format(d);
+  const time = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", hour12: true }).format(d);
+  return `${date}, ${time}`;
+}
 import type { ReleaseStage } from "@/lib/bulk-email";
 
 type MemberResult = { id: string; name: string | null; email: string };
@@ -91,6 +99,7 @@ function isValidUrl(url: string): boolean {
 }
 
 function formatResult(r: OutreachResult): string {
+  if (r.scheduledFor) return `✓ Scheduled for ${fmtScheduled(r.scheduledFor)}`;
   const parts: string[] = [];
   if ((r.created    ?? 0) > 0) parts.push(`${r.created} in-app`);
   if ((r.queued     ?? 0) > 0) parts.push(`${r.queued} email${r.queued === 1 ? "" : "s"} queued`);
@@ -140,6 +149,9 @@ export default function OutreachComposeForm({
   const searchTimerRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
   const memberInputRef  = useRef<HTMLInputElement>(null);
   const memberWrapRef   = useRef<HTMLDivElement>(null);
+
+  // Scheduling
+  const [scheduledAt, setScheduledAt] = useState("");
 
   const [pending, startTransition] = useTransition();
   const [result,  setResult]       = useState<OutreachResult | null>(null);
@@ -323,10 +335,8 @@ export default function OutreachComposeForm({
       ? `${selectedSeries.title} — Season ${selectedSeasonNumber} is now streaming`
       : previewTitle;
 
-  // Show email preview when channel includes email (or for release/episode which are email-only)
-  const showEmailPreview =
-    composeType === "release" || composeType === "episode" ||
-    (channel === "both" || channel === "email");
+  // Show email preview when channel includes email
+  const showEmailPreview = channel === "both" || channel === "email";
 
   // ── Handlers ─────────────────────────────────────────────────
   function resetState() {
@@ -342,6 +352,7 @@ export default function OutreachComposeForm({
     setSelectedSeasonNumber("");
     setCtaUrl("");
     setCtaLabel("");
+    setScheduledAt("");
     setSpecificUsers([]);
     setMemberQuery("");
     setMemberResults([]);
@@ -363,6 +374,7 @@ export default function OutreachComposeForm({
     setAnnTitle("");
     setAnnBody("");
     setAudience("all");
+    setScheduledAt("");
     setSpecificUsers([]);
     setMemberQuery("");
     setMemberResults([]);
@@ -417,22 +429,28 @@ export default function OutreachComposeForm({
         r = await sendAnnouncement(formData);
       } else if (composeType === "release") {
         if (!selectedWorkId) { setResult({ error: "Select a published work." }); return; }
+        const schedDate = scheduledAt ? new Date(scheduledAt) : undefined;
         r = await sendReleaseOutreach(
           selectedWorkId,
           imageUrl || null,
           releaseStageOverride || undefined,
           audience,
           audience === "specific" ? specificUsers.map((u) => u.id) : undefined,
+          channel,
+          schedDate && !isNaN(schedDate.getTime()) ? schedDate : undefined,
         );
       } else if (composeType === "episode") {
         if (!selectedSeriesId) { setResult({ error: "Select a series." }); return; }
         if (selectedSeasonNumber === "") { setResult({ error: "Select a season." }); return; }
+        const schedDate = scheduledAt ? new Date(scheduledAt) : undefined;
         r = await sendSeasonDropOutreach(
           selectedSeriesId,
           selectedSeasonNumber as number,
           imageUrl || null,
           audience,
           audience === "specific" ? specificUsers.map((u) => u.id) : undefined,
+          channel,
+          schedDate && !isNaN(schedDate.getTime()) ? schedDate : undefined,
         );
       } else {
         r = { error: "This message type is coming in a future phase." };
@@ -644,7 +662,37 @@ export default function OutreachComposeForm({
     </div>
   );
 
-  // ── Channel selector (announcement only) ─────────────────────
+  // ── Shared: "Send at" scheduling field ──────────────────────
+  // If set and in the future: announcement is saved as draft (cron publishes);
+  // release/season drop: email is queued with that scheduledAt timestamp.
+  const scheduleField = (
+    <div className="outreach-field" style={{ maxWidth: "300px" }}>
+      <label className="outreach-label" htmlFor="oc-scheduled-at">
+        Send at{" "}
+        <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>
+          (optional — leave blank to send now)
+        </span>
+      </label>
+      <input
+        id="oc-scheduled-at"
+        name="scheduledAt"
+        type="datetime-local"
+        value={scheduledAt}
+        onChange={(e) => setScheduledAt(e.target.value)}
+        className="outreach-input"
+      />
+      {scheduledAt && (
+        <p className="outreach-hint" style={{ marginTop: "0.3rem" }}>
+          {composeType === "announcement"
+            ? "Announcement will be saved as a draft and published automatically at this time."
+            : "Email will be queued now and delivered at this time. In-app notifications send immediately."
+          }
+        </p>
+      )}
+    </div>
+  );
+
+  // ── Channel selector (all compose types) ─────────────────────
   const channelSelector = (
     <div>
       <p className="outreach-label" style={{ marginBottom: "0.6rem" }}>Delivery Channel</p>
@@ -806,6 +854,9 @@ export default function OutreachComposeForm({
           {/* Image URL — only shown when email channel is active */}
           {(channel === "both" || channel === "email") && !emailChannelDisabled && imageField}
 
+          {/* Scheduling */}
+          {scheduleField}
+
           {/* Live preview */}
           {previewPanel}
 
@@ -820,7 +871,10 @@ export default function OutreachComposeForm({
             disabled={pending || !!ctaError}
             className="outreach-submit-btn"
           >
-            {pending ? "Sending…" : "Send Now"}
+            {pending
+              ? (scheduledAt ? "Scheduling…" : "Sending…")
+              : (scheduledAt ? "Schedule" : "Send Now")
+            }
           </button>
         </form>
       )}
@@ -890,12 +944,19 @@ export default function OutreachComposeForm({
             </div>
           )}
 
-          {/* Image URL with auto-populated poster */}
-          {imageField}
+          {/* Delivery Channel */}
+          {channelSelector}
+
+          {/* Image URL with auto-populated poster — shown when email channel active */}
+          {(channel === "both" || channel === "email") && !emailChannelDisabled && imageField}
+          {channel === "inapp" && selectedWorkId && imageField}
+
+          {/* Scheduling */}
+          {scheduleField}
 
           <p className="outreach-hint">
-            Queues a bulk email announcing this release. Stage determines subject line and CTA.
-            Re-send per stage is blocked for mass sends; Specific Members can always be retargeted.
+            Release stage determines subject line and CTA. Re-send per stage is blocked for mass sends;
+            Specific Members can always be retargeted. Email scheduling queues emails for future delivery.
           </p>
 
           {/* Preview — shown once a work is selected */}
@@ -911,7 +972,7 @@ export default function OutreachComposeForm({
             disabled={pending || !selectedWorkId}
             className="outreach-submit-btn"
           >
-            {pending ? "Queuing…" : "Queue Release Email"}
+            {pending ? "Sending…" : (scheduledAt ? "Schedule" : "Send")}
           </button>
         </form>
       )}
@@ -983,11 +1044,23 @@ export default function OutreachComposeForm({
             </div>
           )}
 
-          {/* Image URL — only shown when series + season are selected */}
-          {selectedSeriesId && selectedSeasonNumber !== "" && imageField}
+          {/* Delivery Channel */}
+          {channelSelector}
+
+          {/* Image URL — only shown when series + season are selected and email channel active */}
+          {selectedSeriesId && selectedSeasonNumber !== "" && (
+            (channel === "both" || channel === "email") && !emailChannelDisabled
+              ? imageField
+              : channel === "inapp"
+                ? imageField
+                : null
+          )}
+
+          {/* Scheduling */}
+          {scheduleField}
 
           <p className="outreach-hint">
-            One email per season — sent to users with episode notifications enabled (or Specific Members).
+            One send per season — sent to users with episode notifications enabled (or Specific Members).
             Selecting a season auto-fills the image from episode posters when available.
             Re-send is blocked per season for mass sends; Specific Members can always be retargeted.
           </p>
@@ -1005,7 +1078,7 @@ export default function OutreachComposeForm({
             disabled={pending || !selectedSeriesId || selectedSeasonNumber === ""}
             className="outreach-submit-btn"
           >
-            {pending ? "Queuing…" : "Queue Season Drop Email"}
+            {pending ? "Sending…" : (scheduledAt ? "Schedule" : "Send")}
           </button>
         </form>
       )}
