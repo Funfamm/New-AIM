@@ -37,15 +37,25 @@ function isSafeUrl(url: string): boolean {
 
 // ── Audience resolvers ────────────────────────────────────────
 
-export type AudienceType = "all" | "admins" | "notify_me" | "saved_work";
+export type AudienceType = "all" | "admins" | "notify_me" | "saved_work" | "specific";
 
 async function resolveEmailAudience(
   audienceType: string,
+  specificIds?: string[],
 ): Promise<{ email: string; name: string | null }[]> {
   const base = {
     status: "ACTIVE" as const,
     email:  { not: "" },
   };
+
+  // "specific" — exact list of user IDs selected by admin
+  if (audienceType === "specific") {
+    if (!specificIds || specificIds.length === 0) return [];
+    return prisma.user.findMany({
+      where:  { ...base, id: { in: specificIds } },
+      select: { email: true, name: true },
+    });
+  }
 
   if (audienceType === "admins") {
     return prisma.user.findMany({
@@ -138,11 +148,19 @@ export async function sendAnnouncement(
   const hrefLabel    = (formData.get("hrefLabel")    as string | null)?.trim() || null;
   const imageUrlRaw  = (formData.get("imageUrl")     as string | null)?.trim() || null;
   const channel      = (formData.get("channel")      as string | null) ?? "both";
-  const expiresRaw   = formData.get("expiresAt")    as string | null;
-  const audienceType = (formData.get("audienceType") as string | null) ?? "all";
+  const expiresRaw       = formData.get("expiresAt")       as string | null;
+  const audienceType     = (formData.get("audienceType")     as string | null) ?? "all";
+  const specificIdsRaw   = (formData.get("specificUserIds")  as string | null) ?? "[]";
+
+  let specificUserIds: string[] = [];
+  try { specificUserIds = JSON.parse(specificIdsRaw); } catch { /* invalid JSON — treat as empty */ }
 
   if (!title) return { error: "Title is required." };
   if (!body)  return { error: "Body is required." };
+
+  if (audienceType === "specific" && specificUserIds.length === 0) {
+    return { error: "Select at least one member to send to." };
+  }
 
   // CTA paired validation
   if (href && !hrefLabel) return { error: "CTA label is required when a CTA URL is provided." };
@@ -224,7 +242,7 @@ export async function sendAnnouncement(
       };
     }
 
-    const users = await resolveEmailAudience(audienceType);
+    const users = await resolveEmailAudience(audienceType, specificUserIds);
     const campaignId = `announcement_${announcement.id}`;
 
     const emailResult = await enqueueBulkForRecipients({
@@ -266,9 +284,11 @@ export async function sendAnnouncement(
 // per stage (coming_soon → trailer_out → now_streaming).
 
 export async function sendReleaseOutreach(
-  workId:        string,
-  imageUrl?:     string | null,
-  stageOverride?: ReleaseStage,
+  workId:          string,
+  imageUrl?:       string | null,
+  stageOverride?:  ReleaseStage,
+  audienceType?:   string,
+  specificUserIds?: string[],
 ): Promise<OutreachResult> {
   await requireAdmin();
 
@@ -292,30 +312,45 @@ export async function sendReleaseOutreach(
     (work.videoUrl   ? "now_streaming" :
      work.trailerUrl ? "trailer_out"   : "coming_soon");
 
-  // Stage-scoped campaignId — allows one send per stage per work
-  const campaignId = `new_release_${workId}_${releaseStage}`;
-  const existing = await prisma.emailQueue.count({
-    where: { campaignId, status: { in: ["QUEUED", "SENT"] } },
-  });
-  if (existing > 0) {
-    const stageLabel = releaseStage === "coming_soon" ? "Coming Soon" : releaseStage === "trailer_out" ? "Trailer" : "Now Streaming";
-    return {
-      queued: 0, suppressed: 0, skipped: 0,
-      error: `A "${stageLabel}" email for this work has already been queued or sent (${existing} row${existing === 1 ? "" : "s"}).`,
-    };
+  const effectiveAudience = audienceType ?? "release_default";
+
+  // Stage-scoped campaignId — one mass send per stage. Specific-member sends use a separate key.
+  const campaignId = effectiveAudience === "specific"
+    ? `new_release_${workId}_${releaseStage}_targeted_${Date.now()}`
+    : `new_release_${workId}_${releaseStage}`;
+
+  if (effectiveAudience !== "specific") {
+    const existing = await prisma.emailQueue.count({
+      where: { campaignId, status: { in: ["QUEUED", "SENT"] } },
+    });
+    if (existing > 0) {
+      const stageLabel = releaseStage === "coming_soon" ? "Coming Soon" : releaseStage === "trailer_out" ? "Trailer" : "Now Streaming";
+      return {
+        queued: 0, suppressed: 0, skipped: 0,
+        error: `A "${stageLabel}" email for this work has already been queued or sent (${existing} row${existing === 1 ? "" : "s"}).`,
+      };
+    }
   }
 
-  const users = await prisma.user.findMany({
-    where: {
-      status: "ACTIVE",
-      email:  { not: "" },
-      OR: [
-        { preferences: null },
-        { preferences: { emailNewReleases: true, newReleaseNotifications: true } },
-      ],
-    },
-    select: { email: true, name: true },
-  });
+  let users: { email: string; name: string | null }[];
+  if (effectiveAudience === "specific") {
+    if (!specificUserIds || specificUserIds.length === 0) {
+      return { queued: 0, suppressed: 0, skipped: 0, error: "Select at least one member to send to." };
+    }
+    users = await resolveEmailAudience("specific", specificUserIds);
+  } else {
+    users = await prisma.user.findMany({
+      where: {
+        status: "ACTIVE",
+        email:  { not: "" },
+        OR: [
+          { preferences: null },
+          { preferences: { emailNewReleases: true, newReleaseNotifications: true } },
+        ],
+      },
+      select: { email: true, name: true },
+    });
+  }
   if (users.length === 0) return { queued: 0, suppressed: 0, skipped: 0, error: "No eligible recipients." };
 
   const safeImageUrl = imageUrl && isSafeUrl(imageUrl) ? imageUrl : null;
@@ -346,9 +381,11 @@ export async function sendReleaseOutreach(
 // campaignId is scoped to series + season — one send per season.
 
 export async function sendSeasonDropOutreach(
-  seriesId:     string,
-  seasonNumber: number,
-  imageUrl?:    string | null,
+  seriesId:         string,
+  seasonNumber:     number,
+  imageUrl?:        string | null,
+  audienceType?:    string,
+  specificUserIds?: string[],
 ): Promise<OutreachResult> {
   await requireAdmin();
 
@@ -376,28 +413,44 @@ export async function sendSeasonDropOutreach(
     };
   }
 
-  const campaignId = `season_drop_${seriesId}_s${seasonNumber}`;
-  const existing = await prisma.emailQueue.count({
-    where: { campaignId, status: { in: ["QUEUED", "SENT"] } },
-  });
-  if (existing > 0) {
-    return {
-      queued: 0, suppressed: 0, skipped: 0,
-      error: `A Season ${seasonNumber} email for "${series.title}" has already been queued or sent.`,
-    };
+  const effectiveAudience = audienceType ?? "episode_default";
+
+  // Season-scoped campaignId — one mass send per season. Specific-member sends use a separate key.
+  const campaignId = effectiveAudience === "specific"
+    ? `season_drop_${seriesId}_s${seasonNumber}_targeted_${Date.now()}`
+    : `season_drop_${seriesId}_s${seasonNumber}`;
+
+  if (effectiveAudience !== "specific") {
+    const existing = await prisma.emailQueue.count({
+      where: { campaignId, status: { in: ["QUEUED", "SENT"] } },
+    });
+    if (existing > 0) {
+      return {
+        queued: 0, suppressed: 0, skipped: 0,
+        error: `A Season ${seasonNumber} email for "${series.title}" has already been queued or sent.`,
+      };
+    }
   }
 
-  const users = await prisma.user.findMany({
-    where: {
-      status: "ACTIVE",
-      email:  { not: "" },
-      OR: [
-        { preferences: null },
-        { preferences: { newEpisodeNotifications: true } },
-      ],
-    },
-    select: { email: true, name: true },
-  });
+  let users: { email: string; name: string | null }[];
+  if (effectiveAudience === "specific") {
+    if (!specificUserIds || specificUserIds.length === 0) {
+      return { queued: 0, suppressed: 0, skipped: 0, error: "Select at least one member to send to." };
+    }
+    users = await resolveEmailAudience("specific", specificUserIds);
+  } else {
+    users = await prisma.user.findMany({
+      where: {
+        status: "ACTIVE",
+        email:  { not: "" },
+        OR: [
+          { preferences: null },
+          { preferences: { newEpisodeNotifications: true } },
+        ],
+      },
+      select: { email: true, name: true },
+    });
+  }
   if (users.length === 0) return { queued: 0, suppressed: 0, skipped: 0, error: "No eligible recipients." };
 
   // Use provided imageUrl first, fall back to series poster
