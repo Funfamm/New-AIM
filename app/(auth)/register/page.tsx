@@ -2,6 +2,8 @@ import { signInWithGoogle } from "@/lib/actions/auth";
 import Link from "next/link";
 import { Film, Bookmark, Bell } from "lucide-react";
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
 import { RegisterForm } from "./register-form";
 import "./register.css";
 
@@ -23,6 +25,10 @@ export default async function RegisterPage({
 }: {
   searchParams: Promise<{ error?: string }>;
 }) {
+  // Node.js runtime — full DB check; clears stale cookies for purged users.
+  const session = await auth();
+  if (session?.user) redirect("/");
+
   const params = await searchParams;
   return (
     <main className="auth-page">
