@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth";
 import FilmRail from "@/components/film-rail";
 import HeroRotator from "@/components/hero-rotator";
 import MobileFeaturedHero from "@/components/mobile-featured-hero";
+import { getWorkCtaState } from "@/lib/work-cta";
 import { Play, ChevronRight } from "lucide-react";
 import "./home.css";
 
@@ -134,7 +135,7 @@ export default async function HomePage() {
         <div className="hero-content">
           <span className="hero-eyebrow">— Now Streaming</span>
           <h1 className="hero-title">Cinema, reimagined.</h1>
-          <p className="hero-desc">We make films, series, and creative work with AI tools built around story, emotion, memory, and impact. Don&apos;t look away.</p>
+          <p className="hero-desc">Original cinema built around story, emotion, memory, and the moments people refuse to look away from.</p>
           <div className="hero-actions">
             {(() => {
               const p = featuredWithPosters[0];
@@ -143,44 +144,29 @@ export default async function HomePage() {
                   <Play size={16} fill="currentColor" /> Watch Our Films
                 </Link>
               );
-              const hasFullVideo = p.type !== "TRAILER" && !!p.videoUrl;
-              const hasTrailer   = !!p.trailerUrl;
-              const hasPlayable  = p.type === "SERIES" || hasFullVideo;
-              const hasAnything  = hasPlayable || hasTrailer;
-              const watchHref = p.type === "SERIES"
-                ? `/watch/${p.slug}`
-                : hasFullVideo
-                ? `/watch/${p.slug}?full=1`
-                : `/watch/${p.slug}`;
-              const watchLabel = p.type === "SERIES"
-                ? "Watch Series"
-                : hasFullVideo
-                ? "Watch Full Film"
-                : "Watch Trailer";
+              const cta = getWorkCtaState({
+                slug: p.slug,
+                type: p.type,
+                trailerUrl: p.trailerUrl,
+                videoUrl: p.videoUrl,
+                requiresAuth: p.requiresAuth,
+                requiresLoginToViewTrailer: p.requiresLoginToViewTrailer,
+                isGuest: !userId,
+              });
               return (
                 <>
-                  {hasAnything ? (
-                    p.requiresAuth && !userId ? (
-                      <Link href={`/login?from=${encodeURIComponent(watchHref)}`} className="hero-btn-primary">
-                        <Play size={16} fill="currentColor" /> Sign In to Watch
-                      </Link>
-                    ) : (
-                      <Link href={watchHref} className="hero-btn-primary">
-                        <Play size={16} fill="currentColor" /> {watchLabel}
-                      </Link>
-                    )
+                  {cta.primaryLabel ? (
+                    <Link href={cta.primaryHref} className="hero-btn-primary">
+                      <Play size={16} fill="currentColor" /> {cta.primaryLabel}
+                    </Link>
                   ) : (
                     <Link href={`/works/${p.slug}`} className="hero-btn-primary">
                       View Details
                     </Link>
                   )}
-                  {/* Secondary "Watch Trailer" only when there is both full content and a trailer */}
-                  {hasPlayable && hasTrailer && (
-                    <Link
-                      href={p.type === "SERIES" ? `/watch/${p.slug}?trailer=1` : `/works/${p.slug}`}
-                      className="hero-btn-trailer"
-                    >
-                      Watch Trailer
+                  {cta.secondaryLabel && cta.secondaryHref && (
+                    <Link href={cta.secondaryHref} className="hero-btn-trailer">
+                      {cta.secondaryLabel}
                     </Link>
                   )}
                 </>
@@ -240,11 +226,12 @@ export default async function HomePage() {
             <div className="si-left">
               <span className="si-eyebrow">Why AIM Studio</span>
               <h2 className="si-headline">
-                Films that couldn&apos;t exist before now.
+                Cinema for the moments<br />
+                we can&apos;t take back.
               </h2>
               <p className="si-body">
-                AIM Studio creates films, series, and visual stories powered by AI —
-                built around emotion, memory, sacrifice, and the moments people refuse to look away from.
+                Original films and series built around emotion, memory, sacrifice,
+                and the people who refuse to look away.
               </p>
               <div className="si-ctas">
                 <Link href="/works?collection=all" className="si-cta-primary">
@@ -261,17 +248,17 @@ export default async function HomePage() {
               <div className="si-card">
                 <span className="si-card-num">01</span>
                 <h3 className="si-card-title">Stories That Matter</h3>
-                <p className="si-card-desc">Human stories with emotional weight — not entertainment, evidence.</p>
+                <p className="si-card-desc">Every film has to matter — to someone, somewhere. Not entertainment. Evidence.</p>
               </div>
               <div className="si-card">
                 <span className="si-card-num">02</span>
                 <h3 className="si-card-title">No Story Too Small</h3>
-                <p className="si-card-desc">Every idea deserves a cinematic life. We build the tools to give it one.</p>
+                <p className="si-card-desc">The personal is universal. If the story is true, it belongs on screen.</p>
               </div>
               <div className="si-card">
                 <span className="si-card-num">03</span>
                 <h3 className="si-card-title">Every Frame, On Purpose</h3>
-                <p className="si-card-desc">AI helps us move faster, but the story always leads.</p>
+                <p className="si-card-desc">No wasted shots. No filler. Every creative decision serves the story.</p>
               </div>
             </div>
 

@@ -91,18 +91,21 @@
 .brand-strip {
   border-top: 1px solid var(--color-brand-border);
   border-bottom: 1px solid var(--color-brand-border);
-  padding: 1.5rem 0;
+  padding: 1.75rem 0;
   margin-top: 4rem;
+  background: var(--color-brand-dark);
 }
 .brand-strip-text {
   font-family: var(--font-body); font-size: 0.6875rem; font-weight: 600;
-  letter-spacing: 0.1em; text-transform: uppercase;
+  letter-spacing: 0.14em; text-transform: uppercase;
   color: var(--color-brand-muted); text-align: center; margin: 0;
 }
 
 /* ── Studio Identity ── */
 .studio-identity {
   padding: 4rem 0 5rem;
+  background:
+    linear-gradient(to bottom, var(--color-brand-dark) 0%, var(--color-brand-black) 100%);
   border-top: 1px solid var(--color-brand-border);
 }
 
@@ -197,12 +200,17 @@
 }
 
 .si-card {
-  padding: 1.25rem 0;
-  border-top: 1px solid var(--color-brand-border);
+  padding: 1.25rem 1rem 1.25rem 1.25rem;
+  border-left: 2px solid var(--color-brand-border);
+  transition: border-color 0.2s;
 }
 
-.si-card:last-child {
-  border-bottom: 1px solid var(--color-brand-border);
+.si-card + .si-card {
+  margin-top: 0.75rem;
+}
+
+.si-card:hover {
+  border-left-color: var(--color-brand-accent);
 }
 
 .si-card-num {

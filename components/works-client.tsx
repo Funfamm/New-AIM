@@ -13,6 +13,7 @@ type Work = {
   heroMobileUrl: string | null;
   heroDesktopUrl: string | null;
   genre: string | null;
+  genres: string[];
   requiresAuth: boolean;
   type: string;
   status: string;
@@ -227,7 +228,7 @@ export default function WorksClient({ works, collection, isLoggedIn = false }: P
       {/* ── Content ──────────────────────────────────── */}
       {works.length === 0 ? (
         <div className="container-app wc-empty">
-          <p>No works yet. Check back soon.</p>
+          <p>New stories are in the works. Check back soon.</p>
         </div>
       ) : showRails ? (
         <div className="wc-rails wc-animate-in">
@@ -258,7 +259,7 @@ export default function WorksClient({ works, collection, isLoggedIn = false }: P
         <div className="container-app wc-grid-wrap wc-animate-in">
           {filtered.length === 0 ? (
             <div className="wc-empty">
-              <p>No works match your search.</p>
+              <p>Nothing matches that search. Try a different title or genre.</p>
             </div>
           ) : (
             <div className="wc-grid">

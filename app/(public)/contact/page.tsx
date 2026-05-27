@@ -1,12 +1,20 @@
-import type { Metadata } from "next";
+"use client";
+
 import "./contact.css";
 
-export const metadata: Metadata = {
-  title: "Contact — AIM Studio",
-  description: "For partnerships, press, casting, or just to say hi. We read every message.",
-};
+// Metadata moved to layout.tsx
 
 export default function ContactPage() {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const subject = formData.get("subject") as string;
+    const body = `Name: ${formData.get("name")}\nEmail: ${formData.get("email")}\n\nMessage:\n${formData.get("message")}`;
+    
+    const mailtoLink = `mailto:hello@impactaistudio.com?subject=Contact Form: ${subject || "General Inquiry"}&body=${encodeURIComponent(body)}`;
+    window.location.href = mailtoLink;
+  };
+
   return (
     <main className="contact-page">
       <div className="container-app">
@@ -23,7 +31,7 @@ export default function ContactPage() {
           </p>
         </div>
 
-        <form className="contact-form">
+        <form className="contact-form" onSubmit={handleSubmit}>
           <div className="form-row">
             <div className="form-group">
               <label htmlFor="cf-name" className="form-label">Name</label>

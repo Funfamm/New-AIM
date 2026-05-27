@@ -57,6 +57,7 @@ export default function EpisodePlayer({
         ref={videoRef}
         src={src}
         className="watch-video"
+        preload="metadata"
         controls
         playsInline
         controlsList="nodownload"

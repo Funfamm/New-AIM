@@ -305,7 +305,7 @@ export default async function WatchPage({ params, searchParams }: Props) {
                 )
               ) : (
                 <div className="watch-no-video">
-                  <p>Video not available.</p>
+                  <p>This video is unavailable right now. Please try again later.</p>
                 </div>
               )}
             </div>
