@@ -21,10 +21,13 @@ type Props = {
 };
 
 function fmtDate(d: Date) {
-  return new Intl.DateTimeFormat("en-GB", {
+  const date = new Intl.DateTimeFormat("en-GB", {
     day: "2-digit", month: "short", year: "numeric",
-    hour: "2-digit", minute: "2-digit",
   }).format(d);
+  const time = new Intl.DateTimeFormat("en-US", {
+    hour: "numeric", minute: "2-digit", hour12: true,
+  }).format(d);
+  return `${date}, ${time}`;
 }
 
 export default async function AdminOutreachPage({ searchParams }: Props) {
@@ -199,19 +202,20 @@ export default async function AdminOutreachPage({ searchParams }: Props) {
 // ── History tab ───────────────────────────────────────────────
 
 type AnnouncementRow = {
-  id:              string;
-  title:           string;
-  body:            string;
-  href:            string | null;
-  type:            string;
-  sendInApp:       boolean;
-  sendEmail:       boolean;
-  publishedAt:     Date | null;
-  emailSentAt:     Date | null;
-  expiresAt:       Date | null;
-  createdAt:       Date;
-  audienceType:    string;
-  recipientCount:  number;
+  id:               string;
+  title:            string;
+  body:             string;
+  href:             string | null;
+  type:             string;
+  sendInApp:        boolean;
+  sendEmail:        boolean;
+  publishedAt:      Date | null;
+  emailSentAt:      Date | null;
+  expiresAt:        Date | null;
+  createdAt:        Date;
+  audienceType:     string;
+  scheduledAt:      Date | null;
+  recipientCount:   number;
   emailQueuedCount: number;
 };
 
@@ -231,8 +235,12 @@ function OutreachHistory({ announcements }: { announcements: AnnouncementRow[] }
               <div className="outreach-card-head">
                 <h3 className="outreach-card-title">{a.title}</h3>
                 <div className="outreach-card-badges">
-                  <span className={`outreach-badge ${a.publishedAt ? "outreach-badge--published" : "outreach-badge--draft"}`}>
-                    {a.publishedAt ? "Published" : "Draft"}
+                  <span className={`outreach-badge ${
+                    a.publishedAt ? "outreach-badge--published"
+                    : a.scheduledAt ? "outreach-badge--scheduled"
+                    : "outreach-badge--draft"
+                  }`}>
+                    {a.publishedAt ? "Published" : a.scheduledAt ? "Scheduled" : "Draft"}
                   </span>
                   {a.sendInApp  && <span className="outreach-badge outreach-badge--inapp">In-app</span>}
                   {a.sendEmail  && <span className="outreach-badge outreach-badge--email">Email</span>}
@@ -260,6 +268,7 @@ function OutreachHistory({ announcements }: { announcements: AnnouncementRow[] }
 
               <div className="outreach-card-meta">
                 <span>Created {fmtDate(a.createdAt)}</span>
+                {a.scheduledAt && !a.publishedAt && <span>Scheduled for {fmtDate(a.scheduledAt)}</span>}
                 {a.publishedAt && <span>Published {fmtDate(a.publishedAt)}</span>}
                 {a.emailSentAt && <span>Email queued {fmtDate(a.emailSentAt)}</span>}
                 {a.expiresAt   && <span>Expires {fmtDate(a.expiresAt)}</span>}

@@ -489,7 +489,8 @@
 }
 
 .outreach-badge--draft     { background: var(--color-brand-surface); color: var(--color-brand-muted); }
-.outreach-badge--published { background: rgba(74,222,128,0.12); color: #4ade80; }
+.outreach-badge--published { background: rgba(74,222,128,0.12);  color: #4ade80; }
+.outreach-badge--scheduled { background: rgba(251,191,36,0.12);  color: #fbbf24; }
 .outreach-badge--email     { background: rgba(232,201,126,0.1);  color: var(--color-brand-accent); }
 .outreach-badge--inapp     { background: rgba(255,255,255,0.05); color: var(--color-brand-muted); }
 .outreach-badge--type      { background: rgba(255,255,255,0.05); color: var(--color-brand-muted); }

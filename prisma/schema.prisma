@@ -867,11 +867,14 @@ model Announcement {
   updatedAt   DateTime         @updatedAt
 
   // Delivery tracking — populated on publish
-  audienceType     String @default("all")  // "all" | "admins" | "notify_me" | "saved_work"
-  recipientCount   Int    @default(0)       // in-app notifications created
-  emailQueuedCount Int    @default(0)       // EmailQueue rows created
+  audienceType     String    @default("all")  // "all" | "admins" | "notify_me" | "saved_work" | "specific"
+  targetUserIds    String?                    // JSON array of user IDs for audienceType = "specific"
+  scheduledAt      DateTime?                  // null = publish immediately; set = cron publishes at this time
+  recipientCount   Int       @default(0)      // in-app notifications created
+  emailQueuedCount Int       @default(0)      // EmailQueue rows created
 
   @@index([publishedAt])
+  @@index([scheduledAt])
   @@map("announcements")
 }
 
