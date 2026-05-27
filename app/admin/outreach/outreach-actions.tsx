@@ -2,6 +2,7 @@
 
 // Card action buttons for History tab announcements.
 // Reuses existing publishAnnouncement / unpublishAnnouncement / deleteAnnouncement.
+// Delete uses an inline two-step confirm (never window.confirm — that blocks the main thread).
 
 import { useState, useTransition } from "react";
 import {
@@ -16,11 +17,13 @@ type Props = {
 };
 
 export default function OutreachCardActions({ id, isPublished }: Props) {
-  const [pending, startTransition] = useTransition();
-  const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  const [pending,    startTransition] = useTransition();
+  const [confirming, setConfirming]   = useState(false);
+  const [msg,        setMsg]          = useState<{ text: string; ok: boolean } | null>(null);
 
   function run(action: () => Promise<{ error?: string; created?: number; queued?: number }>) {
     setMsg(null);
+    setConfirming(false);
     startTransition(async () => {
       const result = await action();
       if (result.error) {
@@ -56,18 +59,42 @@ export default function OutreachCardActions({ id, isPublished }: Props) {
             {pending ? "Unpublishing…" : "Unpublish"}
           </button>
         )}
-        <button
-          className="outreach-action-btn outreach-action-btn--danger"
-          disabled={pending}
-          onClick={() => {
-            if (confirm("Delete this announcement? This cannot be undone.")) {
-              run(() => deleteAnnouncement(id));
-            }
-          }}
-        >
-          Delete
-        </button>
+
+        {/* ── Inline two-step delete — no window.confirm() ── */}
+        {confirming ? (
+          <>
+            <button
+              className="outreach-action-btn outreach-action-btn--danger"
+              disabled={pending}
+              onClick={() => run(() => deleteAnnouncement(id))}
+            >
+              {pending ? "Deleting…" : "Yes, delete"}
+            </button>
+            <button
+              className="outreach-action-btn"
+              disabled={pending}
+              onClick={() => setConfirming(false)}
+            >
+              Cancel
+            </button>
+          </>
+        ) : (
+          <button
+            className="outreach-action-btn outreach-action-btn--danger"
+            disabled={pending}
+            onClick={() => setConfirming(true)}
+          >
+            Delete
+          </button>
+        )}
       </div>
+
+      {confirming && !pending && (
+        <p className="outreach-action-msg" style={{ color: "var(--color-brand-muted)" }}>
+          This cannot be undone. Click <strong style={{ color: "var(--color-brand-red)" }}>Yes, delete</strong> to confirm.
+        </p>
+      )}
+
       {msg && (
         <p className={`outreach-action-msg ${msg.ok ? "outreach-action-msg--ok" : "outreach-action-msg--err"}`}>
           {msg.text}
