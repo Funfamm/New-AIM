@@ -74,6 +74,7 @@ export async function GET(req: Request) {
         const inAppUserIds = await resolveInAppAudience(
           announcement.audienceType,
           targetUserIds,
+          announcement.type as Parameters<typeof resolveInAppAudience>[2],
         );
         const result = await createBulkInAppNotificationForUserIds(inAppUserIds, {
           type:      announcement.type as NotificationType,

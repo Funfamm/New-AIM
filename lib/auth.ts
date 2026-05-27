@@ -222,8 +222,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
 
   callbacks: {
-    // Block suspended/deactivated users from completing Google OAuth sign-in
+    // ── signIn callback ──────────────────────────────────────────────────────
+    // Runs for all providers after credentials are validated / OAuth token exchanged.
+    //
+    // Google OAuth: status check, lastLoginAt, security events, welcome flow.
+    //
+    // Credentials: welcome-flow backstop only.  registerUser() also fires it via
+    // void, but that promise may be cut short when signIn() throws NEXT_REDIRECT
+    // before the async welcome completes (Vercel serverless function exits on
+    // redirect).  Calling it here is inside the auth flow, so it always finishes.
+    // ensureWelcomeForUser is idempotent — safe to call twice on first registration;
+    // for returning users it exits immediately after a single findUnique check.
     async signIn({ user, account }) {
+      // ── Credentials backstop ─────────────────────────────────
+      if (account?.provider === "credentials" && user.id) {
+        void ensureWelcomeForUser(user.id).catch(() => {});
+      }
+
       if (account?.provider === "google" && user.id) {
         const dbUser = await prisma.user.findUnique({
           where: { id: user.id },
