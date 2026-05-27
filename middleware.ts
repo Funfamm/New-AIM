@@ -30,12 +30,6 @@ export default auth((req) => {
     } else {
       response = NextResponse.next();
     }
-  } else if (path === "/login" || path === "/register") {
-    if (isLoggedIn) {
-      response = NextResponse.redirect(new URL("/", nextUrl));
-    } else {
-      response = NextResponse.next();
-    }
   } else {
     response = NextResponse.next();
   }

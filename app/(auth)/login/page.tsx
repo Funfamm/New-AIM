@@ -1,6 +1,8 @@
 import { loginUser, signInWithGoogle } from "@/lib/actions/auth";
 import Link from "next/link";
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
 import { PasswordInput } from "../password-input";
 import "./login.css";
 
@@ -22,6 +24,11 @@ export default async function LoginPage({
 }: {
   searchParams: Promise<{ from?: string; error?: string }>;
 }) {
+  // Node.js runtime — full DB check via jwt() callback.
+  // Purged/suspended users return null here; stale cookie is cleared by Auth.js.
+  const session = await auth();
+  if (session?.user) redirect("/");
+
   const params = await searchParams;
   return (
     <main className="auth-page">
