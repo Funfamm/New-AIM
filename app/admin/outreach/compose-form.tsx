@@ -131,25 +131,29 @@ export default function OutreachComposeForm({
   const [ctaLabel, setCtaLabel] = useState("");
 
   // ── Member search state ─────────────────────────────────────
-  const [specificUsers,    setSpecificUsers]    = useState<MemberResult[]>([]);
-  const [memberQuery,      setMemberQuery]      = useState("");
-  const [memberResults,    setMemberResults]    = useState<MemberResult[]>([]);
-  const [memberSearching,  setMemberSearching]  = useState(false);
-  const [memberDropOpen,   setMemberDropOpen]   = useState(false);
-  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [specificUsers,   setSpecificUsers]   = useState<MemberResult[]>([]);
+  const [memberQuery,     setMemberQuery]     = useState("");
+  const [memberResults,   setMemberResults]   = useState<MemberResult[]>([]);
+  const [memberSearching, setMemberSearching] = useState(false);
+  const [memberDropOpen,  setMemberDropOpen]  = useState(false);
+  const [activeIdx,       setActiveIdx]       = useState(-1);
+  const searchTimerRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const memberInputRef  = useRef<HTMLInputElement>(null);
+  const memberWrapRef   = useRef<HTMLDivElement>(null);
 
   const [pending, startTransition] = useTransition();
   const [result,  setResult]       = useState<OutreachResult | null>(null);
   const [formKey, setFormKey]      = useState(0);
 
-  // ── Member search debounce ───────────────────────────────────
+  // ── Member search: debounced fetch (fires at 1 char) ────────
   useEffect(() => {
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
     const q = memberQuery.trim();
-    if (q.length < 2) {
+    if (q.length < 1) {
       setMemberResults([]);
       setMemberDropOpen(false);
       setMemberSearching(false);
+      setActiveIdx(-1);
       return;
     }
     setMemberSearching(true);
@@ -158,17 +162,33 @@ export default function OutreachComposeForm({
         const res = await fetch(`/api/admin/users/search?q=${encodeURIComponent(q)}`);
         if (res.ok) {
           const data: MemberResult[] = await res.json();
-          setMemberResults(data);
-          setMemberDropOpen(data.length > 0);
+          // Filter out already-selected users
+          const selectedIds = new Set(specificUsers.map((u) => u.id));
+          const filtered = data.filter((u) => !selectedIds.has(u.id));
+          setMemberResults(filtered);
+          setMemberDropOpen(filtered.length > 0);
+          setActiveIdx(-1);
         }
       } catch {
         // silent — non-critical
       } finally {
         setMemberSearching(false);
       }
-    }, 300);
+    }, 200);
     return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
-  }, [memberQuery]);
+  }, [memberQuery, specificUsers]);
+
+  // ── Member search: click-outside closes dropdown ────────────
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (memberWrapRef.current && !memberWrapRef.current.contains(e.target as Node)) {
+        setMemberDropOpen(false);
+        setActiveIdx(-1);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   function addSpecificUser(user: MemberResult) {
     if (!specificUsers.find((u) => u.id === user.id)) {
@@ -177,10 +197,33 @@ export default function OutreachComposeForm({
     setMemberQuery("");
     setMemberResults([]);
     setMemberDropOpen(false);
+    setActiveIdx(-1);
+    // Keep focus in the input so admin can keep typing
+    requestAnimationFrame(() => memberInputRef.current?.focus());
   }
 
   function removeSpecificUser(id: string) {
     setSpecificUsers((prev) => prev.filter((u) => u.id !== id));
+    requestAnimationFrame(() => memberInputRef.current?.focus());
+  }
+
+  function handleMemberKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (!memberDropOpen || memberResults.length === 0) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveIdx((i) => Math.min(i + 1, memberResults.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveIdx((i) => Math.max(i - 1, 0));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (activeIdx >= 0 && activeIdx < memberResults.length) {
+        addSpecificUser(memberResults[activeIdx]);
+      }
+    } else if (e.key === "Escape") {
+      setMemberDropOpen(false);
+      setActiveIdx(-1);
+    }
   }
 
   // ── Season Drop derived data ─────────────────────────────────
@@ -303,6 +346,7 @@ export default function OutreachComposeForm({
     setMemberQuery("");
     setMemberResults([]);
     setMemberDropOpen(false);
+    setActiveIdx(-1);
   }
 
   function handleTypeChange(t: ComposeType) {
@@ -318,12 +362,12 @@ export default function OutreachComposeForm({
     setCtaLabel("");
     setAnnTitle("");
     setAnnBody("");
-    // Reset audience to segment default when switching form types
     setAudience("all");
     setSpecificUsers([]);
     setMemberQuery("");
     setMemberResults([]);
     setMemberDropOpen(false);
+    setActiveIdx(-1);
   }
 
   function handleWorkChange(workId: string) {
@@ -401,35 +445,9 @@ export default function OutreachComposeForm({
 
   // ── Member search UI (shared across all forms) ───────────────
   const memberSearchUI = (
-    <div className="outreach-member-search">
-      <div style={{ position: "relative" }}>
-        <input
-          type="text"
-          value={memberQuery}
-          onChange={(e) => setMemberQuery(e.target.value)}
-          onFocus={() => memberResults.length > 0 && setMemberDropOpen(true)}
-          onBlur={() => setTimeout(() => setMemberDropOpen(false), 160)}
-          placeholder={memberSearching ? "Searching…" : "Search by name or email…"}
-          className="outreach-input"
-          autoComplete="off"
-        />
-        {memberDropOpen && memberResults.length > 0 && (
-          <ul className="outreach-member-dropdown" role="listbox">
-            {memberResults.map((u) => (
-              <li key={u.id} role="option">
-                <button
-                  type="button"
-                  className="outreach-member-result"
-                  onMouseDown={() => addSpecificUser(u)}
-                >
-                  <span className="outreach-member-result-name">{u.name ?? u.email}</span>
-                  <span className="outreach-member-result-email">{u.email}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+    <div className="outreach-member-search" ref={memberWrapRef}>
+
+      {/* Selected chips — shown above the input */}
       {specificUsers.length > 0 && (
         <div className="outreach-member-chips">
           {specificUsers.map((u) => (
@@ -447,11 +465,70 @@ export default function OutreachComposeForm({
           ))}
         </div>
       )}
-      {specificUsers.length === 0 && (
-        <p className="outreach-hint" style={{ margin: "0.4rem 0 0" }}>
-          Type at least 2 characters to search. Click a result to add them.
-        </p>
-      )}
+
+      {/* Search input + dropdown */}
+      <div style={{ position: "relative" }}>
+        <div className="outreach-member-input-wrap">
+          <input
+            ref={memberInputRef}
+            type="text"
+            role="combobox"
+            aria-autocomplete="list"
+            aria-expanded={memberDropOpen}
+            aria-haspopup="listbox"
+            value={memberQuery}
+            onChange={(e) => { setMemberQuery(e.target.value); setMemberDropOpen(true); }}
+            onFocus={() => { if (memberResults.length > 0) setMemberDropOpen(true); }}
+            onKeyDown={handleMemberKeyDown}
+            placeholder={memberSearching ? "Searching…" : "Type a name or email to search…"}
+            className="outreach-input"
+            autoComplete="off"
+            spellCheck={false}
+          />
+          {memberSearching && (
+            <span className="outreach-member-spinner" aria-hidden="true" />
+          )}
+        </div>
+
+        {memberDropOpen && memberResults.length > 0 && (
+          <ul className="outreach-member-dropdown" role="listbox">
+            {memberResults.map((u, i) => (
+              <li
+                key={u.id}
+                role="option"
+                aria-selected={i === activeIdx}
+                id={`member-option-${u.id}`}
+              >
+                <button
+                  type="button"
+                  className={`outreach-member-result${i === activeIdx ? " outreach-member-result--active" : ""}`}
+                  onMouseDown={(e) => { e.preventDefault(); addSpecificUser(u); }}
+                  onMouseEnter={() => setActiveIdx(i)}
+                >
+                  <span className="outreach-member-result-name">
+                    {u.name ?? <em style={{ color: "var(--color-brand-muted)" }}>No name</em>}
+                  </span>
+                  <span className="outreach-member-result-email">{u.email}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {/* Empty state — only when user has typed something and results came back empty */}
+        {memberDropOpen && !memberSearching && memberQuery.trim().length > 0 && memberResults.length === 0 && (
+          <div className="outreach-member-empty">
+            No members found for &ldquo;{memberQuery.trim()}&rdquo;
+          </div>
+        )}
+      </div>
+
+      <p className="outreach-hint" style={{ margin: "0.4rem 0 0" }}>
+        {specificUsers.length === 0
+          ? "Type a name or email — results appear from the first character."
+          : `${specificUsers.length} member${specificUsers.length !== 1 ? "s" : ""} selected. Keep typing to add more.`
+        }
+      </p>
     </div>
   );
 

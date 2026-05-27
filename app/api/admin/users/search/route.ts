@@ -1,9 +1,9 @@
 /**
  * GET /api/admin/users/search?q=<query>
  *
- * Admin-only — search active users by name or email.
+ * Admin-only — prefix search for active users by name or email.
  * Returns up to 20 results: [{ id, name, email }].
- * Min query length: 2 characters.
+ * Min query length: 1 character (e.g. "s" → all names/emails starting with S).
  */
 
 import { NextResponse } from "next/server";
@@ -23,7 +23,7 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const q = (searchParams.get("q") ?? "").trim();
 
-  if (q.length < 2) {
+  if (q.length < 1) {
     return NextResponse.json([]);
   }
 
@@ -31,8 +31,8 @@ export async function GET(req: Request) {
     where: {
       status: "ACTIVE",
       OR: [
-        { name:  { contains: q, mode: "insensitive" } },
-        { email: { contains: q, mode: "insensitive" } },
+        { name:  { startsWith: q, mode: "insensitive" } },
+        { email: { startsWith: q, mode: "insensitive" } },
       ],
     },
     select: { id: true, name: true, email: true },
