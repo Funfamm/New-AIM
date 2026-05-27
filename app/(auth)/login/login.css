@@ -4,13 +4,15 @@
   align-items: center;
   justify-content: center;
   padding: 2rem 1rem;
-  background: var(--color-brand-black);
+  background: transparent;
 }
 .auth-card {
   width: 100%;
   max-width: 420px;
-  background: var(--color-brand-dark);
-  border: 1px solid var(--color-brand-border);
+  background: rgba(17, 17, 17, 0.7);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 10px 40px -10px rgba(0,0,0,0.5);
   border-radius: 12px;
   padding: 2.5rem 2rem;
 }

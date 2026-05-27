@@ -54,8 +54,9 @@
   position: relative;
   width: 100%; max-width: 260px;
   aspect-ratio: 2/3;
+  margin-inline: auto;
 }
-@media (min-width: 768px) { .detail-poster-wrap { width: 220px; } }
+@media (min-width: 768px) { .detail-poster-wrap { width: 220px; margin-inline: 0; } }
 @media (min-width: 1024px) { .detail-poster-wrap { width: 260px; } }
 .detail-poster {
   object-fit: cover; border-radius: 4px;

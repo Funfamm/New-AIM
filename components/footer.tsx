@@ -9,7 +9,7 @@ export default function Footer() {
           <div className="footer-brand">
             <span className="footer-logo">AIM<span>Studio</span></span>
             <p className="footer-tagline">
-              Cinema about sacrifice, regret, and the people we&apos;d do anything for.
+              Stories that refuse to look away.
             </p>
           </div>
           <nav className="footer-links">

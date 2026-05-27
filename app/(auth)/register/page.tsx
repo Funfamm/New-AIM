@@ -1,6 +1,6 @@
 import { signInWithGoogle } from "@/lib/actions/auth";
 import Link from "next/link";
-import { Film, Users, MessageSquare } from "lucide-react";
+import { Film, Bookmark, Bell } from "lucide-react";
 import type { Metadata } from "next";
 import { RegisterForm } from "./register-form";
 import "./register.css";
@@ -41,12 +41,12 @@ export default async function RegisterPage({
             Watch free
           </li>
           <li className="auth-perk">
-            <span className="auth-perk-icon" aria-hidden="true"><Users size={13} /></span>
-            Casting calls
+            <span className="auth-perk-icon" aria-hidden="true"><Bookmark size={13} /></span>
+            Save what moves you
           </li>
           <li className="auth-perk">
-            <span className="auth-perk-icon" aria-hidden="true"><MessageSquare size={13} /></span>
-            Community
+            <span className="auth-perk-icon" aria-hidden="true"><Bell size={13} /></span>
+            Be first to know
           </li>
         </ul>
 

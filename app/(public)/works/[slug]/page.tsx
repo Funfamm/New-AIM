@@ -16,6 +16,7 @@ import { isWorkSaved } from "@/lib/actions/watchlist";
 import { getWorkLikeState } from "@/lib/actions/likes";
 import { getOrCreateSession, trackEvent } from "@/lib/analytics";
 import SeriesTrailerPlayer from "@/components/series-trailer-player";
+import { getWorkCtaState } from "@/lib/work-cta";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -74,7 +75,7 @@ async function getWork(slug: string) {
     select: {
       id: true, slug: true, title: true, type: true, status: true,
       description: true, posterUrl: true, trailerUrl: true, videoUrl: true,
-      year: true, duration: true, genre: true, director: true,
+      year: true, duration: true, genre: true, genres: true, director: true,
       requiresAuth: true, requiresLoginToViewTrailer: true,
       episodes: {
         where: { status: "PUBLISHED" },
@@ -126,7 +127,6 @@ export default async function WorkDetailPage({ params }: Props) {
 
   const isGuest       = !session?.user;
   const locked        = work.requiresAuth && isGuest;
-  const trailerLocked = work.requiresLoginToViewTrailer && isGuest;
   const isPublished   = work.status === "PUBLISHED";
 
   const [isSaved, { isLiked, likeCount }] = await Promise.all([
@@ -137,18 +137,6 @@ export default async function WorkDetailPage({ params }: Props) {
   const firstEp      = work.type === "SERIES" ? work.episodes[0] ?? null : null;
   const episodeCount = work.type === "SERIES" ? work.episodes.length : null;
   const isSeries     = work.type === "SERIES";
-
-  const hasMainContent =
-    (isSeries && firstEp != null) ||
-    (!isSeries && work.type !== "TRAILER" && !!work.videoUrl);
-
-  // Trailer href — series needs ?trailer=1 to bypass the series→ep1 redirect on watch page
-  const trailerHref = isSeries
-    ? `/watch/${work.slug}?trailer=1`
-    : `/watch/${work.slug}`;
-  const trailerLoginHref = isSeries
-    ? `/login?from=/watch/${work.slug}?trailer=1`
-    : `/login?from=/watch/${work.slug}`;
 
   return (
     <main className="detail-page">
@@ -204,8 +192,8 @@ export default async function WorkDetailPage({ params }: Props) {
             {/* Info */}
             <div className="detail-info">
 
-              {work.genre && (
-                <span className="detail-genre">{work.genre}</span>
+              {(work.genres.length > 0 ? work.genres.join(" · ") : work.genre) && (
+                <span className="detail-genre">{work.genres.length > 0 ? work.genres.join(" · ") : work.genre}</span>
               )}
 
               <h1 className="detail-title">{work.title}</h1>
@@ -244,56 +232,43 @@ export default async function WorkDetailPage({ params }: Props) {
                 </span>
               )}
 
-              {/* CTAs */}
+              {/* CTAs — powered by shared getWorkCtaState() */}
               <div className="detail-actions">
+                {(() => {
+                  const cta = getWorkCtaState({
+                    slug: work.slug,
+                    type: work.type,
+                    trailerUrl: work.trailerUrl,
+                    videoUrl: work.videoUrl,
+                    requiresAuth: work.requiresAuth,
+                    requiresLoginToViewTrailer: work.requiresLoginToViewTrailer ?? undefined,
+                    isGuest: isGuest,
+                    firstEpisodeSlug: firstEp?.slug,
+                  });
+                  return (
+                    <>
+                      {/* Primary CTA */}
+                      {cta.primaryLabel && isPublished && (
+                        <div className={isSeries ? "detail-trailer-desktop-only" : undefined}>
+                          <Link href={cta.primaryHref} className="detail-btn-primary">
+                            {cta.isLocked || cta.isTrailerLocked ? <Lock size={14} /> : <Play size={14} fill="currentColor" />}
+                            {" "}{cta.primaryLabel}
+                          </Link>
+                        </div>
+                      )}
 
-                {/* Watch Trailer — ghost when full content also exists; primary when no full content.
-                    TRAILER-type works store their clip in videoUrl (no trailerUrl), so also trigger on that. */}
-                {(work.trailerUrl || (work.type === "TRAILER" && !!work.videoUrl)) && (
-                  <div className={isSeries ? "detail-trailer-desktop-only" : undefined}>
-                    {trailerLocked ? (
-                      <Link
-                        href={trailerLoginHref}
-                        className={hasMainContent && isPublished ? "detail-btn-ghost" : "detail-btn-primary"}
-                      >
-                        <Lock size={14} /> Sign In to Watch Trailer
-                      </Link>
-                    ) : (
-                      <Link
-                        href={trailerHref}
-                        className={hasMainContent && isPublished ? "detail-btn-ghost" : "detail-btn-primary"}
-                      >
-                        <Play size={14} fill="currentColor" /> Watch Trailer
-                      </Link>
-                    )}
-                  </div>
-                )}
-
-                {/* SERIES → Watch Series (ep 1) — published + has episodes only */}
-                {isSeries && firstEp && isPublished && (
-                  locked ? (
-                    <Link href={`/login?from=/watch/${firstEp.slug}`} className="detail-btn-primary">
-                      <Lock size={14} /> Sign In to Watch
-                    </Link>
-                  ) : (
-                    <Link href={`/watch/${firstEp.slug}`} className="detail-btn-primary">
-                      <Play size={14} fill="currentColor" /> Watch Series
-                    </Link>
-                  )
-                )}
-
-                {/* Film / short / other → full video — published only; TRAILER type excluded */}
-                {!isSeries && work.type !== "TRAILER" && work.videoUrl && isPublished && (
-                  locked ? (
-                    <Link href={`/login?from=/watch/${work.slug}?full=1`} className="detail-btn-primary">
-                      <Lock size={14} /> Sign In to Watch
-                    </Link>
-                  ) : (
-                    <Link href={`/watch/${work.slug}?full=1`} className="detail-btn-primary">
-                      <Play size={14} fill="currentColor" /> Watch Full Film
-                    </Link>
-                  )
-                )}
+                      {/* Secondary CTA (trailer ghost button) */}
+                      {cta.secondaryLabel && cta.secondaryHref && isPublished && (
+                        <div className={isSeries ? "detail-trailer-desktop-only" : undefined}>
+                          <Link href={cta.secondaryHref} className="detail-btn-ghost">
+                            {cta.isTrailerLocked ? <Lock size={14} /> : <Play size={14} fill="currentColor" />}
+                            {" "}{cta.secondaryLabel}
+                          </Link>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
 
               {/* Engagement row — Save (members) + Like + Share */}
