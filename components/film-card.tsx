@@ -9,7 +9,7 @@ const TYPE_LABEL: Record<string, string> = {
   EPISODE: "Episode",
   TRAILER: "Trailer",
   COMMERCIAL: "Commercial",
-  BRANDING: "Brand",
+  BRANDING: "Branding",
   CAMPAIGN: "Campaign",
   CASE_STUDY: "Case Study",
 };

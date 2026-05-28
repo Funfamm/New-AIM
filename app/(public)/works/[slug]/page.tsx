@@ -376,11 +376,11 @@ export default async function WorkDetailPage({ params }: Props) {
                                 href={`/login?from=/watch/${ep.slug}`}
                                 className="ep-btn ep-btn--locked"
                               >
-                                <Lock size={11} /> Watch
+                                <Lock size={11} /> Watch Episode
                               </Link>
                             ) : (
                               <Link href={`/watch/${ep.slug}`} className="ep-btn">
-                                <Play size={11} fill="currentColor" /> Watch
+                                <Play size={11} fill="currentColor" /> Watch Episode
                               </Link>
                             )
                           ) : (

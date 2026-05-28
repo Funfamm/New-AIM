@@ -37,12 +37,18 @@ export type WorkCtaState = {
 };
 
 export function getWorkCtaState(work: WorkCtaInput): WorkCtaState {
-  const isSeries = work.type === "SERIES";
-  const isShort  = work.type === "SHORT_FILM";
+  const isSeries    = work.type === "SERIES";
+  const isShort     = work.type === "SHORT_FILM";
+  const isTrailer   = work.type === "TRAILER";
+  const isCommercial = work.type === "COMMERCIAL";
+  const isBranding  = work.type === "BRANDING";
+  const isCampaign  = work.type === "CAMPAIGN";
+  const isCaseStudy = work.type === "CASE_STUDY";
 
-  // TRAILER-type works: videoUrl is the trailer clip itself, not a full film.
-  const hasTrailer   = !!work.trailerUrl;
-  const hasFullVideo = work.type !== "TRAILER" && !!work.videoUrl;
+  // TRAILER-type works: the clip lives in videoUrl, not trailerUrl.
+  // For all other types, trailerUrl is the separate preview clip.
+  const hasTrailer   = !!work.trailerUrl || (isTrailer && !!work.videoUrl);
+  const hasFullVideo = !isTrailer && !!work.videoUrl;
   const hasEpisodes  = !!work.firstEpisodeSlug;
   const hasPlayable  = hasFullVideo || (isSeries && hasEpisodes);
 
@@ -63,6 +69,17 @@ export function getWorkCtaState(work: WorkCtaInput): WorkCtaState {
     : `/watch/${work.slug}?full=1`;
   const fullLoginHref = `/login?from=${encodeURIComponent(fullHref)}`;
 
+  // ── Primary label for works with playable video ────────────────────────────
+  function playLabel(): string {
+    if (isSeries)    return "Watch Series";
+    if (isShort)     return "Watch Short";
+    if (isCommercial) return "Watch Commercial";
+    if (isBranding)  return "View Project";
+    if (isCampaign)  return "View Campaign";
+    if (isCaseStudy) return "View Case Study";
+    return "Watch Full Film";
+  }
+
   // ── Primary CTA ────────────────────────────────────────────────────────────
   let primaryLabel: string;
   let primaryHref:  string;
@@ -72,7 +89,7 @@ export function getWorkCtaState(work: WorkCtaInput): WorkCtaState {
       primaryLabel = "Sign In to Watch";
       primaryHref  = fullLoginHref;
     } else {
-      primaryLabel = isSeries ? "Watch Series" : isShort ? "Watch Short" : "Watch Full Film";
+      primaryLabel = playLabel();
       primaryHref  = fullHref;
     }
   } else if (hasTrailer) {

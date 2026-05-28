@@ -62,18 +62,23 @@ const TAB_TYPES: Record<Tab, string[] | null> = {
 
 // Maps ?collection= URL param → Tab key
 const COLLECTION_TO_TAB: Record<string, Tab> = {
-  all:         "ALL",
-  upcoming:    "UPCOMING",
-  films:       "FILMS",
-  series:      "SERIES",
-  shorts:      "SHORTS",
-  commercials: "COMMERCIAL",
-  branding:    "BRANDING",
-  campaigns:   "CAMPAIGNS",
+  all:           "ALL",
+  upcoming:      "UPCOMING",
+  films:         "FILMS",
+  series:        "SERIES",
+  shorts:        "SHORTS",
+  commercials:   "COMMERCIAL",
+  branding:      "BRANDING",
+  campaigns:     "CAMPAIGNS",
+  trailers:      "TRAILERS",
+  "case-studies":"CASE_STUDY",
 };
 
-// Rails shown in ALL view — every public content type gets its own section
-const RAILS: { key: Tab; title: string; eyebrow: string }[] = [
+// Rails shown in ALL view.
+// statusFilter: filter by work status instead of type (used for Upcoming).
+type Rail = { key: Tab; title: string; eyebrow: string; statusFilter?: string[] };
+const RAILS: Rail[] = [
+  { key: "UPCOMING",   title: "Upcoming",     eyebrow: "— Coming Soon",       statusFilter: ["UPCOMING", "IN_PRODUCTION"] },
   { key: "FILMS",      title: "Films",        eyebrow: "— Feature Length" },
   { key: "SHORTS",     title: "Shorts",       eyebrow: "— Short Films" },
   { key: "SERIES",     title: "Series",       eyebrow: "— Multi-Episode" },
@@ -140,7 +145,7 @@ export default function WorksClient({ works, collection, isLoggedIn = false }: P
   }, [works, publishedWorks]);
 
   const filtered = useMemo(() => {
-    // UPCOMING tab: filter by status regardless of query
+    // UPCOMING tab: filter by status
     if (tab === "UPCOMING") {
       const list = works.filter((w) => UPCOMING_STATUSES.has(w.status));
       if (!query.trim()) return list;
@@ -148,8 +153,9 @@ export default function WorksClient({ works, collection, isLoggedIn = false }: P
       return list.filter((w) => w.title.toLowerCase().includes(q) || (w.genre?.toLowerCase() ?? "").includes(q));
     }
 
-    // Other tabs: published works only
-    let list = publishedWorks;
+    // ALL: include every public work (published + upcoming/in-production)
+    // Specific tabs: published works only
+    let list = tab === "ALL" ? works : publishedWorks;
     if (query.trim()) {
       const q = query.toLowerCase();
       list = list.filter(
@@ -167,10 +173,15 @@ export default function WorksClient({ works, collection, isLoggedIn = false }: P
 
   const showRails = tab === "ALL" && query.trim() === "";
 
-  // Priority images: first visible rail only (from published)
+  // First rail that has content — used to prioritise image loading
   const firstRailKey = useMemo(
-    () => RAILS.find(({ key }) => publishedWorks.some((w) => TAB_TYPES[key]!.includes(w.type)))?.key,
-    [publishedWorks]
+    () =>
+      RAILS.find(({ key, statusFilter }) =>
+        statusFilter
+          ? works.some((w) => statusFilter.includes(w.status))
+          : publishedWorks.some((w) => TAB_TYPES[key]!.includes(w.type))
+      )?.key,
+    [works, publishedWorks]
   );
 
   return (
@@ -233,21 +244,22 @@ export default function WorksClient({ works, collection, isLoggedIn = false }: P
         </div>
       ) : showRails ? (
         <div className="wc-rails wc-animate-in">
-          {RAILS.map(({ key, title, eyebrow }) => {
-            const types = TAB_TYPES[key]!;
-            const railWorks = publishedWorks.filter((w) => types.includes(w.type));
+          {RAILS.map((rail) => {
+            const railWorks = rail.statusFilter
+              ? works.filter((w) => rail.statusFilter!.includes(w.status))
+              : publishedWorks.filter((w) => TAB_TYPES[rail.key]!.includes(w.type));
             if (railWorks.length === 0) return null;
             return (
-              <section key={key} className="wc-rail">
+              <section key={rail.key} className="wc-rail">
                 <div className="container-app">
                   <div className="wc-rail-head">
-                    <span className="wc-rail-eyebrow">{eyebrow}</span>
-                    <h2 className="wc-rail-title">{title}</h2>
+                    <span className="wc-rail-eyebrow">{rail.eyebrow}</span>
+                    <h2 className="wc-rail-title">{rail.title}</h2>
                   </div>
                   <div className="rail-track">
                     {railWorks.map((w, i) => (
                       <div key={w.id} className="rail-card">
-                        <FilmCard {...w} priority={key === firstRailKey && i < 4} isLoggedIn={isLoggedIn} />
+                        <FilmCard {...w} priority={rail.key === firstRailKey && i < 4} isLoggedIn={isLoggedIn} />
                       </div>
                     ))}
                   </div>
