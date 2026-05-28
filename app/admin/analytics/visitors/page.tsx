@@ -1,5 +1,6 @@
 // Visitor Intelligence — premium live feed + breakdown charts
 import { prisma } from "@/lib/prisma";
+import { countryName } from "@/lib/country-names";
 import type { Metadata } from "next";
 import ViFeed from "./vi-feed";
 
@@ -293,7 +294,7 @@ export default async function VisitorsPage() {
           <div className="achart">
             {countryBreakdown.map((c) => (
               <div key={c.country} className="abar-row">
-                <span className="abar-label">{c.country ?? "Unknown"}</span>
+                <span className="abar-label">{countryName(c.country)}</span>
                 <div className="abar-track"><div className="abar-fill" style={{ width: barPct(c._count.country, countryMax) }} /></div>
                 <span className="abar-count">{c._count.country}</span>
               </div>
