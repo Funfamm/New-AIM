@@ -38,6 +38,11 @@
 .form-input:focus, .form-textarea:focus { border-color: var(--color-brand-accent); }
 select.form-input { cursor: pointer; }
 .form-divider { border-top: 1px solid var(--color-brand-border); margin: 0.25rem 0; }
+.form-section-title {
+  font-family: var(--font-body); font-size: 0.75rem; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--color-brand-muted); margin: 0.75rem 0 0.25rem;
+}
 .form-check {
   display: flex; align-items: center; gap: 0.6rem; cursor: pointer;
   font-family: var(--font-body); font-size: 0.875rem; color: var(--color-brand-light);

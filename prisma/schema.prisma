@@ -256,6 +256,15 @@ model Work {
   showOnHome   Boolean  @default(false)
   order        Int      @default(0)
 
+  // Player intelligence — optional, admin-configurable per episode/film
+  introStart    Int?      // seconds: Skip Intro button appears
+  introEnd      Int?      // seconds: Skip Intro seeks here
+  creditsStart  Int?      // seconds: Skip Credits button appears
+
+  // Content advisory — admin-selected per work
+  contentRating      String?   // e.g. "G", "PG", "PG-13", "R", "TV-MA", "NR"
+  contentDescriptors String[]  @default([])   // e.g. ["VIOLENCE","LANGUAGE","NUDITY"]
+
   // Series → Episode relationship (self-referential)
   parentId      String?
   parent        Work?   @relation("WorkEpisodes", fields: [parentId], references: [id], onDelete: SetNull)

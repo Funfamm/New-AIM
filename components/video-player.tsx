@@ -13,30 +13,36 @@ type Props = {
   durationMinutes?: number;
   cta?: CtaData | null;
   ctaUser?: { email: string; name: string | null };
+  introStart?: number | null;
+  introEnd?: number | null;
+  creditsStart?: number | null;
 };
 
 const SAVE_INTERVAL_MS   = 10_000;
 const BEACON_INTERVAL_MS = 30_000;
+const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 
 export default function VideoPlayer({
-  src, poster, workId, initialSeconds, durationMinutes, cta, ctaUser,
+  src, poster, workId, initialSeconds, durationMinutes,
+  cta, ctaUser,
+  introStart, introEnd, creditsStart,
 }: Props) {
   const videoRef      = useRef<HTMLVideoElement>(null);
   const lastSaveRef   = useRef<number>(0);
   const lastBeaconRef = useRef<number>(0);
   const hasStarted    = useRef(false);
-  // ctaShownRef gates the trigger — prevents re-checking after first fire
   const ctaShownRef   = useRef(false);
 
-  const [ctaVisible, setCtaVisible] = useState(false);
+  const [ctaVisible,    setCtaVisible]    = useState(false);
+  const [showSkipIntro, setShowSkipIntro] = useState(false);
+  const [showSkipCred,  setShowSkipCred]  = useState(false);
+  const [speed,         setSpeed]         = useState(1);
+  const [speedOpen,     setSpeedOpen]     = useState(false);
 
-  // If the user already signed up in this browser (localStorage), suppress CTA permanently
   useEffect(() => {
     if (!cta) return;
     try {
-      if (localStorage.getItem(`aim_cta_signed_${cta.id}`)) {
-        ctaShownRef.current = true;
-      }
+      if (localStorage.getItem(`aim_cta_signed_${cta.id}`)) ctaShownRef.current = true;
     } catch {}
   }, [cta]);
 
@@ -44,12 +50,29 @@ export default function VideoPlayer({
     void saveWatchProgress(workId, seconds, durationMinutes);
   }
 
-  // Dismiss hides the overlay for this playback session but doesn't set localStorage
-  // (so it can re-appear on a future visit if the user never signed up)
-  function handleDismiss() {
-    setCtaVisible(false);
-    // Keep ctaShownRef = true so it won't re-trigger within the same video session
+  function skipIntro() {
+    if (introEnd != null && videoRef.current) {
+      videoRef.current.currentTime = introEnd;
+      setShowSkipIntro(false);
+    }
   }
+
+  function skipCredits() {
+    if (videoRef.current) videoRef.current.currentTime = videoRef.current.duration;
+  }
+
+  function applySpeed(s: number) {
+    setSpeed(s);
+    setSpeedOpen(false);
+    if (videoRef.current) videoRef.current.playbackRate = s;
+  }
+
+  useEffect(() => {
+    if (!speedOpen) return;
+    const handler = () => setSpeedOpen(false);
+    document.addEventListener("click", handler);
+    return () => document.removeEventListener("click", handler);
+  }, [speedOpen]);
 
   return (
     <div className="watch-player-inner">
@@ -61,48 +84,49 @@ export default function VideoPlayer({
         controls
         playsInline
         controlsList="nodownload"
-        disablePictureInPicture
         poster={poster}
         onPlay={() => {
           if (!hasStarted.current) {
             hasStarted.current = true;
             beacon("WATCH_START", { workId });
           }
+          if (videoRef.current && videoRef.current.playbackRate !== speed) {
+            videoRef.current.playbackRate = speed;
+          }
         }}
         onLoadedMetadata={() => {
           if (initialSeconds > 0 && videoRef.current) {
             videoRef.current.currentTime = initialSeconds;
           }
+          if (videoRef.current) videoRef.current.playbackRate = speed;
         }}
         onTimeUpdate={() => {
           const video = videoRef.current;
-          if (!video) return;
+          if (!video || !video.duration) return;
+          const t = video.currentTime;
+          const dur = video.duration;
           const now = Date.now();
 
-          // Progress save
           if (now - lastSaveRef.current >= SAVE_INTERVAL_MS) {
             lastSaveRef.current = now;
-            save(Math.floor(video.currentTime));
+            save(Math.floor(t));
           }
 
-          // Analytics beacon
-          if (
-            now - lastBeaconRef.current >= BEACON_INTERVAL_MS &&
-            video.duration > 0 && !isNaN(video.duration)
-          ) {
+          if (now - lastBeaconRef.current >= BEACON_INTERVAL_MS) {
             lastBeaconRef.current = now;
-            beacon("WATCH_PROGRESS", {
-              workId,
-              metadata: {
-                seconds: Math.floor(video.currentTime),
-                percent: Math.round((video.currentTime / video.duration) * 100),
-              },
-            });
+            beacon("WATCH_PROGRESS", { workId, metadata: { seconds: Math.floor(t), percent: Math.round((t / dur) * 100) } });
           }
 
-          // CTA trigger — fires once when remaining time ≤ triggerSecondsFromEnd
-          if (cta && !ctaShownRef.current && video.duration > 0 && !isNaN(video.duration)) {
-            const remaining = video.duration - video.currentTime;
+          if (introStart != null && introEnd != null) {
+            setShowSkipIntro(t >= introStart && t < introEnd);
+          }
+
+          if (creditsStart != null) {
+            setShowSkipCred(t >= creditsStart && t < dur - 2);
+          }
+
+          if (cta && !ctaShownRef.current) {
+            const remaining = dur - t;
             if (remaining > 0 && remaining <= cta.triggerSecondsFromEnd) {
               ctaShownRef.current = true;
               setCtaVisible(true);
@@ -120,8 +144,41 @@ export default function VideoPlayer({
           beacon("WATCH_COMPLETE", { workId });
         }}
       />
+
+      {showSkipIntro && (
+        <button className="skip-btn" onClick={skipIntro} type="button">
+          Skip Intro ›
+        </button>
+      )}
+
+      {showSkipCred && !showSkipIntro && (
+        <button className="skip-btn" onClick={skipCredits} type="button">
+          Skip Credits ›
+        </button>
+      )}
+
+      <div className="speed-wrap" onClick={(e) => e.stopPropagation()}>
+        <button className="speed-btn" type="button" onClick={() => setSpeedOpen((o) => !o)}>
+          {speed === 1 ? "Speed" : `${speed}×`}
+        </button>
+        {speedOpen && (
+          <div className="speed-menu">
+            {SPEEDS.map((s) => (
+              <button
+                key={s}
+                type="button"
+                className={`speed-option${s === speed ? " speed-option--active" : ""}`}
+                onClick={() => applySpeed(s)}
+              >
+                {s === 1 ? "Normal" : `${s}×`}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
       {cta && ctaVisible && (
-        <NotifyMeCtaOverlay cta={cta} onDismiss={handleDismiss} ctaUser={ctaUser} />
+        <NotifyMeCtaOverlay cta={cta} onDismiss={() => setCtaVisible(false)} ctaUser={ctaUser} />
       )}
     </div>
   );
