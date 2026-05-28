@@ -8,13 +8,14 @@ export const metadata: Metadata = { title: "Reset Password — AIM Studio" };
 export default async function ResetPasswordPage({
   searchParams,
 }: {
-  searchParams: Promise<{ token?: string; error?: string }>;
+  searchParams: Promise<{ token?: string; email?: string; error?: string }>;
 }) {
   const params = await searchParams;
   const token = params?.token?.trim();
+  const email = params?.email?.trim();
 
-  // No token in URL — show a generic invalid-link message
-  if (!token) {
+  // Neither token nor email — show a generic invalid message
+  if (!token && !email) {
     return (
       <main className="auth-page">
         <div className="auth-card">
@@ -31,13 +32,21 @@ export default async function ResetPasswordPage({
     );
   }
 
+  // Code flow (user-initiated): email in URL, user enters 6-digit code
+  // Token flow (admin-initiated): token in URL, hidden field
+  const isCodeFlow = !!email && !token;
+
   return (
     <main className="auth-page">
       <div className="auth-card">
         <div className="auth-header">
           <Link href="/" className="auth-logo">AIM<span>Studio</span></Link>
           <h1 className="auth-title">Choose a New Password</h1>
-          <p className="auth-sub">Must be at least 8 characters.</p>
+          <p className="auth-sub">
+            {isCodeFlow
+              ? "Enter the 6-digit code sent to your email."
+              : "Must be at least 8 characters."}
+          </p>
         </div>
 
         {params?.error && (
@@ -45,8 +54,31 @@ export default async function ResetPasswordPage({
         )}
 
         <form action={resetPassword} className="auth-form">
-          {/* Pass raw token through the form — action hashes it before DB lookup */}
-          <input type="hidden" name="token" value={token} />
+          {/* Token flow: pass raw token as hidden field */}
+          {token && <input type="hidden" name="token" value={token} />}
+
+          {/* Code flow: pass email + visible code input */}
+          {isCodeFlow && (
+            <>
+              <input type="hidden" name="email" value={email} />
+              <div className="form-group">
+                <label className="form-label">Verification code</label>
+                <input
+                  type="text"
+                  name="code"
+                  className="form-input code-input"
+                  placeholder="000000"
+                  required
+                  maxLength={6}
+                  minLength={6}
+                  pattern="[0-9]{6}"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  autoFocus
+                />
+              </div>
+            </>
+          )}
 
           <div className="form-group">
             <label className="form-label">New password</label>
@@ -76,6 +108,13 @@ export default async function ResetPasswordPage({
 
           <button type="submit" className="auth-btn">Update Password</button>
         </form>
+
+        {isCodeFlow && (
+          <p className="auth-resend">
+            Didn&apos;t receive a code?{" "}
+            <Link href="/forgot-password">Send again</Link>
+          </p>
+        )}
 
         <p className="auth-switch">
           <Link href="/login">Back to sign in</Link>

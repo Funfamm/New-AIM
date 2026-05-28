@@ -257,6 +257,34 @@ export async function sendPasswordResetEmail(to: string, rawToken: string): Prom
   });
 }
 
+// ── Password reset code (user-initiated) ──────────────────────
+
+export async function sendPasswordResetCodeEmail(to: string, code: string): Promise<void> {
+  const body = `
+    <p style="margin:0 0 16px;font-size:14px;color:#6b7280;line-height:1.6;">
+      We received a request to reset the password for your AIM Studio account.
+      Enter the verification code below to choose a new password. This code expires in 30 minutes.
+    </p>
+    <div style="text-align:center;margin:24px 0;">
+      <span style="display:inline-block;background:#1a1a1a;border:2px solid #e8c97e;border-radius:8px;
+                    padding:16px 32px;font-size:32px;font-weight:700;letter-spacing:8px;color:#f9fafb;
+                    font-family:monospace;">
+        ${code}
+      </span>
+    </div>
+    <p style="margin:0 0 0;font-size:12px;color:#6b7280;line-height:1.6;">
+      If you did not request a password reset, you can safely ignore this email.
+      Do not share this code with anyone.
+    </p>`;
+
+  await sendEmail({
+    to,
+    subject: "Your AIM Studio password reset code",
+    html:    baseTemplate("Password reset code", body),
+    type:    "PASSWORD_RESET",
+  });
+}
+
 // ── Security alert email ───────────────────────────────────────
 
 export async function sendSecurityAlertEmail(opts: {

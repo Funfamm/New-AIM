@@ -7,9 +7,9 @@ import { signIn, signOut } from "@/lib/auth";
 import bcrypt from "bcryptjs";
 import { redirect } from "next/navigation";
 import { AuthError } from "next-auth";
-import { randomBytes, createHash } from "crypto";
+import { randomBytes, randomInt, createHash } from "crypto";
 import { cookies } from "next/headers";
-import { sendPasswordResetEmail, sendSecurityAlertEmail } from "@/lib/email";
+import { sendPasswordResetCodeEmail, sendSecurityAlertEmail } from "@/lib/email";
 import { ensureWelcomeForUser } from "@/lib/onboarding/welcome";
 import { trackEvent, getOrCreateSession } from "@/lib/analytics";
 import { writeSecurityEvent, createSecurityAlert } from "@/lib/security";
@@ -134,9 +134,9 @@ export async function forgotPassword(formData: FormData) {
       where: { email, used: false },
     });
 
-    // Generate cryptographically random token (32 bytes → 64 hex chars)
-    const rawToken = randomBytes(32).toString("hex");
-    const tokenHash = createHash("sha256").update(rawToken).digest("hex");
+    // Generate cryptographically random 6-digit code (100000–999999)
+    const code = String(randomInt(100000, 1000000));
+    const tokenHash = createHash("sha256").update(code).digest("hex");
 
     const expires = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
 
@@ -150,7 +150,7 @@ export async function forgotPassword(formData: FormData) {
     // Errors are swallowed so the neutral success response is preserved
     // (same page shown whether the user exists or not — prevents enumeration).
     try {
-      await sendPasswordResetEmail(email, rawToken);
+      await sendPasswordResetCodeEmail(email, code);
     } catch {
       // sendEmail already wrote a FAILED log entry with the error detail.
       // Silently continue — user sees the neutral success page regardless.
@@ -163,35 +163,50 @@ export async function forgotPassword(formData: FormData) {
     });
   }
 
-  // Always redirect to the same success page
-  redirect("/forgot-password?sent=1");
+  // Always redirect to the reset page with the email pre-filled.
+  // Anti-enumeration preserved: same redirect whether the user exists or not.
+  redirect(`/reset-password?email=${encodeURIComponent(email)}`);
 }
 
 // ── Reset Password ─────────────────────────────────────────────
+// Supports two flows:
+//   1. Code flow (user-initiated): email + 6-digit code from email
+//   2. Token flow (admin-initiated): long hex token from URL link
 export async function resetPassword(formData: FormData) {
   const rawToken  = (formData.get("token") as string)?.trim();
+  const code      = (formData.get("code") as string)?.trim();
+  const email     = (formData.get("email") as string)?.toLowerCase().trim();
   const password  = (formData.get("password") as string);
   const confirm   = (formData.get("confirm") as string);
 
-  if (!rawToken) {
-    redirect("/forgot-password?error=" + encodeURIComponent("Invalid or missing reset token."));
+  // Determine which flow — code+email or legacy token
+  const secret = code || rawToken;
+  const isCodeFlow = !!code && !!email;
+
+  if (!secret) {
+    redirect("/forgot-password?error=" + encodeURIComponent("Invalid or missing reset code."));
   }
+
+  // Build redirect-back URL for validation errors (preserves flow context)
+  const errorRedirect = isCodeFlow
+    ? `/reset-password?email=${encodeURIComponent(email!)}`
+    : `/reset-password?token=${encodeURIComponent(rawToken!)}`;
 
   if (!password || password.length < 8) {
     redirect(
-      `/reset-password?token=${encodeURIComponent(rawToken)}&error=` +
+      `${errorRedirect}&error=` +
         encodeURIComponent("Password must be at least 8 characters.")
     );
   }
 
   if (password !== confirm) {
     redirect(
-      `/reset-password?token=${encodeURIComponent(rawToken)}&error=` +
+      `${errorRedirect}&error=` +
         encodeURIComponent("Passwords do not match.")
     );
   }
 
-  const tokenHash = createHash("sha256").update(rawToken).digest("hex");
+  const tokenHash = createHash("sha256").update(secret).digest("hex");
 
   const record = await prisma.passwordResetToken.findUnique({
     where: { tokenHash },
@@ -206,7 +221,7 @@ export async function resetPassword(formData: FormData) {
   if (!isValid) {
     redirect(
       "/forgot-password?error=" +
-        encodeURIComponent("This reset link is invalid or has expired. Please request a new one.")
+        encodeURIComponent("This reset code is invalid or has expired. Please request a new one.")
     );
   }
 
@@ -220,7 +235,7 @@ export async function resetPassword(formData: FormData) {
     // Google-only user or non-existent — same neutral error
     redirect(
       "/forgot-password?error=" +
-        encodeURIComponent("This reset link is invalid or has expired. Please request a new one.")
+        encodeURIComponent("This reset code is invalid or has expired. Please request a new one.")
     );
   }
 
