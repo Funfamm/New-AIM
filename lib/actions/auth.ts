@@ -273,13 +273,23 @@ export async function resetPassword(formData: FormData) {
     );
   }
 
+  // Reject same-as-current password
+  const sameAsOld = await bcrypt.compare(password, user.password);
+  if (sameAsOld) {
+    redirect(
+      `${errorRedirect}&error=` +
+        encodeURIComponent("New password cannot be the same as your current password.")
+    );
+  }
+
   const hashed = await bcrypt.hash(password, 12);
 
-  // Update password and mark token used in a transaction
+  // Update password, mark token used, and increment tokenVersion to invalidate
+  // all existing sessions/JWTs — forces re-login on every device.
   await prisma.$transaction([
     prisma.user.update({
       where: { id: user.id },
-      data: { password: hashed },
+      data: { password: hashed, tokenVersion: { increment: 1 } },
     }),
     prisma.passwordResetToken.update({
       where: { tokenHash },

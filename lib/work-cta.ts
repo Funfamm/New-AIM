@@ -38,6 +38,7 @@ export type WorkCtaState = {
 
 export function getWorkCtaState(work: WorkCtaInput): WorkCtaState {
   const isSeries = work.type === "SERIES";
+  const isShort  = work.type === "SHORT_FILM";
 
   // TRAILER-type works: videoUrl is the trailer clip itself, not a full film.
   const hasTrailer   = !!work.trailerUrl;
@@ -71,7 +72,7 @@ export function getWorkCtaState(work: WorkCtaInput): WorkCtaState {
       primaryLabel = "Sign In to Watch";
       primaryHref  = fullLoginHref;
     } else {
-      primaryLabel = isSeries ? "Watch Series" : "Watch Full Film";
+      primaryLabel = isSeries ? "Watch Series" : isShort ? "Watch Short" : "Watch Full Film";
       primaryHref  = fullHref;
     }
   } else if (hasTrailer) {

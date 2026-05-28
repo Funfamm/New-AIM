@@ -35,13 +35,13 @@ export default function CreateAdminForm() {
           />
         </div>
         <div className="sec-field">
-          <label className="sec-field-label">Password (min 6 chars)</label>
+          <label className="sec-field-label">Password (min 8 chars)</label>
           <PasswordInput
             name="password"
             inputClassName="sec-field-input"
             required
-            minLength={6}
-            placeholder="Min 6 characters"
+            minLength={8}
+            placeholder="Min 8 characters"
             autoComplete="new-password"
             disabled={pending}
           />
