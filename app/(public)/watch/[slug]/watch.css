@@ -174,78 +174,110 @@
 }
 .cw-btn:hover { opacity: 0.88; }
 
-/* ── Player overlays (Skip Intro, Skip Credits, Up Next, Speed) ─ */
-/* watch-player-inner is already position:absolute;inset:0 — do not override */
-
-.skip-btn {
-  position: absolute; bottom: 4.5rem; right: 1rem; z-index: 10;
-  background: rgba(0,0,0,0.72); border: 1px solid rgba(255,255,255,0.3);
-  color: var(--color-brand-white); font-family: var(--font-body);
-  font-size: 0.8125rem; font-weight: 600; letter-spacing: 0.04em;
-  padding: 0.5rem 1rem; border-radius: 3px; cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
-  backdrop-filter: blur(4px);
+/* ── Interaction-activated player overlay ────────────────────── */
+/* Hidden by default; fades in on hover/tap; auto-hides after 3s  */
+.player-overlay {
+  position: absolute; inset: 0; z-index: 10;
+  display: flex; flex-direction: column; justify-content: flex-end;
+  pointer-events: none;
+  opacity: 0; transition: opacity 0.25s ease;
 }
-.skip-btn:hover { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.6); }
+.player-overlay--on {
+  opacity: 1; pointer-events: auto;
+}
 
-/* ── Up Next overlay ─────────────────────────────────────────── */
+/* Bottom row: speed (left) + skip buttons (right) */
+.player-overlay-bottom {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  padding: 0 0.875rem 5rem; /* sit above native controls */
+  gap: 0.5rem;
+}
+
+/* Pill button — used for Skip Intro, Skip Credits, Speed */
+.player-pill {
+  background: rgba(0,0,0,0.55);
+  border: 1px solid rgba(255,255,255,0.28);
+  color: #fff; font-family: var(--font-body);
+  font-size: 0.8125rem; font-weight: 500; letter-spacing: 0.01em;
+  padding: 0.4rem 1rem; border-radius: 100px;
+  cursor: pointer; backdrop-filter: blur(10px);
+  transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+.player-pill:hover {
+  background: rgba(255,255,255,0.14);
+  border-color: rgba(255,255,255,0.55);
+}
+.player-pill--speed {
+  font-size: 0.75rem; padding: 0.35rem 0.8rem;
+  color: rgba(255,255,255,0.7);
+}
+
+.player-skip-group { display: flex; gap: 0.5rem; }
+
+/* Speed popover */
+.player-speed { position: relative; }
+.player-speed-menu {
+  position: absolute; bottom: calc(100% + 8px); left: 0;
+  background: rgba(10,10,10,0.92); border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px; overflow: hidden; min-width: 110px;
+  backdrop-filter: blur(16px);
+}
+.player-speed-opt {
+  display: block; width: 100%; padding: 0.5rem 1rem;
+  font-family: var(--font-body); font-size: 0.8125rem; font-weight: 400;
+  color: rgba(255,255,255,0.8); background: none; border: none;
+  cursor: pointer; text-align: left; transition: background 0.1s, color 0.1s;
+}
+.player-speed-opt:hover { background: rgba(255,255,255,0.08); color: #fff; }
+.player-speed-opt--active { color: var(--color-brand-accent); font-weight: 600; }
+
+/* ── Up Next — visible after episode ends ────────────────────── */
 .up-next-overlay {
   position: absolute; inset: 0; z-index: 20;
-  display: flex; align-items: center; justify-content: center;
-  background: rgba(0,0,0,0.7); backdrop-filter: blur(2px);
-  flex-direction: column; gap: 1rem; text-align: center; padding: 2rem;
+  display: flex; align-items: flex-end; justify-content: flex-end;
+  padding: 0 1.25rem 5.5rem;
+  pointer-events: none;
 }
-.up-next-label {
-  font-family: var(--font-body); font-size: 0.75rem; font-weight: 600;
-  letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-brand-muted);
+.up-next-card {
+  background: rgba(10,10,10,0.88);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px; padding: 1rem 1.25rem;
+  width: 240px; pointer-events: auto;
+  backdrop-filter: blur(16px);
+}
+.up-next-eyebrow {
+  font-family: var(--font-body); font-size: 0.65rem; font-weight: 700;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--color-brand-accent); margin: 0 0 0.35rem;
 }
 .up-next-title {
-  font-family: var(--font-display); font-size: 1.4rem; font-weight: 600;
-  color: var(--color-brand-white); max-width: 320px; line-height: 1.3;
+  font-family: var(--font-body); font-size: 0.9rem; font-weight: 600;
+  color: #fff; margin: 0 0 0.75rem; line-height: 1.35;
 }
-.up-next-countdown {
-  font-family: var(--font-body); font-size: 0.9rem; color: var(--color-brand-muted);
+.up-next-bar-wrap {
+  height: 2px; background: rgba(255,255,255,0.15);
+  border-radius: 1px; margin-bottom: 0.9rem; overflow: hidden;
 }
-.up-next-actions { display: flex; gap: 0.75rem; flex-wrap: wrap; justify-content: center; }
+.up-next-bar-fill {
+  height: 100%; background: var(--color-brand-accent);
+  border-radius: 1px; transition: width 1s linear;
+}
+.up-next-actions { display: flex; gap: 0.5rem; }
 .up-next-play {
-  background: var(--color-brand-accent); color: var(--color-brand-black);
-  font-family: var(--font-body); font-size: 0.875rem; font-weight: 700;
-  border: none; border-radius: 3px; padding: 0.6rem 1.5rem; cursor: pointer;
-  transition: opacity 0.15s;
+  flex: 1; background: var(--color-brand-accent); color: #000;
+  font-family: var(--font-body); font-size: 0.8rem; font-weight: 700;
+  border: none; border-radius: 4px; padding: 0.45rem 0;
+  cursor: pointer; transition: opacity 0.15s;
 }
 .up-next-play:hover { opacity: 0.88; }
 .up-next-cancel {
-  background: transparent; border: 1px solid rgba(255,255,255,0.25);
-  color: var(--color-brand-light); font-family: var(--font-body); font-size: 0.875rem;
-  border-radius: 3px; padding: 0.6rem 1.25rem; cursor: pointer; transition: border-color 0.15s;
+  background: transparent; border: 1px solid rgba(255,255,255,0.2);
+  color: rgba(255,255,255,0.7); font-family: var(--font-body);
+  font-size: 0.8rem; border-radius: 4px; padding: 0.45rem 0.75rem;
+  cursor: pointer; transition: border-color 0.15s, color 0.15s;
 }
-.up-next-cancel:hover { border-color: rgba(255,255,255,0.6); }
-
-/* ── Speed selector ─────────────────────────────────────────── */
-.speed-wrap {
-  position: absolute; bottom: 4.5rem; left: 1rem; z-index: 10;
-}
-.speed-btn {
-  background: rgba(0,0,0,0.72); border: 1px solid rgba(255,255,255,0.3);
-  color: var(--color-brand-white); font-family: var(--font-body);
-  font-size: 0.8125rem; font-weight: 600; letter-spacing: 0.04em;
-  padding: 0.5rem 0.75rem; border-radius: 3px; cursor: pointer;
-  backdrop-filter: blur(4px); transition: background 0.15s;
-}
-.speed-btn:hover { background: rgba(255,255,255,0.12); }
-.speed-menu {
-  position: absolute; bottom: calc(100% + 6px); left: 0;
-  background: var(--color-brand-dark); border: 1px solid var(--color-brand-border);
-  border-radius: 4px; overflow: hidden; min-width: 90px;
-}
-.speed-option {
-  display: block; width: 100%; padding: 0.45rem 0.85rem;
-  font-family: var(--font-body); font-size: 0.8125rem; font-weight: 500;
-  color: var(--color-brand-light); background: none; border: none;
-  cursor: pointer; text-align: left; transition: background 0.1s;
-}
-.speed-option:hover { background: var(--color-brand-surface); }
-.speed-option--active { color: var(--color-brand-accent); font-weight: 700; }
+.up-next-cancel:hover { border-color: rgba(255,255,255,0.5); color: #fff; }
 
 /* ── Episode sidebar enhancements ───────────────────────────── */
 .watch-ep-thumb {

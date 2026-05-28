@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { after } from "next/server";
 import { cookies } from "next/headers";
 import Link from "next/link";
+import { Fragment } from "react";
 import "./watch.css";
 import { ChevronLeft, ChevronRight, Lock, Check } from "lucide-react";
 import type { Metadata } from "next";
@@ -47,10 +48,12 @@ async function getWork(slug: string) {
         select: { id: true, slug: true },
         take: 1,
       },
-      // EPISODE: parent series + all siblings for sidebar
+      // EPISODE: parent series controls access, intro timings, and content advisory
       parent: {
         select: {
           id: true, slug: true, title: true, requiresAuth: true,
+          introStart: true, introEnd: true, creditsStart: true,
+          contentRating: true, contentDescriptors: true,
           episodes: {
             where: { status: "PUBLISHED" },
             orderBy: [{ seasonNumber: "asc" }, { episodeNumber: "asc" }, { order: "asc" }],
@@ -193,9 +196,17 @@ export default async function WatchPage({ params, searchParams }: Props) {
     ? { email: session.user.email, name: session.user.name ?? null }
     : undefined;
 
-  // Content warning — show when work has rating or descriptors and player can play
+  // Episodes inherit intro timings + content advisory from parent series
+  const introStart      = isEpisode ? (work.parent?.introStart      ?? null) : work.introStart;
+  const introEnd        = isEpisode ? (work.parent?.introEnd        ?? null) : work.introEnd;
+  const creditsStart    = isEpisode ? (work.parent?.creditsStart    ?? null) : work.creditsStart;
+  const contentRating   = isEpisode ? (work.parent?.contentRating   ?? null) : work.contentRating;
+  const contentDescriptors = isEpisode
+    ? (work.parent?.contentDescriptors ?? [])
+    : work.contentDescriptors;
+
   const hasContentWarning =
-    !isEmbed && (!!work.contentRating || work.contentDescriptors.length > 0);
+    !isEmbed && (!!contentRating || contentDescriptors.length > 0);
 
   // Analytics
   if (isTrailer) {
@@ -248,12 +259,12 @@ export default async function WatchPage({ params, searchParams }: Props) {
           {/* ── Main column ── */}
           <div className="watch-main">
 
-            {/* Content warning overlay — gated by sessionStorage so only shows once */}
+            {/* Content warning overlay — uses parent series values for episodes */}
             {hasContentWarning && (
               <ContentWarningOverlay
-                workId={work.id}
-                contentRating={work.contentRating}
-                contentDescriptors={work.contentDescriptors}
+                workId={isEpisode && work.parent ? work.parent.id : work.id}
+                contentRating={contentRating}
+                contentDescriptors={contentDescriptors}
                 onDismiss={() => {}}
               />
             )}
@@ -279,9 +290,9 @@ export default async function WatchPage({ params, searchParams }: Props) {
                     durationMinutes={work.duration ?? undefined}
                     cta={ctaProp}
                     ctaUser={ctaUser}
-                    introStart={work.introStart}
-                    introEnd={work.introEnd}
-                    creditsStart={work.creditsStart}
+                    introStart={introStart}
+                    introEnd={introEnd}
+                    creditsStart={creditsStart}
                   />
                 ) : (
                   <VideoPlayer
@@ -292,9 +303,9 @@ export default async function WatchPage({ params, searchParams }: Props) {
                     durationMinutes={work.duration ?? undefined}
                     cta={ctaProp}
                     ctaUser={ctaUser}
-                    introStart={work.introStart}
-                    introEnd={work.introEnd}
-                    creditsStart={work.creditsStart}
+                    introStart={introStart}
+                    introEnd={introEnd}
+                    creditsStart={creditsStart}
                   />
                 )
               ) : (
@@ -359,9 +370,9 @@ export default async function WatchPage({ params, searchParams }: Props) {
               <p className="watch-ep-sidebar-label">Episodes</p>
               <ol className="watch-ep-list">
                 {Array.from(seasonGroups.entries()).map(([season, eps]) => (
-                  <>
+                  <Fragment key={season ?? "no-season"}>
                     {hasMultipleSeasons && (
-                      <li key={`season-${season}`} className="watch-season-head" aria-hidden="true">
+                      <li className="watch-season-head" aria-hidden="true">
                         {season != null ? `Season ${season}` : "Episodes"}
                       </li>
                     )}
@@ -437,7 +448,7 @@ export default async function WatchPage({ params, searchParams }: Props) {
                         </li>
                       );
                     })}
-                  </>
+                  </Fragment>
                 ))}
               </ol>
             </aside>
