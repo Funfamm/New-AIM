@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { createPowerAdmin } from "@/lib/actions/admin-security";
+import { PasswordInput } from "@/components/password-input";
 
 const INIT = { ok: false as boolean, error: undefined as string | undefined, message: undefined as string | undefined };
 
@@ -35,13 +36,13 @@ export default function CreateAdminForm() {
         </div>
         <div className="sec-field">
           <label className="sec-field-label">Password (min 6 chars)</label>
-          <input
+          <PasswordInput
             name="password"
-            type="password"
+            inputClassName="sec-field-input"
             required
             minLength={6}
             placeholder="Min 6 characters"
-            className="sec-field-input"
+            autoComplete="new-password"
             disabled={pending}
           />
         </div>

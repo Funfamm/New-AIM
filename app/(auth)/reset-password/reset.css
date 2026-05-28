@@ -137,3 +137,41 @@
   font-weight: 500;
 }
 .auth-resend a:hover { text-decoration: underline; }
+
+/* ── Inline link-button (looks like <a>) ── */
+.auth-link-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-brand-accent);
+  text-decoration: none;
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 500;
+  padding: 0;
+}
+.auth-link-btn:hover { text-decoration: underline; }
+
+/* ── Password toggle inside reset card ── */
+.pw-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.pw-field-input {
+  padding-right: 2.75rem;
+}
+.pw-toggle {
+  position: absolute;
+  right: 0.75rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--color-brand-muted);
+  padding: 0;
+  display: flex;
+  align-items: center;
+  transition: color 0.15s;
+  line-height: 1;
+}
+.pw-toggle:hover { color: var(--color-brand-light); }

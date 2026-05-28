@@ -138,7 +138,7 @@ export async function forgotPassword(formData: FormData) {
     const code = String(randomInt(100000, 1000000));
     const tokenHash = createHash("sha256").update(code).digest("hex");
 
-    const expires = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
+    const expires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
 
     await prisma.passwordResetToken.create({
       data: { tokenHash, email, expires },
@@ -166,6 +166,40 @@ export async function forgotPassword(formData: FormData) {
   // Always redirect to the reset page with the email pre-filled.
   // Anti-enumeration preserved: same redirect whether the user exists or not.
   redirect(`/reset-password?email=${encodeURIComponent(email)}`);
+}
+
+// ── Verify Reset Code (Step 2) ─────────────────────────────────
+// Checks if a 6-digit code is valid without marking it used.
+// Returns a result object — does NOT redirect.
+// The code is re-validated on final password submission for safety.
+export async function verifyResetCode(
+  _prev: { valid: boolean; error?: string } | null,
+  formData: FormData,
+): Promise<{ valid: boolean; error?: string }> {
+  const code  = (formData.get("code") as string)?.trim();
+  const email = (formData.get("email") as string)?.toLowerCase().trim();
+
+  if (!code || !email || !/^\d{6}$/.test(code)) {
+    return { valid: false, error: "Please enter a valid 6-digit code." };
+  }
+
+  const tokenHash = createHash("sha256").update(code).digest("hex");
+
+  const record = await prisma.passwordResetToken.findUnique({
+    where: { tokenHash },
+  });
+
+  const isValid =
+    record &&
+    !record.used &&
+    record.email === email &&
+    record.expires > new Date();
+
+  if (!isValid) {
+    return { valid: false, error: "This code is invalid or has expired. Please request a new one." };
+  }
+
+  return { valid: true };
 }
 
 // ── Reset Password ─────────────────────────────────────────────

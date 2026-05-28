@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { updateAdminDisplayName, updateAdminPassword } from "@/lib/actions/admin-security";
+import { PasswordInput } from "@/components/password-input";
 
 // ── Display Name Form ─────────────────────────────────────────
 export function DisplayNameForm({ currentName }: { currentName: string }) {
@@ -49,24 +50,24 @@ export function PasswordForm() {
     <form action={action} className="sec-mgmt-form">
       <div className="sec-field">
         <label className="sec-field-label">Current Password</label>
-        <input
+        <PasswordInput
           name="currentPassword"
-          type="password"
+          inputClassName="sec-field-input"
           required
           placeholder="Enter current password"
-          className="sec-field-input"
+          autoComplete="current-password"
           disabled={pending}
         />
       </div>
       <div className="sec-field">
         <label className="sec-field-label">New Password</label>
-        <input
+        <PasswordInput
           name="newPassword"
-          type="password"
+          inputClassName="sec-field-input"
           required
           minLength={6}
           placeholder="Min 6 characters"
-          className="sec-field-input"
+          autoComplete="new-password"
           disabled={pending}
           value={newPw}
           onChange={(e) => setNewPw(e.target.value)}
@@ -77,12 +78,12 @@ export function PasswordForm() {
       </div>
       <div className="sec-field">
         <label className="sec-field-label">Confirm New Password</label>
-        <input
+        <PasswordInput
           name="confirmPassword"
-          type="password"
+          inputClassName="sec-field-input"
           required
           placeholder="Re-enter new password"
-          className="sec-field-input"
+          autoComplete="new-password"
           disabled={pending}
         />
       </div>
