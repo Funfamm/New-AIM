@@ -144,12 +144,19 @@ export async function forgotPassword(formData: FormData) {
       data: { tokenHash, email, expires },
     });
 
-    // Fire-and-forget email — do not await to keep response time neutral
-    sendPasswordResetEmail(email, rawToken).catch(() => {
-      // Swallow silently — neutral response regardless
-    });
+    // Await the email — fire-and-forget was causing Vercel serverless to exit
+    // at the redirect() before sendViaGraph completed, resulting in tokens
+    // created but emails never sent (no log entry at all).
+    // Errors are swallowed so the neutral success response is preserved
+    // (same page shown whether the user exists or not — prevents enumeration).
+    try {
+      await sendPasswordResetEmail(email, rawToken);
+    } catch {
+      // sendEmail already wrote a FAILED log entry with the error detail.
+      // Silently continue — user sees the neutral success page regardless.
+    }
 
-    // Security event — fire-and-forget
+    // Security event — fire-and-forget (non-critical, must not block redirect)
     void writeSecurityEvent({
       userId: user.id, type: "PASSWORD_RESET_REQUESTED", severity: "LOW",
       email,
