@@ -80,7 +80,11 @@ export async function publishAnnouncement(
   // ── In-app (audience-aware) ────────────────────────────────────
   let created = 0;
   if (announcement.sendInApp) {
-    const inAppUserIds = await resolveInAppAudience(announcement.audienceType, targetUserIds);
+    const inAppUserIds = await resolveInAppAudience(
+      announcement.audienceType,
+      targetUserIds,
+      announcement.type as Parameters<typeof resolveInAppAudience>[2],
+    );
     const result = await createBulkInAppNotificationForUserIds(inAppUserIds, {
       type:      announcement.type as NotificationType,
       title:     announcement.title,

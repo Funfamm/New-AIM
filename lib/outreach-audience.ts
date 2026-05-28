@@ -7,22 +7,48 @@ import { prisma } from "@/lib/prisma";
 
 // ── In-app audience ───────────────────────────────────────────
 // Returns user IDs who should receive an in-app notification for the given audience.
-// Filters out users who have inAppNotifications disabled.
+//
+// Content types (NEW_RELEASE, NEW_EPISODE, ANNOUNCEMENT): respects the user's
+// inAppNotifications preference — users who opted out are excluded.
+//
+// System types (ACCOUNT, SECURITY, SYSTEM, WATCH_PROGRESS): always delivered
+// to all active users in the resolved audience, regardless of preferences.
+// These notifications are not content — they're operational and must not be
+// silently dropped because a user turned off "new release" alerts.
+
+type InAppNotificationType = "NEW_RELEASE" | "NEW_EPISODE" | "ANNOUNCEMENT" |
+  "ACCOUNT" | "SECURITY" | "SYSTEM" | "WATCH_PROGRESS";
+
+const CONTENT_GATED_TYPES: InAppNotificationType[] = [
+  "NEW_RELEASE",
+  "NEW_EPISODE",
+  "ANNOUNCEMENT",
+];
 
 export async function resolveInAppAudience(
   audienceType: string,
   specificIds?: string[],
+  notificationType?: InAppNotificationType,
 ): Promise<string[]> {
   const base = { status: "ACTIVE" as const };
-  const inAppOr = [
-    { preferences: null as object | null },
-    { preferences: { inAppNotifications: true } },
-  ];
+
+  // Only apply the inAppNotifications opt-out filter for content types.
+  // System/account/security notifications always reach their audience.
+  const isContentType = !notificationType || CONTENT_GATED_TYPES.includes(notificationType);
+  const inAppOr = isContentType
+    ? [
+        { preferences: null as object | null },
+        { preferences: { inAppNotifications: true } },
+      ]
+    : null; // null = no filter — all active users qualify
+
+  const buildWhere = (extra: object) =>
+    inAppOr ? { ...base, ...extra, OR: inAppOr } : { ...base, ...extra };
 
   if (audienceType === "specific") {
     if (!specificIds || specificIds.length === 0) return [];
     const users = await prisma.user.findMany({
-      where: { ...base, id: { in: specificIds }, OR: inAppOr },
+      where:  buildWhere({ id: { in: specificIds } }),
       select: { id: true },
     });
     return users.map((u) => u.id);
@@ -30,7 +56,7 @@ export async function resolveInAppAudience(
 
   if (audienceType === "admins") {
     const users = await prisma.user.findMany({
-      where: { ...base, role: "ADMIN", OR: inAppOr },
+      where:  buildWhere({ role: "ADMIN" }),
       select: { id: true },
     });
     return users.map((u) => u.id);
@@ -45,7 +71,7 @@ export async function resolveInAppAudience(
     const emails = signups.map((s) => s.email);
     if (emails.length === 0) return [];
     const users = await prisma.user.findMany({
-      where: { ...base, email: { in: emails }, OR: inAppOr },
+      where:  buildWhere({ email: { in: emails } }),
       select: { id: true },
     });
     return users.map((u) => u.id);
@@ -53,7 +79,7 @@ export async function resolveInAppAudience(
 
   if (audienceType === "saved_work") {
     const users = await prisma.user.findMany({
-      where: { ...base, savedWorks: { some: {} }, OR: inAppOr },
+      where:  buildWhere({ savedWorks: { some: {} } }),
       select: { id: true },
     });
     return users.map((u) => u.id);
@@ -61,7 +87,7 @@ export async function resolveInAppAudience(
 
   // "all" or any other value (release_default, episode_default, etc.)
   const users = await prisma.user.findMany({
-    where: { ...base, OR: inAppOr },
+    where:  inAppOr ? { ...base, OR: inAppOr } : base,
     select: { id: true },
   });
   return users.map((u) => u.id);
