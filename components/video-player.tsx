@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { saveWatchProgress } from "@/lib/actions/progress";
 import { beacon } from "@/lib/beacon";
 import NotifyMeCtaOverlay, { type CtaData } from "./notify-cta-overlay";
@@ -20,6 +20,7 @@ type Props = {
 
 const SAVE_INTERVAL_MS   = 10_000;
 const BEACON_INTERVAL_MS = 30_000;
+const CONTROLS_HIDE_MS   = 3_000;
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 
 export default function VideoPlayer({
@@ -27,17 +28,19 @@ export default function VideoPlayer({
   cta, ctaUser,
   introStart, introEnd, creditsStart,
 }: Props) {
-  const videoRef      = useRef<HTMLVideoElement>(null);
-  const lastSaveRef   = useRef<number>(0);
-  const lastBeaconRef = useRef<number>(0);
-  const hasStarted    = useRef(false);
-  const ctaShownRef   = useRef(false);
+  const videoRef        = useRef<HTMLVideoElement>(null);
+  const lastSaveRef     = useRef<number>(0);
+  const lastBeaconRef   = useRef<number>(0);
+  const hasStarted      = useRef(false);
+  const ctaShownRef     = useRef(false);
+  const hideControlsRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [ctaVisible,    setCtaVisible]    = useState(false);
   const [showSkipIntro, setShowSkipIntro] = useState(false);
   const [showSkipCred,  setShowSkipCred]  = useState(false);
   const [speed,         setSpeed]         = useState(1);
   const [speedOpen,     setSpeedOpen]     = useState(false);
+  const [controlsOn,    setControlsOn]    = useState(false);
 
   useEffect(() => {
     if (!cta) return;
@@ -50,10 +53,15 @@ export default function VideoPlayer({
     void saveWatchProgress(workId, seconds, durationMinutes);
   }
 
+  const revealControls = useCallback(() => {
+    setControlsOn(true);
+    if (hideControlsRef.current) clearTimeout(hideControlsRef.current);
+    hideControlsRef.current = setTimeout(() => setControlsOn(false), CONTROLS_HIDE_MS);
+  }, []);
+
   function skipIntro() {
     if (introEnd != null && videoRef.current) {
       videoRef.current.currentTime = introEnd;
-      setShowSkipIntro(false);
     }
   }
 
@@ -69,13 +77,17 @@ export default function VideoPlayer({
 
   useEffect(() => {
     if (!speedOpen) return;
-    const handler = () => setSpeedOpen(false);
-    document.addEventListener("click", handler);
-    return () => document.removeEventListener("click", handler);
+    const h = () => setSpeedOpen(false);
+    document.addEventListener("click", h);
+    return () => document.removeEventListener("click", h);
   }, [speedOpen]);
 
   return (
-    <div className="watch-player-inner">
+    <div
+      className="watch-player-inner"
+      onMouseMove={revealControls}
+      onTouchStart={revealControls}
+    >
       <video
         ref={videoRef}
         src={src}
@@ -111,19 +123,13 @@ export default function VideoPlayer({
             lastSaveRef.current = now;
             save(Math.floor(t));
           }
-
           if (now - lastBeaconRef.current >= BEACON_INTERVAL_MS) {
             lastBeaconRef.current = now;
             beacon("WATCH_PROGRESS", { workId, metadata: { seconds: Math.floor(t), percent: Math.round((t / dur) * 100) } });
           }
 
-          if (introStart != null && introEnd != null) {
-            setShowSkipIntro(t >= introStart && t < introEnd);
-          }
-
-          if (creditsStart != null) {
-            setShowSkipCred(t >= creditsStart && t < dur - 2);
-          }
+          setShowSkipIntro(!!(introStart != null && introEnd != null && t >= introStart && t < introEnd));
+          setShowSkipCred(!!(creditsStart != null && t >= creditsStart && t < dur - 2));
 
           if (cta && !ctaShownRef.current) {
             const remaining = dur - t;
@@ -145,36 +151,47 @@ export default function VideoPlayer({
         }}
       />
 
-      {showSkipIntro && (
-        <button className="skip-btn" onClick={skipIntro} type="button">
-          Skip Intro ›
-        </button>
-      )}
-
-      {showSkipCred && !showSkipIntro && (
-        <button className="skip-btn" onClick={skipCredits} type="button">
-          Skip Credits ›
-        </button>
-      )}
-
-      <div className="speed-wrap" onClick={(e) => e.stopPropagation()}>
-        <button className="speed-btn" type="button" onClick={() => setSpeedOpen((o) => !o)}>
-          {speed === 1 ? "Speed" : `${speed}×`}
-        </button>
-        {speedOpen && (
-          <div className="speed-menu">
-            {SPEEDS.map((s) => (
-              <button
-                key={s}
-                type="button"
-                className={`speed-option${s === speed ? " speed-option--active" : ""}`}
-                onClick={() => applySpeed(s)}
-              >
-                {s === 1 ? "Normal" : `${s}×`}
-              </button>
-            ))}
+      {/* Interaction-activated overlay */}
+      <div className={`player-overlay${controlsOn ? " player-overlay--on" : ""}`}>
+        <div className="player-overlay-bottom">
+          <div className="player-speed" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              className="player-pill player-pill--speed"
+              onClick={() => setSpeedOpen((o) => !o)}
+              aria-label="Playback speed"
+            >
+              {speed === 1 ? "1× Speed" : `${speed}×`}
+            </button>
+            {speedOpen && (
+              <div className="player-speed-menu">
+                {SPEEDS.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    className={`player-speed-opt${s === speed ? " player-speed-opt--active" : ""}`}
+                    onClick={() => applySpeed(s)}
+                  >
+                    {s === 1 ? "Normal" : `${s}×`}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-        )}
+
+          <div className="player-skip-group">
+            {showSkipIntro && (
+              <button type="button" className="player-pill" onClick={skipIntro}>
+                Skip Intro ›
+              </button>
+            )}
+            {showSkipCred && !showSkipIntro && (
+              <button type="button" className="player-pill" onClick={skipCredits}>
+                Skip Credits ›
+              </button>
+            )}
+          </div>
+        </div>
       </div>
 
       {cta && ctaVisible && (
