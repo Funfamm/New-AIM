@@ -8,20 +8,23 @@ import { Fragment } from "react";
 import "./watch.css";
 import { ChevronLeft, ChevronRight, Lock, Check } from "lucide-react";
 import type { Metadata } from "next";
-import EpisodePlayer from "@/components/episode-player";
-import VideoPlayer from "@/components/video-player";
-import ContentWarningOverlay from "@/components/content-warning-overlay";
+import AimPlayer from "@/components/aim-player";
 import { getWatchProgress, getEpisodeProgressMap } from "@/lib/actions/progress";
 import SaveButton from "@/components/save-button";
-import LikeButton from "@/components/like-button";
 import ShareButton from "@/components/share-button";
 import { isWorkSaved } from "@/lib/actions/watchlist";
 import { getWorkLikeState } from "@/lib/actions/likes";
 import { getOrCreateSession, trackEvent } from "@/lib/analytics";
 
+const WORK_TYPE_LABEL: Record<string, string> = {
+  FULL_FILM: "Film", SHORT_FILM: "Short Film", SERIES: "Series",
+  EPISODE: "Episode", TRAILER: "Trailer", COMMERCIAL: "Commercial",
+  BRANDING: "Branding", CAMPAIGN: "Campaign", CASE_STUDY: "Case Study",
+};
+
 type Props = {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ full?: string; trailer?: string }>;
+  searchParams: Promise<{ full?: string; trailer?: string; clipStart?: string; clipEnd?: string }>;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -99,7 +102,10 @@ function fmtDur(min: number) {
 
 export default async function WatchPage({ params, searchParams }: Props) {
   const { slug } = await params;
-  const { full, trailer } = await searchParams;
+  const { full, trailer, clipStart: clipStartStr, clipEnd: clipEndStr } = await searchParams;
+  const clipStartParam = clipStartStr != null ? Math.max(0, Math.floor(Number(clipStartStr))) : null;
+  const clipEndParam   = clipEndStr   != null ? Math.floor(Number(clipEndStr)) : null;
+  const isClipMode     = clipStartParam !== null && clipEndParam !== null;
   const work = await getWork(slug);
 
   const PUBLIC_WATCH_STATUSES = new Set(["PUBLISHED", "UPCOMING", "IN_PRODUCTION"]);
@@ -260,54 +266,46 @@ export default async function WatchPage({ params, searchParams }: Props) {
           {/* ── Main column ── */}
           <div className="watch-main">
 
-            {/* Content warning overlay — all props serializable; no function props */}
-            {hasContentWarning && (
-              <ContentWarningOverlay
-                workId={isEpisode && work.parent ? work.parent.id : work.id}
-                contentRating={contentRating}
-                contentDescriptors={contentDescriptors}
-              />
-            )}
-
             <div className="watch-player-wrap">
-              {videoUrl ? (
-                isEmbed ? (
-                  <iframe
-                    src={embedUrl!}
-                    className="watch-iframe"
-                    allow="fullscreen; picture-in-picture"
-                    allowFullScreen
-                    title={work.title}
-                  />
-                ) : isEpisode ? (
-                  <EpisodePlayer
-                    src={videoUrl}
-                    poster={work.posterUrl ?? undefined}
-                    nextSlug={nextEp?.slug}
-                    nextTitle={nextEp?.title}
-                    workId={work.id}
-                    initialSeconds={initialSeconds}
-                    durationMinutes={work.duration ?? undefined}
-                    cta={ctaProp}
-                    ctaUser={ctaUser}
-                    introStart={introStart}
-                    introEnd={introEnd}
-                    creditsStart={creditsStart}
-                  />
-                ) : (
-                  <VideoPlayer
-                    src={videoUrl}
-                    poster={work.posterUrl ?? undefined}
-                    workId={work.id}
-                    initialSeconds={initialSeconds}
-                    durationMinutes={work.duration ?? undefined}
-                    cta={ctaProp}
-                    ctaUser={ctaUser}
-                    introStart={introStart}
-                    introEnd={introEnd}
-                    creditsStart={creditsStart}
-                  />
-                )
+              {videoUrl && !isEmbed ? (
+                <AimPlayer
+                  src={videoUrl}
+                  poster={work.posterUrl ?? undefined}
+                  workId={work.id}
+                  isTrailer={isTrailer}
+                  workTitle={work.title}
+                  workTypeLabel={isTrailer && work.type !== "TRAILER" ? "Trailer" : (WORK_TYPE_LABEL[work.type] ?? work.type)}
+                  epLabel={epLabel}
+                  backHref={backHref}
+                  currentSlug={slug}
+                  initialSeconds={initialSeconds}
+                  durationMinutes={work.duration ?? undefined}
+                  introStart={introStart}
+                  introEnd={introEnd}
+                  creditsStart={creditsStart}
+                  contentRating={contentRating}
+                  contentDescriptors={contentDescriptors}
+                  nextSlug={nextEp?.slug}
+                  nextTitle={nextEp?.title}
+                  siblings={siblings}
+                  siblingProgress={siblingProgressMap}
+                  isGuest={!session?.user}
+                  initialLiked={isLiked}
+                  initialLikeCount={likeCount}
+                  cta={ctaProp}
+                  ctaUser={ctaUser}
+                  clipStartParam={clipStartParam}
+                  clipEndParam={clipEndParam}
+                  isClipMode={isClipMode}
+                />
+              ) : isEmbed && embedUrl ? (
+                <iframe
+                  src={embedUrl}
+                  className="watch-iframe"
+                  allow="fullscreen; picture-in-picture"
+                  allowFullScreen
+                  title={work.title}
+                />
               ) : (
                 <div className="watch-no-video">
                   <p>This video is unavailable right now. Please try again later.</p>
@@ -323,12 +321,6 @@ export default async function WatchPage({ params, searchParams }: Props) {
                 {session?.user && (
                   <SaveButton workId={work.id} initialSaved={isSaved} className="save-btn save-btn--sm" />
                 )}
-                <LikeButton
-                  workId={work.id} initialLiked={isLiked} likeCount={likeCount}
-                  isGuest={!session?.user}
-                  slug={isEpisode && work.parent ? work.parent.slug : work.slug}
-                  size="sm"
-                />
                 <ShareButton
                   title={isEpisode && work.parent ? work.parent.title : work.title}
                   slug={isEpisode && work.parent ? work.parent.slug : work.slug}
