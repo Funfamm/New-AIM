@@ -175,7 +175,7 @@
 .cw-btn:hover { opacity: 0.88; }
 
 /* ── Player overlays (Skip Intro, Skip Credits, Up Next, Speed) ─ */
-.watch-player-inner { position: relative; }
+/* watch-player-inner is already position:absolute;inset:0 — do not override */
 
 .skip-btn {
   position: absolute; bottom: 4.5rem; right: 1rem; z-index: 10;
