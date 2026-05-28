@@ -161,10 +161,10 @@ export default async function WatchPage({ params, searchParams }: Props) {
     ? siblings[currentIdx + 1] : null;
   const isLastEp    = isEpisode && siblings.length > 0 && currentIdx === siblings.length - 1;
 
-  // Episode progress map for sidebar (one query for all siblings)
+  // Episode progress map for sidebar — plain object, not Map (must be serializable)
   const siblingProgressMap = session?.user && siblings.length > 0
     ? await getEpisodeProgressMap(siblings.map((e) => e.id))
-    : new Map<string, { seconds: number; completed: boolean }>();
+    : {} as Record<string, { seconds: number; completed: boolean }>;
 
   // Notify Me CTA
   let rawCta = work.notifyMeCta?.isEnabled && !isEmbed ? work.notifyMeCta : null;
@@ -378,7 +378,7 @@ export default async function WatchPage({ params, searchParams }: Props) {
                     )}
                     {eps.map((ep) => {
                       const isCurrent = ep.slug === slug;
-                      const prog = siblingProgressMap.get(ep.id);
+                      const prog = siblingProgressMap[ep.id];
                       const pct = prog && ep.duration
                         ? Math.min(100, Math.round((prog.seconds / (ep.duration * 60)) * 100))
                         : 0;

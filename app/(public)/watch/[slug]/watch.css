@@ -179,12 +179,14 @@
 .player-overlay {
   position: absolute; inset: 0; z-index: 10;
   display: flex; flex-direction: column; justify-content: flex-end;
-  pointer-events: none;
+  pointer-events: none; /* always pass clicks through to the video */
   opacity: 0; transition: opacity 0.25s ease;
 }
-.player-overlay--on {
-  opacity: 1; pointer-events: auto;
-}
+.player-overlay--on { opacity: 1; }
+/* Only the interactive elements receive pointer events, never the overlay backdrop */
+.player-pill,
+.player-speed-menu,
+.player-speed-opt { pointer-events: auto; }
 
 /* Bottom row: speed (left) + skip buttons (right) */
 .player-overlay-bottom {
@@ -220,8 +222,10 @@
 .player-speed-menu {
   position: absolute; bottom: calc(100% + 8px); left: 0;
   background: rgba(10,10,10,0.92); border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 8px; overflow: hidden; min-width: 110px;
+  border-radius: 8px; min-width: 110px;
   backdrop-filter: blur(16px);
+  /* Constrain within the player (overflow:hidden parent clips menus that go too high) */
+  max-height: 11rem; overflow-y: auto;
 }
 .player-speed-opt {
   display: block; width: 100%; padding: 0.5rem 1rem;
