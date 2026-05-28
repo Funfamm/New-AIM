@@ -15,33 +15,31 @@ const DESCRIPTOR_LABELS: Record<string, string> = {
   THEMATIC_ELEMENTS: "Thematic Elements",
 };
 
+// Props contain only serializable values — no function props.
+// Plain functions cannot cross the server→client boundary in React Server Components.
 type Props = {
   workId: string;
   contentRating: string | null;
   contentDescriptors: string[];
-  onDismiss: () => void;
 };
 
-export default function ContentWarningOverlay({ workId, contentRating, contentDescriptors, onDismiss }: Props) {
-  // Suppress if already acknowledged in this session
+export default function ContentWarningOverlay({ workId, contentRating, contentDescriptors }: Props) {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
     try {
       if (!sessionStorage.getItem(`aim_cw_${workId}`)) {
         setVisible(true);
-      } else {
-        onDismiss();
       }
+      // already acknowledged this session — stay hidden
     } catch {
       setVisible(true);
     }
-  }, [workId, onDismiss]);
+  }, [workId]);
 
   function handleContinue() {
     try { sessionStorage.setItem(`aim_cw_${workId}`, "1"); } catch {}
     setVisible(false);
-    onDismiss();
   }
 
   if (!visible) return null;

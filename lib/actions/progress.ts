@@ -104,18 +104,21 @@ export async function getResumeEpisodeSlug(
 }
 
 // ── Per-episode progress map (for sidebar) ────────────────────
+// Returns a plain object (not Map) — must be JSON-serializable for Next.js server actions.
 export async function getEpisodeProgressMap(
   workIds: string[],
-): Promise<Map<string, { seconds: number; completed: boolean }>> {
+): Promise<Record<string, { seconds: number; completed: boolean }>> {
   const session = await auth();
-  if (!session?.user?.id || workIds.length === 0) return new Map();
+  if (!session?.user?.id || workIds.length === 0) return {};
 
   const rows = await prisma.watchProgress.findMany({
     where: { userId: session.user.id, workId: { in: workIds } },
     select: { workId: true, seconds: true, completed: true },
   });
 
-  return new Map(rows.map((r) => [r.workId, { seconds: r.seconds, completed: r.completed }]));
+  return Object.fromEntries(
+    rows.map((r) => [r.workId, { seconds: r.seconds, completed: r.completed }])
+  );
 }
 
 // ── Clear all Continue Watching (incomplete) ──────────────────

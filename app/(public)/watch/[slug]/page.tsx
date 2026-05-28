@@ -161,10 +161,10 @@ export default async function WatchPage({ params, searchParams }: Props) {
     ? siblings[currentIdx + 1] : null;
   const isLastEp    = isEpisode && siblings.length > 0 && currentIdx === siblings.length - 1;
 
-  // Episode progress map for sidebar (one query for all siblings)
+  // Episode progress map for sidebar — plain object, not Map (must be serializable)
   const siblingProgressMap = session?.user && siblings.length > 0
     ? await getEpisodeProgressMap(siblings.map((e) => e.id))
-    : new Map<string, { seconds: number; completed: boolean }>();
+    : {} as Record<string, { seconds: number; completed: boolean }>;
 
   // Notify Me CTA
   let rawCta = work.notifyMeCta?.isEnabled && !isEmbed ? work.notifyMeCta : null;
@@ -196,10 +196,11 @@ export default async function WatchPage({ params, searchParams }: Props) {
     ? { email: session.user.email, name: session.user.name ?? null }
     : undefined;
 
-  // Episodes inherit intro timings + content advisory from parent series
-  const introStart      = isEpisode ? (work.parent?.introStart      ?? null) : work.introStart;
-  const introEnd        = isEpisode ? (work.parent?.introEnd        ?? null) : work.introEnd;
-  const creditsStart    = isEpisode ? (work.parent?.creditsStart    ?? null) : work.creditsStart;
+  // Episodes: use episode-level timing first, then fall back to parent series
+  // This lets admins override per-episode (e.g. different season intros)
+  const introStart   = isEpisode ? (work.introStart   ?? work.parent?.introStart   ?? null) : work.introStart;
+  const introEnd     = isEpisode ? (work.introEnd     ?? work.parent?.introEnd     ?? null) : work.introEnd;
+  const creditsStart = isEpisode ? (work.creditsStart ?? work.parent?.creditsStart ?? null) : work.creditsStart;
   const contentRating   = isEpisode ? (work.parent?.contentRating   ?? null) : work.contentRating;
   const contentDescriptors = isEpisode
     ? (work.parent?.contentDescriptors ?? [])
@@ -259,13 +260,12 @@ export default async function WatchPage({ params, searchParams }: Props) {
           {/* ── Main column ── */}
           <div className="watch-main">
 
-            {/* Content warning overlay — uses parent series values for episodes */}
+            {/* Content warning overlay — all props serializable; no function props */}
             {hasContentWarning && (
               <ContentWarningOverlay
                 workId={isEpisode && work.parent ? work.parent.id : work.id}
                 contentRating={contentRating}
                 contentDescriptors={contentDescriptors}
-                onDismiss={() => {}}
               />
             )}
 
@@ -378,7 +378,7 @@ export default async function WatchPage({ params, searchParams }: Props) {
                     )}
                     {eps.map((ep) => {
                       const isCurrent = ep.slug === slug;
-                      const prog = siblingProgressMap.get(ep.id);
+                      const prog = siblingProgressMap[ep.id];
                       const pct = prog && ep.duration
                         ? Math.min(100, Math.round((prog.seconds / (ep.duration * 60)) * 100))
                         : 0;

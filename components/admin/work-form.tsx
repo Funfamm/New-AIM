@@ -388,13 +388,38 @@ export default function WorkForm({ work, workTitle, action, seriesList, error, d
           </div>
         )}
 
-        {/* ── Content Advisory + Player Timings (inherited by episodes from parent series) ── */}
+        {/* ── Episode Player Timing Override ─────────────────── */}
+        {/* Content rating/descriptors are series-level. Intro/credits can be overridden per episode. */}
         {isEpisode && (
-          <div className="form-episode-access-note" style={{ marginTop: "1rem" }}>
-            <span className="form-hint">
-              🎬 Content rating, descriptors, and intro/credits timings are set on the parent Series and apply to all episodes.
+          <>
+            <div className="form-divider" />
+            <div className="form-section-title">Player Timings</div>
+            <span className="form-hint" style={{ display: "block", marginBottom: "0.75rem" }}>
+              Override the series intro/credits timing for this specific episode. Leave blank to use the Series settings (e.g. for a different season intro length).
             </span>
-          </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Intro Start (s)</label>
+                <input type="number" name="introStart" className="form-input"
+                  defaultValue={work?.introStart ?? ""} min={0} placeholder="Series default" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Intro End (s)</label>
+                <input type="number" name="introEnd" className="form-input"
+                  defaultValue={work?.introEnd ?? ""} min={0} placeholder="Series default" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Credits Start (s)</label>
+                <input type="number" name="creditsStart" className="form-input"
+                  defaultValue={work?.creditsStart ?? ""} min={0} placeholder="Series default" />
+              </div>
+            </div>
+            <div className="form-episode-access-note">
+              <span className="form-hint">
+                Content rating and content descriptors are controlled by the parent Series.
+              </span>
+            </div>
+          </>
         )}
 
         {showContentAdvisory && (
