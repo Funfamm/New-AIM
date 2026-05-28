@@ -127,7 +127,8 @@ export default async function WorkDetailPage({ params }: Props) {
 
   const isGuest       = !session?.user;
   const locked        = work.requiresAuth && isGuest;
-  const isPublished   = work.status === "PUBLISHED";
+  // CTA shows for any public status — the page already returns 404 for drafts/archived.
+  const isPublished   = true;
 
   const [isSaved, { isLiked, likeCount }] = await Promise.all([
     !isGuest ? isWorkSaved(work.id) : Promise.resolve(false),
