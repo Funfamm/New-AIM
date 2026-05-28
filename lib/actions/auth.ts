@@ -257,5 +257,5 @@ export async function resetPassword(formData: FormData) {
     actionLabel: "Reset Again",
   }).catch(() => {});
 
-  redirect("/login?error=" + encodeURIComponent("Password updated. Please sign in with your new password."));
+  redirect("/login?success=" + encodeURIComponent("Password updated. Please sign in with your new password."));
 }

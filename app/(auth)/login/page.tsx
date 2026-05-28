@@ -22,7 +22,7 @@ function GoogleIcon() {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string; error?: string }>;
+  searchParams: Promise<{ from?: string; error?: string; success?: string }>;
 }) {
   // Node.js runtime — full DB check via jwt() callback.
   // Purged/suspended users return null here; stale cookie is cleared by Auth.js.
@@ -39,6 +39,9 @@ export default async function LoginPage({
           <p className="auth-sub">Sign in to continue.</p>
         </div>
 
+        {params?.success && (
+          <div className="auth-success">{params.success}</div>
+        )}
         {params?.error && (
           <div className="auth-error">{params.error}</div>
         )}
