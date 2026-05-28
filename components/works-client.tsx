@@ -50,7 +50,7 @@ const TAB_LABELS: Record<Tab, string> = {
 const TAB_TYPES: Record<Tab, string[] | null> = {
   ALL:       null,
   UPCOMING:  null,   // filtered by status, not type
-  FILMS:     ["SHORT_FILM", "FULL_FILM"],
+  FILMS:     ["FULL_FILM"],
   SERIES:    ["SERIES"],
   SHORTS:    ["SHORT_FILM"],
   COMMERCIAL:["COMMERCIAL"],
@@ -72,9 +72,10 @@ const COLLECTION_TO_TAB: Record<string, Tab> = {
   campaigns:   "CAMPAIGNS",
 };
 
-// Rails shown in ALL view — SHORTS omitted (subset of FILMS)
+// Rails shown in ALL view — every public content type gets its own section
 const RAILS: { key: Tab; title: string; eyebrow: string }[] = [
-  { key: "FILMS",      title: "Films",        eyebrow: "— Short & Feature" },
+  { key: "FILMS",      title: "Films",        eyebrow: "— Feature Length" },
+  { key: "SHORTS",     title: "Shorts",       eyebrow: "— Short Films" },
   { key: "SERIES",     title: "Series",       eyebrow: "— Multi-Episode" },
   { key: "COMMERCIAL", title: "Commercial",   eyebrow: "— Branded Content" },
   { key: "BRANDING",   title: "Branding",     eyebrow: "— Visual Identity" },

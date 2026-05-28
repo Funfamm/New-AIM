@@ -34,10 +34,9 @@ export function DisplayNameForm({ currentName }: { currentName: string }) {
 // ── Password strength grader ──────────────────────────────────
 function strengthLabel(pw: string): { label: string; cls: string } {
   if (pw.length === 0) return { label: "", cls: "" };
-  if (pw.length < 6)   return { label: "🔴 Too short", cls: "sec-pw-str--weak" };
-  if (pw.length < 8)   return { label: "Acceptable",   cls: "sec-pw-str--ok" };
-  if (pw.length < 12)  return { label: "🟡 Good",       cls: "sec-pw-str--good" };
-  return                      { label: "🟢 Strong",     cls: "sec-pw-str--strong" };
+  if (pw.length < 8)   return { label: "Too short", cls: "sec-pw-str--weak" };
+  if (pw.length < 12)  return { label: "Acceptable",   cls: "sec-pw-str--ok" };
+  return                      { label: "Strong",     cls: "sec-pw-str--strong" };
 }
 
 // ── Password Form ─────────────────────────────────────────────
@@ -65,8 +64,8 @@ export function PasswordForm() {
           name="newPassword"
           inputClassName="sec-field-input"
           required
-          minLength={6}
-          placeholder="Min 6 characters"
+          minLength={8}
+          placeholder="Min 8 characters"
           autoComplete="new-password"
           disabled={pending}
           value={newPw}

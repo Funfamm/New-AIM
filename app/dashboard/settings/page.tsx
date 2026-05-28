@@ -238,7 +238,7 @@ export default async function SettingsPage({ searchParams }: Props) {
                 <div className="settings-toggle-row settings-toggle-row--plain">
                   <div>
                     <p className="settings-toggle-label">Password</p>
-                    <p className="settings-toggle-desc">Reset via email link</p>
+                    <p className="settings-toggle-desc">Reset via verification code</p>
                   </div>
                   <Link href="/forgot-password" className="settings-text-link">Change</Link>
                 </div>
