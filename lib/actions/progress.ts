@@ -60,6 +60,64 @@ export async function resetWatchProgress(workId: string) {
   revalidatePath("/dashboard");
 }
 
+// ── Smart series resume: last-watched episode for a series ───
+// Returns the slug of the last episode the user was watching (not completed),
+// or the first incomplete episode, or null (fall back to Episode 1).
+export async function getResumeEpisodeSlug(
+  seriesId: string,
+  episodeSlugs: string[],  // ordered list: s1e1 … last
+): Promise<string | null> {
+  const session = await auth();
+  if (!session?.user?.id || episodeSlugs.length === 0) return null;
+
+  // Fetch all episodes of this series that the user has progress on
+  const episodeWorks = await prisma.work.findMany({
+    where: { parentId: seriesId, slug: { in: episodeSlugs } },
+    select: { id: true, slug: true },
+  });
+  const workIds = episodeWorks.map((e) => e.id);
+  if (workIds.length === 0) return null;
+
+  const progressRows = await prisma.watchProgress.findMany({
+    where: { userId: session.user.id, workId: { in: workIds } },
+    select: { workId: true, seconds: true, completed: true, updatedAt: true },
+    orderBy: { updatedAt: "desc" },
+  });
+
+  const progressByWorkId = new Map(progressRows.map((r) => [r.workId, r]));
+  const slugById = new Map(episodeWorks.map((e) => [e.id, e.slug]));
+
+  // Return most recently watched in-progress episode
+  const inProgress = progressRows.find((r) => !r.completed && r.seconds > 0);
+  if (inProgress) return slugById.get(inProgress.workId) ?? null;
+
+  // All watched — find first unwatched episode in order
+  for (const slug of episodeSlugs) {
+    const ep = episodeWorks.find((e) => e.slug === slug);
+    if (!ep) continue;
+    const prog = progressByWorkId.get(ep.id);
+    if (!prog || (!prog.completed && prog.seconds === 0)) return slug;
+  }
+
+  // All completed — return first episode so user can watch again
+  return episodeSlugs[0];
+}
+
+// ── Per-episode progress map (for sidebar) ────────────────────
+export async function getEpisodeProgressMap(
+  workIds: string[],
+): Promise<Map<string, { seconds: number; completed: boolean }>> {
+  const session = await auth();
+  if (!session?.user?.id || workIds.length === 0) return new Map();
+
+  const rows = await prisma.watchProgress.findMany({
+    where: { userId: session.user.id, workId: { in: workIds } },
+    select: { workId: true, seconds: true, completed: true },
+  });
+
+  return new Map(rows.map((r) => [r.workId, { seconds: r.seconds, completed: r.completed }]));
+}
+
 // ── Clear all Continue Watching (incomplete) ──────────────────
 export async function clearContinueWatching() {
   const session = await auth();

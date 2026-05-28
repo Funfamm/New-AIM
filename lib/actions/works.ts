@@ -45,6 +45,11 @@ function parseFormData(formData: FormData) {
     parentId:     (formData.get("parentId") as string) || null,
     episodeNumber: formData.get("episodeNumber") ? Number(formData.get("episodeNumber")) : null,
     seasonNumber:  formData.get("seasonNumber")  ? Number(formData.get("seasonNumber"))  : null,
+    introStart:   formData.get("introStart")   ? Number(formData.get("introStart"))   : null,
+    introEnd:     formData.get("introEnd")     ? Number(formData.get("introEnd"))     : null,
+    creditsStart: formData.get("creditsStart") ? Number(formData.get("creditsStart")) : null,
+    contentRating:      (formData.get("contentRating") as string) || null,
+    contentDescriptors: (formData.getAll("contentDescriptors") as string[]).filter(Boolean),
   };
 }
 

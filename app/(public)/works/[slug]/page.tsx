@@ -17,6 +17,7 @@ import { getWorkLikeState } from "@/lib/actions/likes";
 import { getOrCreateSession, trackEvent } from "@/lib/analytics";
 import SeriesTrailerPlayer from "@/components/series-trailer-player";
 import { getWorkCtaState } from "@/lib/work-cta";
+import { getResumeEpisodeSlug } from "@/lib/actions/progress";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -139,6 +140,17 @@ export default async function WorkDetailPage({ params }: Props) {
   const episodeCount = work.type === "SERIES" ? work.episodes.length : null;
   const isSeries     = work.type === "SERIES";
 
+  // Smart resume: find last-watched / next unwatched episode for this series
+  const allEpSlugs = isSeries ? work.episodes.map((e) => e.slug) : [];
+  const resumeSlug = isSeries && !isGuest && allEpSlugs.length > 0
+    ? await getResumeEpisodeSlug(work.id, allEpSlugs)
+    : firstEp?.slug ?? null;
+
+  // Detect if the entire series is completed (all episodes watched)
+  const allEpisodesCompleted =
+    isSeries && episodeCount != null && episodeCount > 0 && resumeSlug === allEpSlugs[0] &&
+    !isGuest && allEpSlugs.length > 0;
+
   return (
     <main className="detail-page">
 
@@ -244,8 +256,12 @@ export default async function WorkDetailPage({ params }: Props) {
                     requiresAuth: work.requiresAuth,
                     requiresLoginToViewTrailer: work.requiresLoginToViewTrailer ?? undefined,
                     isGuest: isGuest,
-                    firstEpisodeSlug: firstEp?.slug,
+                    firstEpisodeSlug: resumeSlug,
                   });
+                  // Override label for Watch Again (user finished whole series)
+                  if (allEpisodesCompleted && cta.primaryLabel === "Watch Series") {
+                    cta.primaryLabel = "Watch Again";
+                  }
                   return (
                     <>
                       {/* Primary CTA */}

@@ -35,6 +35,8 @@ type WorkData = {
   requiresAuth: boolean; requiresLoginToViewTrailer: boolean;
   featured: boolean; showOnHome: boolean; order: number;
   parentId: string | null; episodeNumber: number | null; seasonNumber: number | null;
+  introStart: number | null; introEnd: number | null; creditsStart: number | null;
+  contentRating: string | null; contentDescriptors: string[];
 };
 
 type Props = {
@@ -60,17 +62,18 @@ const GENRES = [
 export default function WorkForm({ work, workTitle, action, seriesList, error, defaultType, defaultParentId }: Props) {
   const [type, setType] = useState<WorkType>(work?.type ?? defaultType ?? "SHORT_FILM");
 
-  const showFilmMeta   = ["SHORT_FILM", "FULL_FILM", "SERIES", "TRAILER"].includes(type);
-  const showDuration   = !["SERIES", ...CLIENT_TYPES].includes(type);
-  const showDirector   = ["SHORT_FILM", "FULL_FILM", "SERIES"].includes(type);
-  const showTrailerUrl = ["SHORT_FILM", "FULL_FILM", "SERIES"].includes(type);
-  const showVideoUrl   = type !== "SERIES";
-  const showTeaserUrl  = type === "COMMERCIAL";
-  const isEpisode      = type === "EPISODE";
-  const isClientType   = CLIENT_TYPES.includes(type);
-  const showDeliverables = ["BRANDING", "CAMPAIGN", "CASE_STUDY"].includes(type);
-  const showCaseStudy  = ["BRANDING", "CAMPAIGN", "CASE_STUDY"].includes(type);
-  const showGallery    = ["BRANDING", "CAMPAIGN", "CASE_STUDY"].includes(type);
+  const showFilmMeta      = ["SHORT_FILM", "FULL_FILM", "SERIES", "TRAILER"].includes(type);
+  const showDuration      = !["SERIES", ...CLIENT_TYPES].includes(type);
+  const showDirector      = ["SHORT_FILM", "FULL_FILM", "SERIES"].includes(type);
+  const showTrailerUrl    = ["SHORT_FILM", "FULL_FILM", "SERIES"].includes(type);
+  const showVideoUrl      = type !== "SERIES";
+  const showTeaserUrl     = type === "COMMERCIAL";
+  const isEpisode         = type === "EPISODE";
+  const isClientType      = CLIENT_TYPES.includes(type);
+  const showDeliverables  = ["BRANDING", "CAMPAIGN", "CASE_STUDY"].includes(type);
+  const showCaseStudy     = ["BRANDING", "CAMPAIGN", "CASE_STUDY"].includes(type);
+  const showGallery       = ["BRANDING", "CAMPAIGN", "CASE_STUDY"].includes(type);
+  const showPlayerTimings = ["EPISODE", "FULL_FILM", "SHORT_FILM"].includes(type);
 
   const videoLabel =
     type === "TRAILER"  ? "Trailer Video URL" :
@@ -381,6 +384,86 @@ export default function WorkForm({ work, workTitle, action, seriesList, error, d
               </label>
             )}
           </div>
+        )}
+
+        {/* ── Content Advisory ─────────────────────────────── */}
+        <div className="form-divider" />
+        <div className="form-section-title">Content Advisory</div>
+
+        <div className="form-row">
+          <div className="form-group">
+            <label className="form-label">Content Rating</label>
+            <select name="contentRating" className="form-input" defaultValue={work?.contentRating ?? ""}>
+              <option value="">Not Rated / Not Set</option>
+              <option value="G">G — General Audiences</option>
+              <option value="PG">PG — Parental Guidance</option>
+              <option value="PG-13">PG-13 — Parents Strongly Cautioned</option>
+              <option value="R">R — Restricted</option>
+              <option value="NC-17">NC-17 — Adults Only</option>
+              <option value="TV-G">TV-G — All Ages</option>
+              <option value="TV-PG">TV-PG — Parental Guidance</option>
+              <option value="TV-14">TV-14 — Parents Strongly Cautioned</option>
+              <option value="TV-MA">TV-MA — Mature Audiences</option>
+              <option value="NR">NR — Not Rated</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">Content Descriptors</label>
+          <div className="form-check-grid">
+            {[
+              ["VIOLENCE",         "Violence"],
+              ["STRONG_LANGUAGE",  "Strong Language"],
+              ["MILD_LANGUAGE",    "Mild Language"],
+              ["NUDITY",           "Nudity"],
+              ["SEXUAL_CONTENT",   "Sexual Content"],
+              ["DRUG_USE",         "Drug Use"],
+              ["ALCOHOL",          "Alcohol Use"],
+              ["SMOKING",          "Smoking"],
+              ["FRIGHTENING",      "Frightening Scenes"],
+              ["THEMATIC_ELEMENTS","Thematic Elements"],
+            ].map(([val, label]) => (
+              <label key={val} className="form-check">
+                <input
+                  type="checkbox"
+                  name="contentDescriptors"
+                  value={val}
+                  defaultChecked={work?.contentDescriptors?.includes(val) ?? false}
+                />
+                <span>{label}</span>
+              </label>
+            ))}
+          </div>
+          <span className="form-hint">Checked items appear in the content warning shown to viewers before they watch.</span>
+        </div>
+
+        {/* ── Player Timings (episodes + films only) ─────── */}
+        {showPlayerTimings && (
+          <>
+            <div className="form-divider" />
+            <div className="form-section-title">Player Timings</div>
+            <span className="form-hint" style={{ display: "block", marginBottom: "0.75rem" }}>
+              All values in seconds. Leave blank to disable that button.
+            </span>
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Intro Start (s)</label>
+                <input type="number" name="introStart" className="form-input"
+                  defaultValue={work?.introStart ?? ""} min={0} placeholder="e.g. 30" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Intro End (s) — Skip Intro seeks here</label>
+                <input type="number" name="introEnd" className="form-input"
+                  defaultValue={work?.introEnd ?? ""} min={0} placeholder="e.g. 105" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Credits Start (s)</label>
+                <input type="number" name="creditsStart" className="form-input"
+                  defaultValue={work?.creditsStart ?? ""} min={0} placeholder="e.g. 2520" />
+              </div>
+            </div>
+          </>
         )}
 
         {/* Sort Order — hidden for episodes (order is season/episode number) */}
