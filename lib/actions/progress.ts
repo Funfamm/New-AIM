@@ -31,10 +31,12 @@ export async function getWatchProgress(workId: string): Promise<number> {
 
   const record = await prisma.watchProgress.findUnique({
     where: { userId_workId: { userId: session.user.id, workId } },
-    select: { seconds: true },
+    select: { seconds: true, completed: true },
   });
 
-  return record?.seconds ?? 0;
+  // Completed content always restarts from the beginning
+  if (!record || record.completed) return 0;
+  return record.seconds;
 }
 
 // ── Remove one item from Continue Watching ────────────────────
