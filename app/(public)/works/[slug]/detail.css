@@ -275,8 +275,23 @@
   /* Hide portrait poster for series — sticky player takes its role */
   .detail-poster-wrap--mobile-hide { display: none; }
 
+  /* On mobile, make detail-info a flex column so we can reorder children.
+     CTAs (Watch Again / Watch Trailer) move directly under the genre line,
+     before title and metadata — matching the spec layout. */
+  .detail-info {
+    display: flex;
+    flex-direction: column;
+  }
+  .detail-genre         { order: 1; }
+  .detail-actions       { order: 2; flex-direction: column; gap: 0.6rem; }
+  .detail-title         { order: 3; }
+  .detail-meta          { order: 4; }
+  .detail-synopsis      { order: 5; }
+  .detail-status-badge  { order: 6; }
+  .detail-engagement    { order: 7; }
+  .detail-auth-note     { order: 8; }
+
   /* CTA buttons stack full-width on portrait for clean tap targets */
-  .detail-actions { flex-direction: column; gap: 0.6rem; }
   .detail-btn-primary,
   .detail-btn-ghost { width: 100%; justify-content: center; }
 }

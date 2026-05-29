@@ -384,9 +384,13 @@ export async function purgeUser(
 
   // ── Hard delete in dependency order ───────────────────────────
   await prisma.$transaction(async (tx) => {
-    // 1. Clear Auth.js linked accounts + sessions (sessions no-op for JWT, done for completeness)
+    // 1. Clear Auth.js linked accounts + sessions + refresh tokens.
+    //    RefreshToken deletion is critical: without it, a purged user's 30-day
+    //    refresh token keeps renewing their 15-min access token, keeping them
+    //    "logged in" for up to 30 days after purge.
     await tx.account.deleteMany({ where: { userId } });
     await tx.session.deleteMany({ where: { userId } });
+    await tx.refreshToken.deleteMany({ where: { userId } });
 
     // 2. Clear password reset tokens (by email — plain string, not FK)
     await tx.passwordResetToken.deleteMany({ where: { email: emailSnapshot } });

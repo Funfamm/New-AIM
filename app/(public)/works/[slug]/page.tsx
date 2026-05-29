@@ -246,7 +246,7 @@ export default async function WorkDetailPage({ params }: Props) {
                 )}
               </div>
 
-              {work.description && <SynopsisToggle text={work.description} />}
+              {work.description && <div className="detail-synopsis"><SynopsisToggle text={work.description} /></div>}
 
               {/* Status badge — upcoming / in-production works */}
               {STATUS_BADGE[work.status] && (

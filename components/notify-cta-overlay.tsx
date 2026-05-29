@@ -67,7 +67,17 @@ export default function NotifyMeCtaOverlay({ cta, onDismiss, ctaUser }: Props) {
   }
 
   return (
-    <div className="ncta-overlay" role="dialog" aria-label="Stay in the loop">
+    // stopPropagation prevents touch/click events on form inputs from bubbling
+    // to the AimPlayer wrapper's onTouchStart={reveal}, which was hijacking
+    // taps on Name/Email fields and showing the player overlay instead of
+    // focusing the input.
+    <div
+      className="ncta-overlay"
+      role="dialog"
+      aria-label="Stay in the loop"
+      onClick={(e) => e.stopPropagation()}
+      onTouchStart={(e) => e.stopPropagation()}
+    >
       <button className="ncta-close" onClick={onDismiss} aria-label="Dismiss">
         <X size={13} />
       </button>
