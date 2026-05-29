@@ -76,7 +76,8 @@ async function getWork(slug: string) {
     where: { slug },
     select: {
       id: true, slug: true, title: true, type: true, status: true, commentsEnabled: true,
-      description: true, posterUrl: true, trailerUrl: true, videoUrl: true,
+      description: true, posterUrl: true, heroMobileUrl: true, heroDesktopUrl: true,
+      trailerUrl: true, videoUrl: true,
       year: true, duration: true, genre: true, genres: true, director: true,
       requiresAuth: true, requiresLoginToViewTrailer: true,
       episodes: {
@@ -152,6 +153,10 @@ export default async function WorkDetailPage({ params }: Props) {
     isSeries && episodeCount != null && episodeCount > 0 && resumeSlug === allEpSlugs[0] &&
     !isGuest && allEpSlugs.length > 0;
 
+  // Image fallback chain: prefer heroMobileUrl/heroDesktopUrl; fall back to posterUrl
+  const portraitImg = work.heroMobileUrl ?? work.posterUrl;
+  const backdropImg = work.heroDesktopUrl ?? work.heroMobileUrl ?? work.posterUrl;
+
   return (
     <main className="detail-page">
 
@@ -160,7 +165,7 @@ export default async function WorkDetailPage({ params }: Props) {
           Renders before the hero so it sticks under the fixed nav (top: 68px).  */}
       {isSeries && (
         <SeriesTrailerPlayer
-          posterUrl={work.posterUrl}
+          posterUrl={portraitImg}
           trailerUrl={work.trailerUrl}
           title={work.title}
         />
@@ -169,10 +174,11 @@ export default async function WorkDetailPage({ params }: Props) {
       {/* ── Hero ──────────────────────────────────────── */}
       <section className="detail-hero">
 
-        {/* Ambient backdrop */}
-        {work.posterUrl && (
+        {/* Ambient backdrop — prefer wide desktop image */}
+        {backdropImg && (
           <div className="detail-backdrop" aria-hidden="true">
-            <img src={work.posterUrl} alt="" className="detail-backdrop-img" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={backdropImg} alt="" className="detail-backdrop-img" />
             <div className="detail-backdrop-gradient" />
           </div>
         )}
@@ -184,11 +190,11 @@ export default async function WorkDetailPage({ params }: Props) {
 
           <div className="detail-layout">
 
-            {/* Portrait poster — hidden on mobile for series (replaced by sticky player) */}
+            {/* Portrait poster — prefer heroMobileUrl (9:16), fallback to posterUrl */}
             <div className={`detail-poster-wrap${isSeries ? " detail-poster-wrap--mobile-hide" : ""}`}>
-              {work.posterUrl ? (
+              {portraitImg ? (
                 <Image
-                  src={work.posterUrl}
+                  src={portraitImg}
                   alt={work.title}
                   fill
                   className="detail-poster"

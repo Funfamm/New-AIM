@@ -243,37 +243,56 @@ export default function WorkForm({ work, workTitle, action, seriesList, error, d
           </>
         )}
 
-        {/* Images */}
-        <div className="form-group">
-          <label className="form-label">Poster / Card Image URL</label>
-          <input type="url" name="posterUrl" className="form-input"
-            defaultValue={work?.posterUrl ?? ""} placeholder="https://…" />
-          <span className="form-hint">Portrait image used on cards, detail page, and as universal fallback.</span>
-        </div>
-
+        {/* ── Images — two main fields, advanced overrides collapsed ── */}
         {!isEpisode && (
           <>
             <div className="form-group">
-              <label className="form-label">Mobile Hero Image URL</label>
+              <label className="form-label">Mobile Image URL</label>
               <input type="url" name="heroMobileUrl" className="form-input"
                 defaultValue={work?.heroMobileUrl ?? ""} placeholder="https://…" />
-              <span className="form-hint">Recommended 9:16 portrait image for phone hero sections.</span>
+              <span className="form-hint">Recommended 9:16 portrait. Used for mobile hero sections, cards, and posters.</span>
             </div>
             <div className="form-group">
-              <label className="form-label">Desktop Hero Image URL</label>
+              <label className="form-label">Desktop Image URL</label>
               <input type="url" name="heroDesktopUrl" className="form-input"
                 defaultValue={work?.heroDesktopUrl ?? ""} placeholder="https://…" />
-              <span className="form-hint">Recommended 16:9 or wider cinematic image for desktop hero sections.</span>
+              <span className="form-hint">Recommended 16:9 or wider cinematic. Used for desktop hero sections and wide previews.</span>
             </div>
           </>
         )}
+        {isEpisode && (
+          <div className="form-group">
+            <label className="form-label">Episode Image URL</label>
+            <input type="url" name="heroMobileUrl" className="form-input"
+              defaultValue={work?.heroMobileUrl ?? ""} placeholder="https://…" />
+            <span className="form-hint">Thumbnail or still for this episode. Falls back to series images if empty.</span>
+          </div>
+        )}
 
-        <div className="form-group">
-          <label className="form-label">Thumbnail URL</label>
-          <input type="url" name="thumbnailUrl" className="form-input"
-            defaultValue={work?.thumbnailUrl ?? ""} placeholder="https://…" />
-          <span className="form-hint">Optional landscape thumbnail for episode rows and compact previews. Falls back to poster if empty.</span>
-        </div>
+        {/* Advanced image overrides (collapsed by default) */}
+        <details style={{ marginTop: "0.25rem" }}>
+          <summary style={{
+            fontFamily: "var(--font-body)", fontSize: "0.75rem", fontWeight: 600,
+            color: "var(--color-brand-muted)", cursor: "pointer", letterSpacing: "0.04em",
+            listStyle: "none", userSelect: "none",
+          }}>
+            Advanced image overrides ▸
+          </summary>
+          <div style={{ marginTop: "0.75rem", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+            <div className="form-group">
+              <label className="form-label">Card / Poster override</label>
+              <input type="url" name="posterUrl" className="form-input"
+                defaultValue={work?.posterUrl ?? ""} placeholder="https://…" />
+              <span className="form-hint">Overrides the portrait card/poster. Defaults to Mobile Image if empty.</span>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Thumbnail override</label>
+              <input type="url" name="thumbnailUrl" className="form-input"
+                defaultValue={work?.thumbnailUrl ?? ""} placeholder="https://…" />
+              <span className="form-hint">Overrides episode row thumbnail. Defaults to Desktop Image if empty.</span>
+            </div>
+          </div>
+        </details>
 
         {/* Trailer URL */}
         {showTrailerUrl && (

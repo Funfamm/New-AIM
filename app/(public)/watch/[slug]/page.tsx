@@ -451,7 +451,7 @@ export default async function WatchPage({ params, searchParams }: Props) {
       </div>
 
       {/* ── Comments ── episodes attach to episode; others attach to work ── */}
-      {work.commentsEnabled && work.status === "PUBLISHED" && !isTrailer && (
+      {work.commentsEnabled && work.status === "PUBLISHED" && (
         <div className="container-app">
           <CommentSection
             workId={work.id}
