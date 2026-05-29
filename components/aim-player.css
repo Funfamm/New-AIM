@@ -406,15 +406,30 @@
   color: rgba(255,255,255,0.3); margin-top: 0.5rem;
 }
 
-/* ── Mobile ──────────────────────────────────── */
+/* ── Mobile portrait (≤639px) ───────────────── */
+/* All buttons must remain visible in both portrait and landscape.         */
+/* Brightness slider switches from vertical (desktop) to horizontal here. */
 @media (max-width: 639px) {
   .aim-player-header { padding: 0.625rem 0.75rem 0; }
   .aim-player-footer { padding: 0 0.625rem 0.5rem; }
-  .aim-player-mid { gap: 1rem; }
+  .aim-player-mid { gap: 0.75rem; }
   .aim-player-play-btn { width: 50px; height: 50px; }
-  .aim-player-brightness-wrap { display: none; }
-  .aim-mid-spacer { display: none; }
-  .aim-vol-slider { display: none; }
+  .aim-mid-spacer { display: none; } /* balance spacer not needed on portrait */
+
+  /* Brightness: switch to horizontal slider so it fits portrait layout */
+  .aim-player-brightness-wrap { flex-direction: row; align-items: center; gap: 0.3rem; }
+  .aim-player-brightness {
+    writing-mode: horizontal-tb;
+    direction: ltr;
+    -webkit-appearance: auto;
+    appearance: auto;
+    width: 52px;
+    height: 4px;
+  }
+
+  /* Volume slider: keep visible; smaller width to fit portrait row */
+  .aim-vol-slider { width: 48px; }
+
   .aim-up-next { width: 190px; bottom: 4.5rem; right: 0.625rem; }
   .aim-skip-pill { bottom: 4.5rem; right: 0.625rem; }
   .aim-ep-panel { width: min(260px, 85vw); }
