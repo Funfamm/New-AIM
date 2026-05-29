@@ -6,7 +6,9 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { Fragment } from "react";
 import "./watch.css";
-import { ChevronLeft, ChevronRight, Lock, Check } from "lucide-react";
+import "../../works/[slug]/detail.css";
+import { ChevronLeft, ChevronRight, Lock, Check, Play, Clock } from "lucide-react";
+import Image from "next/image";
 import type { Metadata } from "next";
 import AimPlayer from "@/components/aim-player";
 import { getWatchProgress, getEpisodeProgressMap } from "@/lib/actions/progress";
@@ -46,12 +48,16 @@ async function getWork(slug: string) {
       episodeNumber: true, seasonNumber: true, duration: true,
       introStart: true, introEnd: true, creditsStart: true,
       contentRating: true, contentDescriptors: true,
-      // SERIES: need episodes for redirect + Up Next titles
+      // SERIES: all published episodes — used for redirect, player panel, and
+      // the "Watch Series" section on the trailer watch page.
       episodes: {
         where: { status: "PUBLISHED" },
         orderBy: [{ seasonNumber: "asc" }, { episodeNumber: "asc" }, { order: "asc" }],
-        select: { id: true, slug: true },
-        take: 1,
+        select: {
+          id: true, slug: true, title: true,
+          episodeNumber: true, seasonNumber: true,
+          duration: true, thumbnailUrl: true, posterUrl: true,
+        },
       },
       // EPISODE: parent series controls access, intro timings, and content advisory
       parent: {
@@ -162,7 +168,7 @@ export default async function WatchPage({ params, searchParams }: Props) {
     getWorkLikeState(work.id),
   ]);
 
-  // Episode nav
+  // Episode nav (for episode pages — siblings from parent series)
   const siblings    = work.parent?.episodes ?? [];
   const currentIdx  = siblings.findIndex((ep) => ep.slug === slug);
   const nextEp      = currentIdx >= 0 && currentIdx < siblings.length - 1
@@ -173,6 +179,11 @@ export default async function WatchPage({ params, searchParams }: Props) {
   const siblingProgressMap = session?.user && siblings.length > 0
     ? await getEpisodeProgressMap(siblings.map((e) => e.id))
     : {} as Record<string, { seconds: number; completed: boolean }>;
+
+  // For series trailer pages: episodes fetched in getWork (all published episodes)
+  // used to populate the player episodes panel and the "Watch Series" section.
+  const isSeriesTrailer = work.type === "SERIES" && !!trailer;
+  const seriesEpisodes  = isSeriesTrailer ? work.episodes : [];
 
   // Notify Me CTA
   let rawCta = work.notifyMeCta?.isEnabled && !isEmbed ? work.notifyMeCta : null;
@@ -289,7 +300,7 @@ export default async function WatchPage({ params, searchParams }: Props) {
                   contentDescriptors={contentDescriptors}
                   nextSlug={nextEp?.slug}
                   nextTitle={nextEp?.title}
-                  siblings={siblings}
+                  siblings={isSeriesTrailer ? seriesEpisodes : siblings}
                   siblingProgress={siblingProgressMap}
                   isGuest={!session?.user}
                   initialLiked={isLiked}
@@ -338,8 +349,26 @@ export default async function WatchPage({ params, searchParams }: Props) {
                 </Link>
               )}
 
-              {/* Trailer → Full Film upsell */}
-              {isTrailer && work.type !== "TRAILER" && work.videoUrl && (
+              {/* Series trailer: Watch Series upsell */}
+              {isSeriesTrailer && seriesEpisodes.length > 0 && (
+                <div className="watch-upsell">
+                  {mainRequiresAuth && !session?.user ? (
+                    <>
+                      <Lock size={14} />
+                      <span>
+                        <Link href="/register">Create a free account</Link> to watch all episodes.
+                      </span>
+                    </>
+                  ) : (
+                    <Link href={`/watch/${seriesEpisodes[0].slug}`} className="watch-upsell-btn">
+                      Watch Series — {seriesEpisodes.length} {seriesEpisodes.length === 1 ? "Episode" : "Episodes"} →
+                    </Link>
+                  )}
+                </div>
+              )}
+
+              {/* Non-series trailer → Full Film upsell */}
+              {isTrailer && work.type !== "TRAILER" && !isSeriesTrailer && work.videoUrl && (
                 <div className="watch-upsell">
                   {mainRequiresAuth && !session?.user ? (
                     <>
@@ -449,6 +478,80 @@ export default async function WatchPage({ params, searchParams }: Props) {
           )}
         </div>
       </div>
+
+      {/* ── Series episodes list (shown below player on series trailer pages) ── */}
+      {isSeriesTrailer && seriesEpisodes.length > 0 && (
+        <div className="container-app">
+          <section className="episodes-section">
+            <div className="episodes-head">
+              <h2 className="episodes-title">Episodes</h2>
+              <span className="episodes-count">
+                {seriesEpisodes.length} {seriesEpisodes.length === 1 ? "Episode" : "Episodes"}
+              </span>
+            </div>
+            <ol className="episodes-list">
+              {seriesEpisodes.map((ep) => {
+                const label =
+                  ep.seasonNumber != null && ep.episodeNumber != null
+                    ? `S${ep.seasonNumber} E${ep.episodeNumber}`
+                    : ep.episodeNumber != null
+                    ? `E${ep.episodeNumber}`
+                    : null;
+                const epLocked = mainRequiresAuth && !session?.user;
+                const thumb = ep.thumbnailUrl ?? ep.posterUrl;
+                return (
+                  <li key={ep.id}>
+                    <div className="ep-card">
+                      <div className="ep-thumb-wrap">
+                        {thumb ? (
+                          <Image
+                            src={thumb}
+                            alt={ep.title}
+                            fill
+                            sizes="(max-width: 640px) 100px, 160px"
+                            className="ep-thumb-img"
+                            quality={75}
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="ep-thumb-placeholder">
+                            {label ?? ep.title.charAt(0)}
+                          </div>
+                        )}
+                      </div>
+                      <div className="ep-body">
+                        <div className="ep-meta-row">
+                          {label && <span className="ep-label">{label}</span>}
+                          {ep.duration && (
+                            <span className="ep-duration">
+                              <Clock size={10} />
+                              {ep.duration >= 60
+                                ? `${Math.floor(ep.duration / 60)}h ${ep.duration % 60}m`
+                                : `${ep.duration}m`}
+                            </span>
+                          )}
+                        </div>
+                        <p className="ep-title">{ep.title}</p>
+                      </div>
+                      <div className="ep-watch">
+                        {epLocked ? (
+                          <Link href={`/login?from=/watch/${ep.slug}`} className="ep-btn ep-btn--locked">
+                            <Lock size={11} /> Watch Episode
+                          </Link>
+                        ) : (
+                          <Link href={`/watch/${ep.slug}`} className="ep-btn">
+                            <Play size={11} fill="currentColor" /> Watch Episode
+                          </Link>
+                        )}
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+          </section>
+        </div>
+      )}
 
       {/* ── Comments ── episodes attach to episode; others attach to work ── */}
       {work.commentsEnabled && work.status === "PUBLISHED" && (

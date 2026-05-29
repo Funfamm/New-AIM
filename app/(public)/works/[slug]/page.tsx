@@ -142,11 +142,14 @@ export default async function WorkDetailPage({ params }: Props) {
   const episodeCount = work.type === "SERIES" ? work.episodes.length : null;
   const isSeries     = work.type === "SERIES";
 
-  // Smart resume: find last-watched / next unwatched episode for this series
+  // Smart resume: find last-watched / next unwatched episode for this series.
+  // Always falls back to firstEp.slug so the "Watch Series" CTA is never missing.
   const allEpSlugs = isSeries ? work.episodes.map((e) => e.slug) : [];
-  const resumeSlug = isSeries && !isGuest && allEpSlugs.length > 0
-    ? await getResumeEpisodeSlug(work.id, allEpSlugs)
-    : firstEp?.slug ?? null;
+  const resumeSlug = isSeries
+    ? (!isGuest && allEpSlugs.length > 0
+        ? (await getResumeEpisodeSlug(work.id, allEpSlugs)) ?? (firstEp?.slug ?? null)
+        : firstEp?.slug ?? null)
+    : null;
 
   // Detect if the entire series is completed (all episodes watched)
   const allEpisodesCompleted =
