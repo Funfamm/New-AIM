@@ -26,9 +26,53 @@ export async function registerUser(formData: FormData) {
   }
 
   // Check if user already exists
-  const existing = await prisma.user.findUnique({ where: { email } });
+  const existing = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true, password: true },
+  });
+
   if (existing) {
-    redirect("/register?error=" + encodeURIComponent("An account with this email already exists."));
+    if (existing.password) {
+      // User already has a credentials account — cannot re-register
+      redirect("/register?error=" + encodeURIComponent("An account with this email already exists."));
+    }
+
+    // Google-only user (no password) — add a password to their existing account.
+    // This preserves their watch history, saved works, and notifications.
+    const hashed = await bcrypt.hash(password, 12);
+    await prisma.user.update({
+      where: { id: existing.id },
+      data: {
+        password: hashed,
+        // Update name only if the user provided one and none exists
+        ...(name?.trim() ? { name: name.trim() } : {}),
+      },
+    });
+
+    // Track sign-up event — fire-and-forget, never throws
+    void (async () => {
+      try {
+        const jar = await cookies();
+        const visitorId = jar.get("aim-vid")?.value;
+        if (visitorId) {
+          const sessionId = await getOrCreateSession({ visitorId }).catch(() => undefined);
+          await trackEvent({
+            visitorId,
+            userId: existing.id,
+            sessionId,
+            type: "SIGN_UP",
+            metadata: { method: "credentials", linkedGoogle: "true" } as Record<string, string>,
+          });
+        }
+      } catch { /* analytics must never break registration */ }
+    })();
+
+    // Welcome flow — idempotent, likely already sent for Google users
+    void ensureWelcomeForUser(existing.id).catch(() => {});
+
+    // Auto-login with new credentials
+    await signIn("credentials", { email, password, redirectTo: "/" });
+    return; // signIn throws NEXT_REDIRECT — this line is a safety net
   }
 
   // Hash password — 12 rounds is secure without being slow
