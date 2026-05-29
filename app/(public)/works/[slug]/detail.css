@@ -268,13 +268,17 @@
 
 /* ── Series mobile overrides ──
    On mobile, the sticky 16:9 SeriesTrailerPlayer replaces the portrait poster
-   and the in-hero trailer button (trailer plays inline in the sticky player). */
+   (trailer plays inline in the sticky player).
+   CTAs are no longer hidden on mobile — Watch Again / Watch Trailer must
+   appear in the content area on both desktop and mobile. */
 @media (max-width: 767px) {
   /* Hide portrait poster for series — sticky player takes its role */
   .detail-poster-wrap--mobile-hide { display: none; }
 
-  /* Hide desktop "Watch Trailer" link for series — trailer plays in sticky player */
-  .detail-trailer-desktop-only { display: none; }
+  /* CTA buttons stack full-width on portrait for clean tap targets */
+  .detail-actions { flex-direction: column; gap: 0.6rem; }
+  .detail-btn-primary,
+  .detail-btn-ghost { width: 100%; justify-content: center; }
 }
 
 /* ── Status badge — upcoming / in-production ── */

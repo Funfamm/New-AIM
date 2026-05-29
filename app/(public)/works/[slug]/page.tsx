@@ -274,24 +274,24 @@ export default async function WorkDetailPage({ params }: Props) {
                   }
                   return (
                     <>
-                      {/* Primary CTA */}
+                      {/* Primary CTA — always visible on both desktop and mobile.
+                          detail-trailer-desktop-only was previously wrapping
+                          series CTAs, hiding Watch Again/Watch Series on mobile.
+                          The SeriesTrailerPlayer sticky overlay is quick-access
+                          only; the main CTAs must appear in the content area too. */}
                       {cta.primaryLabel && isPublished && (
-                        <div className={isSeries ? "detail-trailer-desktop-only" : undefined}>
-                          <Link href={cta.primaryHref} className="detail-btn-primary">
-                            {cta.isLocked || cta.isTrailerLocked ? <Lock size={14} /> : <Play size={14} fill="currentColor" />}
-                            {" "}{cta.primaryLabel}
-                          </Link>
-                        </div>
+                        <Link href={cta.primaryHref} className="detail-btn-primary">
+                          {cta.isLocked || cta.isTrailerLocked ? <Lock size={14} /> : <Play size={14} fill="currentColor" />}
+                          {" "}{cta.primaryLabel}
+                        </Link>
                       )}
 
-                      {/* Secondary CTA (trailer ghost button) */}
+                      {/* Secondary CTA (trailer ghost button) — always visible */}
                       {cta.secondaryLabel && cta.secondaryHref && isPublished && (
-                        <div className={isSeries ? "detail-trailer-desktop-only" : undefined}>
-                          <Link href={cta.secondaryHref} className="detail-btn-ghost">
-                            {cta.isTrailerLocked ? <Lock size={14} /> : <Play size={14} fill="currentColor" />}
-                            {" "}{cta.secondaryLabel}
-                          </Link>
-                        </div>
+                        <Link href={cta.secondaryHref} className="detail-btn-ghost">
+                          {cta.isTrailerLocked ? <Lock size={14} /> : <Play size={14} fill="currentColor" />}
+                          {" "}{cta.secondaryLabel}
+                        </Link>
                       )}
                     </>
                   );
