@@ -67,11 +67,11 @@ export default function SeriesTrailerPlayer({ posterUrl, trailerUrl, title }: Pr
 
           <div className="stp-gradient" aria-hidden="true" />
 
-          {/* Only show button if a trailer exists */}
+          {/* Play icon only — no text. The duplicate Watch Trailer text CTA
+              lives in the main detail-actions group below the genre line. */}
           {trailerUrl && (
-            <button className="stp-play-btn" onClick={handlePlay}>
-              <Play size={16} fill="currentColor" />
-              Watch Trailer
+            <button className="stp-play-btn" onClick={handlePlay} aria-label="Play trailer">
+              <Play size={20} fill="currentColor" />
             </button>
           )}
         </>

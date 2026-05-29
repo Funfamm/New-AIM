@@ -234,15 +234,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     // ensureWelcomeForUser is idempotent — safe to call twice on first registration;
     // for returning users it exits immediately after a single findUnique check.
     async signIn({ user, account }) {
-      // ── Credentials backstop ─────────────────────────────────
+      // ── Credentials backstop — awaited so Vercel does not exit before send ──
       if (account?.provider === "credentials" && user.id) {
-        void ensureWelcomeForUser(user.id).catch(() => {});
+        await ensureWelcomeForUser(user.id);
       }
 
       if (account?.provider === "google" && user.id) {
         const dbUser = await prisma.user.findUnique({
           where: { id: user.id },
-          select: { status: true, email: true, id: true },
+          // lastLoginAt fetched BEFORE the update below so we can detect first login.
+          select: { status: true, email: true, id: true, lastLoginAt: true },
         });
         if (
           dbUser?.status === "SUSPENDED" ||
@@ -256,8 +257,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             data:  { lastLoginAt: new Date(), lastLoginProvider: "google" },
           }).catch(() => {});
 
-          // Welcome flow — idempotent, only fires on first sign-in
-          void ensureWelcomeForUser(dbUser.id).catch(() => {});
+          // Welcome flow — awaited so Vercel serverless does not exit before it
+          // completes. Previously fired as void and was abandoned before the email
+          // sent (Vercel exits after return true). ensureWelcomeForUser never
+          // throws — all errors are swallowed internally.
+          await ensureWelcomeForUser(dbUser.id);
 
           // Dynamic import — security utilities are server-only
           void import("@/lib/security").then(async (sec) => {
@@ -272,7 +276,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               os:              "Unknown",
               deviceType:      "UNKNOWN",
             });
-            if (isNew) {
+            // Only alert when it is a genuinely new device AND the user has
+            // logged in before — first registration must never trigger alerts.
+            const isGoogleFirstLogin = !dbUser.lastLoginAt;
+            if (isNew && !isGoogleFirstLogin) {
               void sec.writeSecurityEvent({
                 userId: dbUser.id, type: "NEW_DEVICE_LOGIN", severity: "LOW",
                 email: dbUser.email, provider: "google",
