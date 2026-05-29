@@ -3,8 +3,8 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import FilmRail from "@/components/film-rail";
-import HeroRotator from "@/components/hero-rotator";
 import MobileFeaturedHero from "@/components/mobile-featured-hero";
+import HeroDesktopSection from "@/components/hero-desktop-section";
 import { getWorkCtaState } from "@/lib/work-cta";
 import { Play, ChevronRight } from "lucide-react";
 import "./home.css";
@@ -22,11 +22,20 @@ const HOME_STATUSES: { in: WorkStatus[] } = { in: ["PUBLISHED", "UPCOMING", "IN_
 
 async function getHomeWorks() {
   const [featured, newReleases] = await Promise.all([
+    // Featured: include first-episode slug so "Watch Series" CTA works on hero
     prisma.work.findMany({
       where: { status: HOME_STATUSES, showOnHome: true, featured: true, type: { not: "EPISODE" } },
       orderBy: { order: "asc" },
       take: 6,
-      select: HOME_SELECT,
+      select: {
+        ...HOME_SELECT,
+        episodes: {
+          where: { status: "PUBLISHED" },
+          orderBy: [{ seasonNumber: "asc" }, { episodeNumber: "asc" }, { order: "asc" }],
+          select: { slug: true },
+          take: 1,
+        },
+      },
     }),
     prisma.work.findMany({
       where: { status: HOME_STATUSES, showOnHome: true, type: { not: "EPISODE" } },
@@ -92,14 +101,34 @@ export default async function HomePage() {
 
   const featuredWithPosters = featured.filter((w) => w.posterUrl != null).slice(0, 5);
 
-  const heroItems = featuredWithPosters.map((w) => ({
-    posterUrl: w.posterUrl!,
-    title: w.title,
-    slug: w.slug,
-    heroMobileUrl: w.heroMobileUrl,
-    heroDesktopUrl: w.heroDesktopUrl,
-  }));
+  // Pre-compute CTA states for all featured works so the desktop hero can
+  // update its buttons in sync with whichever slide the rotator is showing.
+  const heroDesktopItems = featuredWithPosters.map((w) => {
+    const firstEpSlug = w.episodes?.[0]?.slug ?? null;
+    const cta = getWorkCtaState({
+      slug: w.slug,
+      type: w.type,
+      trailerUrl: w.trailerUrl,
+      videoUrl: w.videoUrl,
+      requiresAuth: w.requiresAuth,
+      requiresLoginToViewTrailer: w.requiresLoginToViewTrailer,
+      isGuest: !userId,
+      firstEpisodeSlug: firstEpSlug,
+    });
+    return {
+      posterUrl: w.posterUrl!,
+      title: w.title,
+      slug: w.slug,
+      heroMobileUrl: w.heroMobileUrl ?? null,
+      heroDesktopUrl: w.heroDesktopUrl ?? null,
+      primaryLabel:   cta.primaryLabel,
+      primaryHref:    cta.primaryHref,
+      secondaryLabel: cta.secondaryLabel,
+      secondaryHref:  cta.secondaryHref,
+    };
+  });
 
+  // mobileHeroItems — passed to MobileFeaturedHero (mobile only, <768px)
   const mobileHeroItems = featuredWithPosters.map((w) => ({
     id: w.id,
     slug: w.slug,
@@ -127,56 +156,11 @@ export default async function HomePage() {
       />
 
       {/* ── Desktop cinematic hero (≥768px) ──────────── */}
+      {/* HeroDesktopSection is a client component that syncs CTA buttons   */}
+      {/* with the active rotator slide — fixes "Watch Short" staying on    */}
+      {/* screen while a Series (Grandpa's Diary) is displayed.             */}
       <section className="hero">
-        <div className="hero-bg">
-          <HeroRotator items={heroItems} />
-          <div className="hero-bg-gradient" />
-        </div>
-        <div className="hero-content">
-          <span className="hero-eyebrow">— Now Streaming</span>
-          <h1 className="hero-title">Cinema, reimagined.</h1>
-          <p className="hero-desc">Original cinema built around story, emotion, memory, and the moments people refuse to look away from.</p>
-          <div className="hero-actions">
-            {(() => {
-              const p = featuredWithPosters[0];
-              if (!p) return (
-                <Link href="/works" className="hero-btn-primary">
-                  <Play size={16} fill="currentColor" /> Watch Our Films
-                </Link>
-              );
-              const cta = getWorkCtaState({
-                slug: p.slug,
-                type: p.type,
-                trailerUrl: p.trailerUrl,
-                videoUrl: p.videoUrl,
-                requiresAuth: p.requiresAuth,
-                requiresLoginToViewTrailer: p.requiresLoginToViewTrailer,
-                isGuest: !userId,
-              });
-              return (
-                <>
-                  {cta.primaryLabel ? (
-                    <Link href={cta.primaryHref} className="hero-btn-primary">
-                      <Play size={16} fill="currentColor" /> {cta.primaryLabel}
-                    </Link>
-                  ) : (
-                    <Link href={`/works/${p.slug}`} className="hero-btn-primary">
-                      View Details
-                    </Link>
-                  )}
-                  {cta.secondaryLabel && cta.secondaryHref && (
-                    <Link href={cta.secondaryHref} className="hero-btn-trailer">
-                      {cta.secondaryLabel}
-                    </Link>
-                  )}
-                </>
-              );
-            })()}
-            <Link href="/about" className="hero-btn-secondary">
-              Find Your Way In
-            </Link>
-          </div>
-        </div>
+        <HeroDesktopSection items={heroDesktopItems} />
       </section>
 
       {/* ── Continue Watching ───────────────────────── */}
