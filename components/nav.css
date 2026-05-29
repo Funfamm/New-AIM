@@ -9,7 +9,7 @@
 */
 .nav-header {
   position: fixed; top: 0; left: 0; right: 0; z-index: 160;
-  border-bottom: 1px solid var(--color-brand-border);
+  border-bottom: 1px solid rgba(255,255,255,0.04);
 }
 .nav-header::before {
   content: "";
