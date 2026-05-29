@@ -39,7 +39,10 @@ export async function ensureWelcomeForUser(userId: string): Promise<void> {
       },
     });
 
-    if (!user) return;
+    if (!user) {
+      console.log(`[welcome] user ${userId} not found — skipping`);
+      return;
+    }
 
     const stampData: {
       welcomeEmailSentAt?:        Date;
@@ -49,19 +52,25 @@ export async function ensureWelcomeForUser(userId: string): Promise<void> {
     // ── Welcome email ─────────────────────────────────────────
     if (!user.welcomeEmailSentAt) {
       try {
+        console.log(`[welcome] sending welcome email to ${user.email} (userId: ${user.id})`);
         // sendWelcomeEmail uses Microsoft Graph — transactional, not ACS bulk.
         // Logs attempt in EmailLog internally.
         await sendWelcomeEmail(user.email, user.name);
         stampData.welcomeEmailSentAt = new Date();
-      } catch {
+        console.log(`[welcome] welcome email sent successfully to ${user.email}`);
+      } catch (err) {
         // Email failure must never block auth or notification creation.
         // No stamp written — next call will retry (acceptable for first-login).
+        console.error(`[welcome] welcome email FAILED for ${user.email}:`, err);
       }
+    } else {
+      console.log(`[welcome] email already sent for ${user.email} at ${user.welcomeEmailSentAt.toISOString()}`);
     }
 
     // ── Welcome in-app notification ───────────────────────────
     if (!user.welcomeNotificationSentAt) {
       try {
+        console.log(`[welcome] creating in-app notification for ${user.email}`);
         await prisma.notification.create({
           data: {
             userId: user.id,
@@ -73,9 +82,13 @@ export async function ensureWelcomeForUser(userId: string): Promise<void> {
           },
         });
         stampData.welcomeNotificationSentAt = new Date();
-      } catch {
+        console.log(`[welcome] in-app notification created for ${user.email}`);
+      } catch (err) {
         // Notification failure must never block auth.
+        console.error(`[welcome] notification FAILED for ${user.email}:`, err);
       }
+    } else {
+      console.log(`[welcome] notification already sent for ${user.email} at ${user.welcomeNotificationSentAt.toISOString()}`);
     }
 
     // ── Stamp timestamps ──────────────────────────────────────
@@ -83,11 +96,14 @@ export async function ensureWelcomeForUser(userId: string): Promise<void> {
       await prisma.user.update({
         where: { id: user.id },
         data:  stampData,
-      }).catch(() => {});
+      }).catch((err) => {
+        console.error(`[welcome] stamp update FAILED for ${user.email}:`, err);
+      });
       // Stamp failure is non-fatal — worst case: welcome sends again on next login.
       // In practice Prisma updates rarely fail after a successful notification insert.
     }
-  } catch {
+  } catch (err) {
     // Outer catch: any unexpected error is swallowed — auth must never be blocked.
+    console.error(`[welcome] unexpected error for userId ${userId}:`, err);
   }
 }
