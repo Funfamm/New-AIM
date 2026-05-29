@@ -1,0 +1,164 @@
+/* ── Film Card ───────────────────────────────────────── */
+.fc {
+  display: block;
+  position: relative;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: transform var(--duration-fast) var(--ease-smooth),
+              box-shadow var(--duration-normal) var(--ease-smooth);
+  outline-offset: 2px;
+}
+.fc:hover {
+  transform: scale(1.04);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+}
+.fc:focus-visible {
+  outline: 2px solid var(--color-brand-accent);
+  outline-offset: 2px;
+}
+
+/* Poster container */
+.fc-poster {
+  position: relative;
+  aspect-ratio: 2/3;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  background: var(--color-brand-surface);
+}
+
+/* Placeholder */
+.fc-placeholder {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 4rem;
+  font-weight: 700;
+  color: var(--color-brand-border);
+}
+
+/* Bottom gradient */
+.fc-gradient {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0) 55%);
+}
+
+/* Play overlay */
+.fc-play-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity var(--duration-fast);
+  pointer-events: none;
+}
+.fc:hover .fc-play-overlay { opacity: 1; }
+
+.fc-play-circle {
+  background: rgba(0,0,0,0.55);
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Info section — bottom */
+.fc-info {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 1rem;
+}
+.fc-genre {
+  display: block;
+  font-family: var(--font-body);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-brand-light);
+  margin-bottom: 0.25rem;
+}
+.fc-title {
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  color: var(--color-brand-white);
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Type badge — top-left */
+.fc-type-badge {
+  position: absolute;
+  left: 0.75rem;
+  top: 0.75rem;
+  background: rgba(0,0,0,0.72);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radius-xs);
+}
+.fc-type-badge span {
+  font-family: var(--font-body);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-brand-light);
+}
+
+/* Status badge — top-right (upcoming / in-production) */
+.fc-status-badge {
+  position: absolute;
+  right: 0.75rem;
+  top: 0.75rem;
+  background: rgba(232,201,126,0.18);
+  border: 1px solid rgba(232,201,126,0.35);
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radius-xs);
+}
+.fc-status-badge span {
+  font-family: var(--font-body);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-brand-accent);
+}
+
+/* Lock badge — top-right (guests only) */
+.fc-lock-badge {
+  position: absolute;
+  right: 0.75rem;
+  top: 0.75rem;
+  display: flex;
+  align-items: center;
+  padding: 0.25rem;
+  background: rgba(0,0,0,0.72);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border-radius: var(--radius-sm);
+  color: var(--color-brand-accent);
+}
+
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .fc { transition: none; }
+  .fc:hover { transform: none; }
+  .fc-play-overlay { transition: none; }
+}

@@ -1,8 +1,25 @@
 .footer {
-  border-top: 1px solid var(--color-brand-border);
+  position: relative;
   padding: 3rem 0 2rem;
-  margin-top: 6rem;
+  margin-top: 4rem;
   background: var(--color-brand-dark);
+}
+/* Gold gradient top accent line */
+.footer::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent 0%,
+    rgba(232,201,126,0.2) 20%,
+    rgba(232,201,126,0.35) 50%,
+    rgba(232,201,126,0.2) 80%,
+    transparent 100%
+  );
 }
 .footer-inner {
   display: flex;
@@ -49,14 +66,26 @@
   text-transform: uppercase;
   color: var(--color-brand-muted);
   text-decoration: none;
-  transition: color 0.2s;
+  transition: color var(--duration-fast);
+  position: relative;
+}
+.footer-links a::after {
+  content: "";
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 1px;
+  background: var(--color-brand-accent);
+  transition: width var(--duration-normal) var(--ease-smooth);
 }
 .footer-links a:hover { color: var(--color-brand-accent); }
+.footer-links a:hover::after { width: 100%; }
 .footer-bottom {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-top: 1px solid var(--color-brand-border);
+  border-top: 1px solid rgba(42,42,42,0.5);
   margin-top: 2rem;
   padding-top: 1.5rem;
   gap: 1rem;

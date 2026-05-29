@@ -182,13 +182,13 @@
   background: var(--color-brand-accent);
   height: 40px;
   padding: 0 1.125rem;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   text-decoration: none;
-  transition: filter 0.15s;
+  transition: filter var(--duration-fast), box-shadow var(--duration-normal);
   touch-action: manipulation;
   white-space: nowrap;
 }
-.mfh-btn-play:hover { filter: brightness(1.08); }
+.mfh-btn-play:hover { filter: brightness(1.08); box-shadow: var(--shadow-gold-subtle); }
 
 /* Trailer button */
 .mfh-btn-trailer {
@@ -202,9 +202,9 @@
   border: 1px solid rgba(255,255,255,0.22);
   height: 40px;
   padding: 0 1rem;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   text-decoration: none;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background var(--duration-fast), border-color var(--duration-fast);
   touch-action: manipulation;
   white-space: nowrap;
 }
@@ -223,7 +223,7 @@
   border: 1px solid rgba(255,255,255,0.25);
   height: 40px;
   padding: 0 1rem;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s, color 0.15s;
   touch-action: manipulation;

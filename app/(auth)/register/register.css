@@ -1,3 +1,6 @@
+/* Register page imports shared auth styles from login.css
+   Only register-specific overrides live here */
+
 .auth-page {
   min-height: 100dvh;
   display: flex;
@@ -11,9 +14,10 @@
   max-width: 480px;
   background: rgba(17, 17, 17, 0.7);
   backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 10px 40px -10px rgba(0,0,0,0.5);
-  border-radius: 12px;
+  box-shadow: 0 10px 40px -10px rgba(0,0,0,0.5), 0 0 60px rgba(232,201,126,0.03);
+  border-radius: var(--radius-lg);
   padding: 2.5rem 2rem;
 }
 @media (max-width: 480px) {
@@ -63,10 +67,15 @@
   font-size: 0.78rem;
   font-weight: 500;
   color: var(--color-brand-light);
-  background: rgba(255,255,255,0.05);
-  border: 1px solid var(--color-brand-border);
-  border-radius: 20px;
+  background: rgba(232,201,126,0.05);
+  border: 1px solid rgba(232,201,126,0.12);
+  border-radius: var(--radius-pill);
   padding: 0.28rem 0.75rem;
+  transition: background var(--duration-fast), border-color var(--duration-fast);
+}
+.auth-perk:hover {
+  background: rgba(232,201,126,0.08);
+  border-color: rgba(232,201,126,0.2);
 }
 .auth-perk-icon { display: flex; align-items: center; color: var(--color-brand-accent); flex-shrink: 0; }
 .auth-error {
@@ -76,7 +85,7 @@
   font-family: var(--font-body);
   font-size: 0.85rem;
   padding: 0.75rem 1rem;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   margin-bottom: 1.25rem;
 }
 .auth-form { display: flex; flex-direction: column; gap: 1.1rem; }
@@ -94,15 +103,18 @@
   color: var(--color-brand-white);
   background: var(--color-brand-surface);
   border: 1px solid var(--color-brand-border);
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   padding: 0.7rem 0.9rem;
   outline: none;
-  transition: border-color 0.2s;
+  transition: border-color var(--duration-fast), box-shadow var(--duration-normal);
   width: 100%;
   box-sizing: border-box;
 }
 .form-input::placeholder { color: var(--color-brand-muted); }
-.form-input:focus { border-color: var(--color-brand-accent); }
+.form-input:focus {
+  border-color: var(--color-brand-accent);
+  box-shadow: 0 0 0 3px rgba(232,201,126,0.08);
+}
 .auth-btn {
   width: 100%;
   font-family: var(--font-body);
@@ -111,13 +123,18 @@
   color: var(--color-brand-black);
   background: var(--color-brand-accent);
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   padding: 0.8rem;
   cursor: pointer;
   margin-top: 0.25rem;
-  transition: opacity 0.2s;
+  transition: filter var(--duration-fast), box-shadow var(--duration-normal), transform var(--duration-fast);
 }
-.auth-btn:hover { opacity: 0.88; }
+.auth-btn:hover {
+  filter: brightness(1.06);
+  box-shadow: var(--shadow-gold-subtle);
+  transform: translateY(-1px);
+}
+.auth-btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; filter: none; box-shadow: none; }
 .auth-fine-print {
   font-family: var(--font-body);
   font-size: 0.75rem;
@@ -161,7 +178,7 @@
   padding: 0;
   display: flex;
   align-items: center;
-  transition: color 0.15s;
+  transition: color var(--duration-fast);
   line-height: 1;
 }
 .pw-toggle:hover { color: var(--color-brand-light); }
@@ -205,10 +222,10 @@
   color: var(--color-brand-light);
   background: transparent;
   border: 1px solid var(--color-brand-border);
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   padding: 0.75rem;
   cursor: pointer;
-  transition: background 0.2s, border-color 0.2s;
+  transition: background var(--duration-fast), border-color var(--duration-fast);
 }
 .auth-btn-google:hover {
   background: var(--color-brand-surface);

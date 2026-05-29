@@ -58,24 +58,29 @@
   font-family: var(--font-body); font-size: 0.875rem; font-weight: 600;
   letter-spacing: 0.06em; text-transform: uppercase;
   color: var(--color-brand-black); background: var(--color-brand-accent);
-  height: 52px; padding: 0 2rem; border-radius: 2px; text-decoration: none;
-  transition: filter 0.2s, transform 0.2s; touch-action: manipulation;
+  height: 52px; padding: 0 2rem; border-radius: var(--radius-sm); text-decoration: none;
+  transition: filter var(--duration-fast), transform var(--duration-fast), box-shadow var(--duration-normal);
+  touch-action: manipulation;
 }
-.hero-btn-primary:hover { filter: brightness(1.06); transform: translateY(-2px); }
+.hero-btn-primary:hover {
+  filter: brightness(1.08);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-gold-glow);
+}
 .hero-btn-secondary {
   display: inline-flex; align-items: center;
   font-family: var(--font-body); font-size: 0.875rem; font-weight: 500;
   color: var(--color-brand-white); border: 1px solid rgba(255,255,255,0.3);
-  height: 52px; padding: 0 2rem; border-radius: 2px; text-decoration: none;
-  transition: border-color 0.2s, background 0.2s, transform 0.2s; touch-action: manipulation;
+  height: 52px; padding: 0 2rem; border-radius: var(--radius-sm); text-decoration: none;
+  transition: border-color var(--duration-fast), background var(--duration-fast), transform var(--duration-fast); touch-action: manipulation;
 }
 .hero-btn-secondary:hover { border-color: rgba(255,255,255,0.7); background: rgba(255,255,255,0.05); transform: translateY(-2px); }
 .hero-btn-trailer {
   display: inline-flex; align-items: center; gap: 0.4rem;
   font-family: var(--font-body); font-size: 0.875rem; font-weight: 500;
   color: var(--color-brand-light); border: 1px solid rgba(255,255,255,0.25);
-  height: 52px; padding: 0 1.75rem; border-radius: 2px; text-decoration: none;
-  transition: border-color 0.2s, background 0.2s; touch-action: manipulation;
+  height: 52px; padding: 0 1.75rem; border-radius: var(--radius-sm); text-decoration: none;
+  transition: border-color var(--duration-fast), background var(--duration-fast); touch-action: manipulation;
   white-space: nowrap;
 }
 .hero-btn-trailer:hover { border-color: rgba(255,255,255,0.55); background: rgba(255,255,255,0.06); }
@@ -89,24 +94,35 @@
 
 /* ── Brand strip ── */
 .brand-strip {
-  border-top: 1px solid var(--color-brand-border);
+  border-top: 1px solid transparent;
+  border-image: linear-gradient(to right, transparent 0%, rgba(232,201,126,0.3) 30%, rgba(232,201,126,0.5) 50%, rgba(232,201,126,0.3) 70%, transparent 100%) 1;
   border-bottom: 1px solid var(--color-brand-border);
-  padding: 1.75rem 0;
+  padding: 2rem 0;
   margin-top: 4rem;
-  background: var(--color-brand-dark);
+  background: linear-gradient(135deg, rgba(17,17,17,0.9) 0%, rgba(10,10,10,0.95) 100%);
+  position: relative;
 }
 .brand-strip-text {
   font-family: var(--font-body); font-size: 0.6875rem; font-weight: 600;
-  letter-spacing: 0.14em; text-transform: uppercase;
+  letter-spacing: 0.18em; text-transform: uppercase;
   color: var(--color-brand-muted); text-align: center; margin: 0;
 }
 
 /* ── Studio Identity ── */
 .studio-identity {
-  padding: 4rem 0 5rem;
+  padding: 5rem 0 6rem;
   background:
     linear-gradient(to bottom, var(--color-brand-dark) 0%, var(--color-brand-black) 100%);
-  border-top: 1px solid var(--color-brand-border);
+  position: relative;
+}
+.studio-identity::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(to right, transparent 0%, rgba(232,201,126,0.18) 30%, rgba(232,201,126,0.3) 50%, rgba(232,201,126,0.18) 70%, transparent 100%);
 }
 
 /* Two-column grid: mobile stacks, desktop side-by-side */
@@ -172,12 +188,16 @@
   letter-spacing: 0.04em;
   color: var(--color-brand-black);
   background: var(--color-brand-accent);
-  padding: 0.6rem 1.25rem;
-  border-radius: 3px;
+  padding: 0.65rem 1.35rem;
+  border-radius: var(--radius-sm);
   text-decoration: none;
-  transition: opacity 0.2s;
+  transition: filter var(--duration-fast), transform var(--duration-fast), box-shadow var(--duration-normal);
 }
-.si-cta-primary:hover { opacity: 0.88; }
+.si-cta-primary:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-gold-subtle);
+}
 
 .si-cta-ghost {
   display: inline-flex;
@@ -188,9 +208,9 @@
   font-weight: 500;
   color: var(--color-brand-muted);
   text-decoration: none;
-  transition: color 0.2s;
+  transition: color var(--duration-fast);
 }
-.si-cta-ghost:hover { color: var(--color-brand-light); }
+.si-cta-ghost:hover { color: var(--color-brand-accent); }
 
 /* ── Right column — value cards ── */
 .si-right {
@@ -200,9 +220,10 @@
 }
 
 .si-card {
-  padding: 1.25rem 1rem 1.25rem 1.25rem;
+  padding: 1.5rem 1.25rem 1.5rem 1.5rem;
   border-left: 2px solid var(--color-brand-border);
-  transition: border-color 0.2s;
+  transition: border-color var(--duration-normal), background var(--duration-normal);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
 }
 
 .si-card + .si-card {
@@ -211,6 +232,7 @@
 
 .si-card:hover {
   border-left-color: var(--color-brand-accent);
+  background: rgba(232,201,126,0.03);
 }
 
 .si-card-num {
