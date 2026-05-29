@@ -23,6 +23,7 @@ type FilmCardProps = {
   slug: string;
   title: string;
   posterUrl?: string | null;
+  heroMobileUrl?: string | null;
   genre?: string | null;
   requiresAuth?: boolean;
   isLoggedIn?: boolean;
@@ -36,6 +37,7 @@ export default function FilmCard({
   slug,
   title,
   posterUrl,
+  heroMobileUrl,
   genre,
   requiresAuth,
   isLoggedIn = false,
@@ -44,6 +46,8 @@ export default function FilmCard({
   priority = false,
   watchHref,
 }: FilmCardProps) {
+  // Prefer heroMobileUrl (9:16 portrait) for cards; fall back to posterUrl
+  const cardImage = heroMobileUrl ?? posterUrl;
   const isUpcoming = status === "UPCOMING" || status === "IN_PRODUCTION";
   return (
     <Link
@@ -54,9 +58,9 @@ export default function FilmCard({
     >
       {/* Poster — image IS the card */}
       <div className="relative aspect-[2/3] overflow-hidden rounded bg-brand-surface">
-        {posterUrl ? (
+        {cardImage ? (
           <Image
-            src={posterUrl}
+            src={cardImage}
             alt={title}
             fill
             sizes="(max-width: 640px) calc(50vw - 1.5rem), (max-width: 768px) 160px, (max-width: 1024px) 180px, 220px"
