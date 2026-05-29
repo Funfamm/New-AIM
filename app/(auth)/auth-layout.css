@@ -1,0 +1,8 @@
+.auth-layout {
+  background: radial-gradient(
+    ellipse 80% 60% at 50% 20%,
+    var(--color-brand-dark) 0%,
+    var(--color-brand-black) 80%
+  );
+  min-height: 100dvh;
+}
