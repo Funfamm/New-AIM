@@ -61,8 +61,11 @@ export async function registerUser(formData: FormData) {
     } catch { /* analytics must never break registration */ }
   })();
 
-  // Welcome email + in-app notification — fire-and-forget, never blocks auth
-  void ensureWelcomeForUser(newUser.id).catch(() => {});
+  // Welcome email + in-app notification are handled by the signIn callback
+  // (ensureWelcomeForUser inside auth.ts signIn callback). Calling it here too
+  // created a race condition: both promises checked welcomeEmailSentAt before
+  // either stamped it, so both sent the welcome email.
+  // The signIn callback is the single authoritative caller for credentials users.
 
   // Auto-login after register
   await signIn("credentials", { email, password, redirectTo: "/" });

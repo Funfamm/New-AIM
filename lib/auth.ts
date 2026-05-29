@@ -183,7 +183,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           ipHash, userAgentHash, country: raw.country, region: raw.region, city: raw.city,
         });
 
-        // Device fingerprint — new-device detection
+        // Device fingerprint — new-device detection.
+        // user.lastLoginAt is the value BEFORE this login (fetched above, line ~101).
+        // If it is null, this is the user's first ever successful login — creating
+        // their first device baseline should never fire a security alert.
+        const isFirstLogin = !user.lastLoginAt;
+
         if (fpHash) {
           void (async () => {
             try {
@@ -192,7 +197,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 browser: parsed.browser, os: parsed.os, deviceType: parsed.deviceType,
                 country: raw.country, region: raw.region, city: raw.city,
               });
-              if (isNew) {
+              // Only alert when it is a genuinely new device AND the user has logged
+              // in before — first-registration logins must never trigger alerts.
+              if (isNew && !isFirstLogin) {
                 void sec.writeSecurityEvent({
                   userId: user.id, type: "NEW_DEVICE_LOGIN", severity: "MEDIUM",
                   email, provider: "credentials",
@@ -242,7 +249,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (account?.provider === "google" && user.id) {
         const dbUser = await prisma.user.findUnique({
           where: { id: user.id },
-          select: { status: true, email: true, id: true },
+          // lastLoginAt fetched BEFORE the update below — null means first-ever login.
+          select: { status: true, email: true, id: true, lastLoginAt: true },
         });
         if (
           dbUser?.status === "SUSPENDED" ||
@@ -272,7 +280,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               os:              "Unknown",
               deviceType:      "UNKNOWN",
             });
-            if (isNew) {
+            // Same first-login guard as credentials: dbUser.lastLoginAt is the
+            // value before the update above — null means this is their first login.
+            const isGoogleFirstLogin = !dbUser.lastLoginAt;
+            if (isNew && !isGoogleFirstLogin) {
               void sec.writeSecurityEvent({
                 userId: dbUser.id, type: "NEW_DEVICE_LOGIN", severity: "LOW",
                 email: dbUser.email, provider: "google",
