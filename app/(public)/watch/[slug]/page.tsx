@@ -11,6 +11,7 @@ import type { Metadata } from "next";
 import AimPlayer from "@/components/aim-player";
 import { getWatchProgress, getEpisodeProgressMap } from "@/lib/actions/progress";
 import SaveButton from "@/components/save-button";
+import CommentSection from "@/components/comment-section";
 import ShareButton from "@/components/share-button";
 import { isWorkSaved } from "@/lib/actions/watchlist";
 import { getWorkLikeState } from "@/lib/actions/likes";
@@ -38,6 +39,7 @@ async function getWork(slug: string) {
     where: { slug },
     select: {
       id: true, slug: true, title: true, status: true, type: true,
+      commentsEnabled: true,
       trailerUrl: true, videoUrl: true,
       requiresAuth: true, requiresLoginToViewTrailer: true,
       posterUrl: true, description: true,
@@ -447,6 +449,19 @@ export default async function WatchPage({ params, searchParams }: Props) {
           )}
         </div>
       </div>
+
+      {/* ── Comments ── episodes attach to episode; others attach to work ── */}
+      {work.commentsEnabled && work.status === "PUBLISHED" && !isTrailer && (
+        <div className="container-app">
+          <CommentSection
+            workId={work.id}
+            workSlug={isEpisode && work.parent ? work.parent.slug : work.slug}
+            currentUser={session?.user
+              ? { id: session.user.id!, name: session.user.name ?? null, image: session.user.image ?? null, role: session.user.role as string }
+              : null}
+          />
+        </div>
+      )}
     </main>
   );
 }
