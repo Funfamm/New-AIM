@@ -7,8 +7,8 @@
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth-guard";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
-import { createBulkInAppNotification } from "@/lib/notifications";
+import { createBulkInAppNotificationForUserIds } from "@/lib/notifications";
+import { resolveInAppAudience, resolveEmailAudience } from "@/lib/outreach-audience";
 import { enqueueBulkForRecipients, buildAnnouncementEmail, checkSelectedBulkProvider } from "@/lib/bulk-email";
 import type { NotificationType } from "@prisma/client";
 
@@ -62,8 +62,14 @@ export async function publishAnnouncement(
   await requireAdmin();
 
   const announcement = await prisma.announcement.findUnique({ where: { id } });
-  if (!announcement)         return { error: "Announcement not found." };
+  if (!announcement)            return { error: "Announcement not found." };
   if (announcement.publishedAt) return { error: "Already published." };
+
+  // Parse stored targetUserIds for "specific" audience
+  let targetUserIds: string[] = [];
+  if (announcement.targetUserIds) {
+    try { targetUserIds = JSON.parse(announcement.targetUserIds); } catch { /* ignore */ }
+  }
 
   // Mark published
   await prisma.announcement.update({
@@ -71,10 +77,15 @@ export async function publishAnnouncement(
     data:  { publishedAt: new Date() },
   });
 
-  // In-app notification broadcast
+  // ── In-app (audience-aware) ────────────────────────────────────
   let created = 0;
   if (announcement.sendInApp) {
-    const result = await createBulkInAppNotification({
+    const inAppUserIds = await resolveInAppAudience(
+      announcement.audienceType,
+      targetUserIds,
+      announcement.type as Parameters<typeof resolveInAppAudience>[2],
+    );
+    const result = await createBulkInAppNotificationForUserIds(inAppUserIds, {
       type:      announcement.type as NotificationType,
       title:     announcement.title,
       body:      announcement.body,
@@ -84,36 +95,28 @@ export async function publishAnnouncement(
     created = result.created;
   }
 
-  // Bulk email queue (selected bulk provider)
+  // ── Bulk email (audience-aware) ────────────────────────────────
   let queued = 0;
   if (announcement.sendEmail) {
     const providerCheck = await checkSelectedBulkProvider();
     if (!providerCheck.ok) {
-      // In-app was already sent — partial success
+      await prisma.announcement.update({
+        where: { id },
+        data:  { recipientCount: created },
+      });
       revalidatePath("/admin/outreach");
       return {
         created,
         queued: 0,
-        error: `In-app notifications sent, but email not queued: ${providerCheck.error}`,
+        error: `In-app sent. Email not queued: ${providerCheck.error}`,
       };
     }
 
-    // Fetch all opted-in, active users with emails
-    const users = await prisma.user.findMany({
-      where: {
-        status: "ACTIVE",
-        email:  { not: "" },
-        OR: [
-          { preferences: null },
-          { preferences: { emailNotifications: true, announcementNotifications: true } },
-        ],
-      },
-      select: { email: true, name: true },
-    });
-
+    const emailUsers = await resolveEmailAudience(announcement.audienceType, targetUserIds);
     const campaignId = `announcement_${id}`;
+
     const result = await enqueueBulkForRecipients({
-      recipients: users,
+      recipients: emailUsers,
       type:       "ANNOUNCEMENT",
       campaignId,
       buildEmail: (r) => buildAnnouncementEmail({
@@ -125,7 +128,6 @@ export async function publishAnnouncement(
       }),
     });
 
-    // Mark email as dispatched
     await prisma.announcement.update({
       where: { id },
       data:  { emailSentAt: new Date() },
@@ -133,6 +135,11 @@ export async function publishAnnouncement(
 
     queued = result.queued;
   }
+
+  await prisma.announcement.update({
+    where: { id },
+    data:  { recipientCount: created, emailQueuedCount: queued },
+  });
 
   revalidatePath("/admin/outreach");
   return { created, queued };

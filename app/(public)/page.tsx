@@ -3,8 +3,9 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import FilmRail from "@/components/film-rail";
-import HeroRotator from "@/components/hero-rotator";
 import MobileFeaturedHero from "@/components/mobile-featured-hero";
+import HeroDesktopSection from "@/components/hero-desktop-section";
+import { getWorkCtaState } from "@/lib/work-cta";
 import { Play, ChevronRight } from "lucide-react";
 import "./home.css";
 
@@ -12,19 +13,32 @@ const HOME_SELECT = {
   id: true, slug: true, title: true, posterUrl: true,
   heroMobileUrl: true, heroDesktopUrl: true,
   genre: true, genres: true, requiresAuth: true, type: true,
-  trailerUrl: true, requiresLoginToViewTrailer: true,
+  trailerUrl: true, requiresLoginToViewTrailer: true, videoUrl: true,
 } as const;
+
+import type { WorkStatus } from "@prisma/client";
+
+const HOME_STATUSES: { in: WorkStatus[] } = { in: ["PUBLISHED", "UPCOMING", "IN_PRODUCTION"] };
 
 async function getHomeWorks() {
   const [featured, newReleases] = await Promise.all([
+    // Featured: include first-episode slug so "Watch Series" CTA works on hero
     prisma.work.findMany({
-      where: { status: "PUBLISHED", showOnHome: true, featured: true, type: { not: "EPISODE" } },
+      where: { status: HOME_STATUSES, showOnHome: true, featured: true, type: { not: "EPISODE" } },
       orderBy: { order: "asc" },
       take: 6,
-      select: HOME_SELECT,
+      select: {
+        ...HOME_SELECT,
+        episodes: {
+          where: { status: "PUBLISHED" },
+          orderBy: [{ seasonNumber: "asc" }, { episodeNumber: "asc" }, { order: "asc" }],
+          select: { slug: true },
+          take: 1,
+        },
+      },
     }),
     prisma.work.findMany({
-      where: { status: "PUBLISHED", showOnHome: true, type: { not: "EPISODE" } },
+      where: { status: HOME_STATUSES, showOnHome: true, type: { not: "EPISODE" } },
       orderBy: { createdAt: "desc" },
       take: 8,
       select: HOME_SELECT,
@@ -35,7 +49,7 @@ async function getHomeWorks() {
 
 async function getPublishedTypes(): Promise<string[]> {
   const rows = await prisma.work.findMany({
-    where: { status: "PUBLISHED", type: { not: "EPISODE" } },
+    where: { status: HOME_STATUSES, type: { not: "EPISODE" } },
     select: { type: true },
     distinct: ["type"],
   });
@@ -87,14 +101,34 @@ export default async function HomePage() {
 
   const featuredWithPosters = featured.filter((w) => w.posterUrl != null).slice(0, 5);
 
-  const heroItems = featuredWithPosters.map((w) => ({
-    posterUrl: w.posterUrl!,
-    title: w.title,
-    slug: w.slug,
-    heroMobileUrl: w.heroMobileUrl,
-    heroDesktopUrl: w.heroDesktopUrl,
-  }));
+  // Pre-compute CTA states for all featured works so the desktop hero can
+  // update its buttons in sync with whichever slide the rotator is showing.
+  const heroDesktopItems = featuredWithPosters.map((w) => {
+    const firstEpSlug = w.episodes?.[0]?.slug ?? null;
+    const cta = getWorkCtaState({
+      slug: w.slug,
+      type: w.type,
+      trailerUrl: w.trailerUrl,
+      videoUrl: w.videoUrl,
+      requiresAuth: w.requiresAuth,
+      requiresLoginToViewTrailer: w.requiresLoginToViewTrailer,
+      isGuest: !userId,
+      firstEpisodeSlug: firstEpSlug,
+    });
+    return {
+      posterUrl: w.posterUrl!,
+      title: w.title,
+      slug: w.slug,
+      heroMobileUrl: w.heroMobileUrl ?? null,
+      heroDesktopUrl: w.heroDesktopUrl ?? null,
+      primaryLabel:   cta.primaryLabel,
+      primaryHref:    cta.primaryHref,
+      secondaryLabel: cta.secondaryLabel,
+      secondaryHref:  cta.secondaryHref,
+    };
+  });
 
+  // mobileHeroItems — passed to MobileFeaturedHero (mobile only, <768px)
   const mobileHeroItems = featuredWithPosters.map((w) => ({
     id: w.id,
     slug: w.slug,
@@ -106,6 +140,7 @@ export default async function HomePage() {
     type: w.type,
     trailerUrl: w.trailerUrl ?? null,
     requiresLoginToViewTrailer: w.requiresLoginToViewTrailer,
+    videoUrl: w.videoUrl ?? null,
   }));
 
   const isEmpty = featured.length === 0 && newReleases.length === 0;
@@ -121,51 +156,11 @@ export default async function HomePage() {
       />
 
       {/* ── Desktop cinematic hero (≥768px) ──────────── */}
+      {/* HeroDesktopSection is a client component that syncs CTA buttons   */}
+      {/* with the active rotator slide — fixes "Watch Short" staying on    */}
+      {/* screen while a Series (Grandpa's Diary) is displayed.             */}
       <section className="hero">
-        <div className="hero-bg">
-          <HeroRotator items={heroItems} />
-          <div className="hero-bg-gradient" />
-        </div>
-        <div className="hero-content">
-          <span className="hero-eyebrow">— Now Streaming</span>
-          <h1 className="hero-title">Cinema, reimagined.</h1>
-          <p className="hero-desc">We make films, series, and creative work with AI tools built around story, emotion, memory, and impact. Don&apos;t look away.</p>
-          <div className="hero-actions">
-            {(() => {
-              const p = featuredWithPosters[0];
-              if (!p) return (
-                <Link href="/works" className="hero-btn-primary">
-                  <Play size={16} fill="currentColor" /> Watch Our Films
-                </Link>
-              );
-              const watchHref = p.type === "SERIES"
-                ? `/watch/${p.slug}`
-                : `/watch/${p.slug}?full=1`;
-              const watchLabel = p.type === "SERIES" ? "Watch Series" : "Watch";
-              return (
-                <>
-                  {p.requiresAuth && !userId ? (
-                    <Link href={`/login?from=${encodeURIComponent(watchHref)}`} className="hero-btn-primary">
-                      <Play size={16} fill="currentColor" /> Sign In to Watch
-                    </Link>
-                  ) : (
-                    <Link href={watchHref} className="hero-btn-primary">
-                      <Play size={16} fill="currentColor" /> {watchLabel}
-                    </Link>
-                  )}
-                  {p.trailerUrl && (
-                    <Link href={`/works/${p.slug}`} className="hero-btn-trailer">
-                      Watch Trailer
-                    </Link>
-                  )}
-                </>
-              );
-            })()}
-            <Link href="/about" className="hero-btn-secondary">
-              Find Your Way In
-            </Link>
-          </div>
-        </div>
+        <HeroDesktopSection items={heroDesktopItems} />
       </section>
 
       {/* ── Continue Watching ───────────────────────── */}
@@ -215,11 +210,12 @@ export default async function HomePage() {
             <div className="si-left">
               <span className="si-eyebrow">Why AIM Studio</span>
               <h2 className="si-headline">
-                Films that couldn&apos;t exist before now.
+                Cinema for the moments<br />
+                we can&apos;t take back.
               </h2>
               <p className="si-body">
-                AIM Studio creates films, series, and visual stories powered by AI —
-                built around emotion, memory, sacrifice, and the moments people refuse to look away from.
+                Original films and series built around emotion, memory, sacrifice,
+                and the people who refuse to look away.
               </p>
               <div className="si-ctas">
                 <Link href="/works?collection=all" className="si-cta-primary">
@@ -236,17 +232,17 @@ export default async function HomePage() {
               <div className="si-card">
                 <span className="si-card-num">01</span>
                 <h3 className="si-card-title">Stories That Matter</h3>
-                <p className="si-card-desc">Human stories with emotional weight — not entertainment, evidence.</p>
+                <p className="si-card-desc">Every film has to matter — to someone, somewhere. Not entertainment. Evidence.</p>
               </div>
               <div className="si-card">
                 <span className="si-card-num">02</span>
                 <h3 className="si-card-title">No Story Too Small</h3>
-                <p className="si-card-desc">Every idea deserves a cinematic life. We build the tools to give it one.</p>
+                <p className="si-card-desc">The personal is universal. If the story is true, it belongs on screen.</p>
               </div>
               <div className="si-card">
                 <span className="si-card-num">03</span>
                 <h3 className="si-card-title">Every Frame, On Purpose</h3>
-                <p className="si-card-desc">AI helps us move faster, but the story always leads.</p>
+                <p className="si-card-desc">No wasted shots. No filler. Every creative decision serves the story.</p>
               </div>
             </div>
 

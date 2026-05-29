@@ -33,8 +33,10 @@ type WorkData = {
   clientName: string | null; industry: string | null; projectGoal: string | null;
   deliverables: string | null; caseStudy: string | null; galleryUrls: string[];
   requiresAuth: boolean; requiresLoginToViewTrailer: boolean;
-  featured: boolean; showOnHome: boolean; order: number;
+  featured: boolean; showOnHome: boolean; commentsEnabled: boolean; order: number;
   parentId: string | null; episodeNumber: number | null; seasonNumber: number | null;
+  introStart: number | null; introEnd: number | null; creditsStart: number | null;
+  contentRating: string | null; contentDescriptors: string[];
 };
 
 type Props = {
@@ -60,17 +62,20 @@ const GENRES = [
 export default function WorkForm({ work, workTitle, action, seriesList, error, defaultType, defaultParentId }: Props) {
   const [type, setType] = useState<WorkType>(work?.type ?? defaultType ?? "SHORT_FILM");
 
-  const showFilmMeta   = ["SHORT_FILM", "FULL_FILM", "SERIES", "TRAILER"].includes(type);
-  const showDuration   = !["SERIES", ...CLIENT_TYPES].includes(type);
-  const showDirector   = ["SHORT_FILM", "FULL_FILM", "SERIES"].includes(type);
-  const showTrailerUrl = ["SHORT_FILM", "FULL_FILM", "SERIES"].includes(type);
-  const showVideoUrl   = type !== "SERIES";
-  const showTeaserUrl  = type === "COMMERCIAL";
-  const isEpisode      = type === "EPISODE";
-  const isClientType   = CLIENT_TYPES.includes(type);
-  const showDeliverables = ["BRANDING", "CAMPAIGN", "CASE_STUDY"].includes(type);
-  const showCaseStudy  = ["BRANDING", "CAMPAIGN", "CASE_STUDY"].includes(type);
-  const showGallery    = ["BRANDING", "CAMPAIGN", "CASE_STUDY"].includes(type);
+  const showFilmMeta      = ["SHORT_FILM", "FULL_FILM", "SERIES", "TRAILER"].includes(type);
+  const showDuration      = !["SERIES", ...CLIENT_TYPES].includes(type);
+  const showDirector      = ["SHORT_FILM", "FULL_FILM", "SERIES"].includes(type);
+  const showTrailerUrl    = ["SHORT_FILM", "FULL_FILM", "SERIES"].includes(type);
+  const showVideoUrl      = type !== "SERIES";
+  const showTeaserUrl     = type === "COMMERCIAL";
+  const isEpisode         = type === "EPISODE";
+  const isClientType      = CLIENT_TYPES.includes(type);
+  const showDeliverables  = ["BRANDING", "CAMPAIGN", "CASE_STUDY"].includes(type);
+  const showCaseStudy     = ["BRANDING", "CAMPAIGN", "CASE_STUDY"].includes(type);
+  const showGallery       = ["BRANDING", "CAMPAIGN", "CASE_STUDY"].includes(type);
+  // Series sets intro timings + content advisory; episodes inherit — hide both for EPISODE type
+  const showPlayerTimings  = ["SERIES", "FULL_FILM", "SHORT_FILM"].includes(type);
+  const showContentAdvisory = !isEpisode;
 
   const videoLabel =
     type === "TRAILER"  ? "Trailer Video URL" :
@@ -238,37 +243,56 @@ export default function WorkForm({ work, workTitle, action, seriesList, error, d
           </>
         )}
 
-        {/* Images */}
-        <div className="form-group">
-          <label className="form-label">Poster / Card Image URL</label>
-          <input type="url" name="posterUrl" className="form-input"
-            defaultValue={work?.posterUrl ?? ""} placeholder="https://…" />
-          <span className="form-hint">Portrait image used on cards, detail page, and as universal fallback.</span>
-        </div>
-
+        {/* ── Images — two main fields, advanced overrides collapsed ── */}
         {!isEpisode && (
           <>
             <div className="form-group">
-              <label className="form-label">Mobile Hero Image URL</label>
+              <label className="form-label">Mobile Image URL</label>
               <input type="url" name="heroMobileUrl" className="form-input"
                 defaultValue={work?.heroMobileUrl ?? ""} placeholder="https://…" />
-              <span className="form-hint">Recommended 9:16 portrait image for phone hero sections.</span>
+              <span className="form-hint">Recommended 9:16 portrait. Used for mobile hero sections, cards, and posters.</span>
             </div>
             <div className="form-group">
-              <label className="form-label">Desktop Hero Image URL</label>
+              <label className="form-label">Desktop Image URL</label>
               <input type="url" name="heroDesktopUrl" className="form-input"
                 defaultValue={work?.heroDesktopUrl ?? ""} placeholder="https://…" />
-              <span className="form-hint">Recommended 16:9 or wider cinematic image for desktop hero sections.</span>
+              <span className="form-hint">Recommended 16:9 or wider cinematic. Used for desktop hero sections and wide previews.</span>
             </div>
           </>
         )}
+        {isEpisode && (
+          <div className="form-group">
+            <label className="form-label">Episode Image URL</label>
+            <input type="url" name="heroMobileUrl" className="form-input"
+              defaultValue={work?.heroMobileUrl ?? ""} placeholder="https://…" />
+            <span className="form-hint">Thumbnail or still for this episode. Falls back to series images if empty.</span>
+          </div>
+        )}
 
-        <div className="form-group">
-          <label className="form-label">Thumbnail URL</label>
-          <input type="url" name="thumbnailUrl" className="form-input"
-            defaultValue={work?.thumbnailUrl ?? ""} placeholder="https://…" />
-          <span className="form-hint">Optional landscape thumbnail for episode rows and compact previews. Falls back to poster if empty.</span>
-        </div>
+        {/* Advanced image overrides (collapsed by default) */}
+        <details style={{ marginTop: "0.25rem" }}>
+          <summary style={{
+            fontFamily: "var(--font-body)", fontSize: "0.75rem", fontWeight: 600,
+            color: "var(--color-brand-muted)", cursor: "pointer", letterSpacing: "0.04em",
+            listStyle: "none", userSelect: "none",
+          }}>
+            Advanced image overrides ▸
+          </summary>
+          <div style={{ marginTop: "0.75rem", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+            <div className="form-group">
+              <label className="form-label">Card / Poster override</label>
+              <input type="url" name="posterUrl" className="form-input"
+                defaultValue={work?.posterUrl ?? ""} placeholder="https://…" />
+              <span className="form-hint">Overrides the portrait card/poster. Defaults to Mobile Image if empty.</span>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Thumbnail override</label>
+              <input type="url" name="thumbnailUrl" className="form-input"
+                defaultValue={work?.thumbnailUrl ?? ""} placeholder="https://…" />
+              <span className="form-hint">Overrides episode row thumbnail. Defaults to Desktop Image if empty.</span>
+            </div>
+          </div>
+        </details>
 
         {/* Trailer URL */}
         {showTrailerUrl && (
@@ -343,6 +367,12 @@ export default function WorkForm({ work, workTitle, action, seriesList, error, d
                   defaultChecked={work?.showOnHome ?? false} />
                 <span>Show on Home page</span>
               </label>
+              <label className="form-check">
+                <input type="hidden" name="commentsEnabled" value="false" />
+                <input type="checkbox" name="commentsEnabled" value="true"
+                  defaultChecked={work?.commentsEnabled ?? true} />
+                <span>Enable viewer comments</span>
+              </label>
             </div>
           </>
         )}
@@ -381,6 +411,123 @@ export default function WorkForm({ work, workTitle, action, seriesList, error, d
               </label>
             )}
           </div>
+        )}
+
+        {/* ── Episode Player Timing Override ─────────────────── */}
+        {/* Content rating/descriptors are series-level. Intro/credits can be overridden per episode. */}
+        {isEpisode && (
+          <>
+            <div className="form-divider" />
+            <div className="form-section-title">Player Timings</div>
+            <span className="form-hint" style={{ display: "block", marginBottom: "0.75rem" }}>
+              Override the series intro/credits timing for this specific episode. Leave blank to use the Series settings (e.g. for a different season intro length).
+            </span>
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Intro Start (s)</label>
+                <input type="number" name="introStart" className="form-input"
+                  defaultValue={work?.introStart ?? ""} min={0} placeholder="Series default" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Intro End (s)</label>
+                <input type="number" name="introEnd" className="form-input"
+                  defaultValue={work?.introEnd ?? ""} min={0} placeholder="Series default" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Credits Start (s)</label>
+                <input type="number" name="creditsStart" className="form-input"
+                  defaultValue={work?.creditsStart ?? ""} min={0} placeholder="Series default" />
+              </div>
+            </div>
+            <div className="form-episode-access-note">
+              <span className="form-hint">
+                Content rating and content descriptors are controlled by the parent Series.
+              </span>
+            </div>
+          </>
+        )}
+
+        {showContentAdvisory && (
+          <>
+            <div className="form-divider" />
+            <div className="form-section-title">Content Advisory</div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Content Rating</label>
+                <select name="contentRating" className="form-input" defaultValue={work?.contentRating ?? ""}>
+                  <option value="">Not Rated / Not Set</option>
+                  <option value="G">G — General Audiences</option>
+                  <option value="PG">PG — Parental Guidance</option>
+                  <option value="PG-13">PG-13 — Parents Strongly Cautioned</option>
+                  <option value="R">R — Restricted</option>
+                  <option value="NC-17">NC-17 — Adults Only</option>
+                  <option value="TV-G">TV-G — All Ages</option>
+                  <option value="TV-PG">TV-PG — Parental Guidance</option>
+                  <option value="TV-14">TV-14 — Parents Strongly Cautioned</option>
+                  <option value="TV-MA">TV-MA — Mature Audiences</option>
+                  <option value="NR">NR — Not Rated</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Content Descriptors</label>
+              <div className="form-check-grid">
+                {[
+                  ["VIOLENCE",         "Violence"],
+                  ["STRONG_LANGUAGE",  "Strong Language"],
+                  ["MILD_LANGUAGE",    "Mild Language"],
+                  ["NUDITY",           "Nudity"],
+                  ["SEXUAL_CONTENT",   "Sexual Content"],
+                  ["DRUG_USE",         "Drug Use"],
+                  ["ALCOHOL",          "Alcohol Use"],
+                  ["SMOKING",          "Smoking"],
+                  ["FRIGHTENING",      "Frightening Scenes"],
+                  ["THEMATIC_ELEMENTS","Thematic Elements"],
+                ].map(([val, label]) => (
+                  <label key={val} className="form-check">
+                    <input
+                      type="checkbox"
+                      name="contentDescriptors"
+                      value={val}
+                      defaultChecked={work?.contentDescriptors?.includes(val) ?? false}
+                    />
+                    <span>{label}</span>
+                  </label>
+                ))}
+              </div>
+              <span className="form-hint">Checked items appear in the content warning shown to viewers before they watch.</span>
+            </div>
+
+            {/* ── Player Timings (Series + standalone films) ── */}
+            {showPlayerTimings && (
+              <>
+                <div className="form-divider" />
+                <div className="form-section-title">Player Timings</div>
+                <span className="form-hint" style={{ display: "block", marginBottom: "0.75rem" }}>
+                  All values in seconds. Leave blank to disable. For Series, these apply to every episode.
+                </span>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">Intro Start (s)</label>
+                    <input type="number" name="introStart" className="form-input"
+                      defaultValue={work?.introStart ?? ""} min={0} placeholder="e.g. 30" />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Intro End (s) — Skip Intro seeks here</label>
+                    <input type="number" name="introEnd" className="form-input"
+                      defaultValue={work?.introEnd ?? ""} min={0} placeholder="e.g. 105" />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Credits Start (s)</label>
+                    <input type="number" name="creditsStart" className="form-input"
+                      defaultValue={work?.creditsStart ?? ""} min={0} placeholder="e.g. 2520" />
+                  </div>
+                </div>
+              </>
+            )}
+          </>
         )}
 
         {/* Sort Order — hidden for episodes (order is season/episode number) */}

@@ -9,3 +9,32 @@
 .dot--red   { background: var(--color-brand-border); }
 .check { color: #4ade80; font-size: 0.9rem; }
 .dash  { color: var(--color-brand-border); }
+
+/* ── Engagement stat columns ─────────────────────────── */
+.th-stat {
+  width: 48px;
+  text-align: center;
+  color: var(--color-brand-muted);
+  padding-inline: 6px;
+}
+.th-stat svg { display: inline-block; vertical-align: middle; }
+.td-stat {
+  text-align: center;
+  padding-inline: 6px;
+  white-space: nowrap;
+}
+.stat-val {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-brand-light);
+  font-family: var(--font-body);
+  letter-spacing: 0;
+}
+/* asterisk on series rows that aggregate episodes */
+.stat-agg {
+  font-size: 0.65rem;
+  color: var(--color-brand-muted);
+  margin-left: 1px;
+  vertical-align: super;
+  cursor: default;
+}

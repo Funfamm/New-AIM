@@ -39,12 +39,18 @@ function parseFormData(formData: FormData) {
     galleryUrls,
     requiresAuth:               formData.getAll("requiresAuth").includes("true"),
     requiresLoginToViewTrailer: formData.getAll("requiresLoginToViewTrailer").includes("true"),
-    featured:     formData.getAll("featured").includes("true"),
-    showOnHome:   formData.getAll("showOnHome").includes("true"),
-    order:        formData.get("order") ? Number(formData.get("order")) : 0,
+    featured:         formData.getAll("featured").includes("true"),
+    showOnHome:       formData.getAll("showOnHome").includes("true"),
+    commentsEnabled:  formData.getAll("commentsEnabled").includes("true"),
+    order:            formData.get("order") ? Number(formData.get("order")) : 0,
     parentId:     (formData.get("parentId") as string) || null,
     episodeNumber: formData.get("episodeNumber") ? Number(formData.get("episodeNumber")) : null,
     seasonNumber:  formData.get("seasonNumber")  ? Number(formData.get("seasonNumber"))  : null,
+    introStart:   formData.get("introStart")   ? Number(formData.get("introStart"))   : null,
+    introEnd:     formData.get("introEnd")     ? Number(formData.get("introEnd"))     : null,
+    creditsStart: formData.get("creditsStart") ? Number(formData.get("creditsStart")) : null,
+    contentRating:      (formData.get("contentRating") as string) || null,
+    contentDescriptors: (formData.getAll("contentDescriptors") as string[]).filter(Boolean),
   };
 }
 

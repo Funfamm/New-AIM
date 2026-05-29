@@ -5,7 +5,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
   return (
     <>
       <NavWrapper />
-      <div style={{ paddingTop: "68px" }}>{children}</div>
+      <div className="nav-offset">{children}</div>
       <Footer />
     </>
   );

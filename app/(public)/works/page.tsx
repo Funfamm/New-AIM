@@ -19,7 +19,7 @@ async function getWorks() {
     select: {
       id: true, slug: true, title: true, posterUrl: true,
       heroMobileUrl: true, heroDesktopUrl: true,
-      genre: true, requiresAuth: true, type: true, status: true,
+      genre: true, genres: true, requiresAuth: true, type: true, status: true,
     },
   });
 }

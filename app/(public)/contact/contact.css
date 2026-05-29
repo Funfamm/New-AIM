@@ -1,4 +1,12 @@
-.contact-page { padding: 4rem 0 8rem; }
+.contact-page {
+  padding: 4rem 0 8rem;
+  display: flex;
+  justify-content: center;
+}
+
+.contact-page > .container-app {
+  max-width: 720px;
+}
 
 .contact-header { padding-bottom: 3rem; max-width: 560px; }
 .contact-eyebrow {
@@ -31,8 +39,9 @@
 .form-input, .form-select, .form-textarea {
   font-family: var(--font-body); font-size: 0.9rem;
   color: var(--color-brand-white); background: var(--color-brand-surface);
-  border: 1px solid var(--color-brand-border); border-radius: 2px;
-  padding: 0.75rem 1rem; outline: none; transition: border-color 0.15s;
+  border: 1px solid var(--color-brand-border); border-radius: var(--radius-md);
+  padding: 0.75rem 1rem; outline: none;
+  transition: border-color var(--duration-fast), box-shadow var(--duration-normal);
   width: 100%; box-sizing: border-box;
 }
 .form-select {
@@ -43,17 +52,20 @@
 .form-textarea { resize: vertical; min-height: 140px; }
 .form-input::placeholder, .form-textarea::placeholder { color: var(--color-brand-muted); }
 .form-select option { background: var(--color-brand-surface); color: var(--color-brand-white); }
-.form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--color-brand-accent); }
+.form-input:focus, .form-select:focus, .form-textarea:focus {
+  border-color: var(--color-brand-accent);
+  box-shadow: 0 0 0 3px rgba(232,201,126,0.08);
+}
 
 .form-footer { display: flex; flex-direction: column; gap: 1.25rem; }
 @media (min-width: 640px) { .form-footer { flex-direction: row; align-items: flex-start; gap: 2rem; } }
 .form-submit {
   flex-shrink: 0; font-family: var(--font-body); font-size: 0.875rem; font-weight: 600;
   letter-spacing: 0.04em; color: var(--color-brand-black); background: var(--color-brand-accent);
-  border: none; height: 52px; padding: 0 2rem; border-radius: 2px; cursor: pointer;
-  transition: filter 0.2s; touch-action: manipulation;
+  border: none; height: 52px; padding: 0 2rem; border-radius: var(--radius-sm); cursor: pointer;
+  transition: filter var(--duration-fast), box-shadow var(--duration-normal), transform var(--duration-fast); touch-action: manipulation;
 }
-.form-submit:hover { filter: brightness(1.06); }
+.form-submit:hover { filter: brightness(1.06); box-shadow: var(--shadow-gold-subtle); transform: translateY(-1px); }
 .form-note {
   font-family: var(--font-body); font-size: 0.8rem;
   color: var(--color-brand-muted); line-height: 1.65; margin: 0; padding-top: 0.25rem;

@@ -478,10 +478,11 @@ export async function enqueueBulkEmail(opts: {
 const ENQUEUE_BATCH = 50; // EmailQueue inserts per batch
 
 export async function enqueueBulkForRecipients(opts: {
-  recipients: { email: string; name?: string | null }[];
-  buildEmail: (recipient: { email: string; name?: string | null }) => { subject: string; html: string };
-  type:       EmailType;
-  campaignId: string;
+  recipients:  { email: string; name?: string | null }[];
+  buildEmail:  (recipient: { email: string; name?: string | null }) => { subject: string; html: string };
+  type:        EmailType;
+  campaignId:  string;
+  scheduledAt?: Date;
 }): Promise<{ queued: number; suppressed: number; skipped: number }> {
   let queued = 0;
   let suppressed = 0;
@@ -514,13 +515,14 @@ export async function enqueueBulkForRecipients(opts: {
     }
 
     rows.push({
-      to:         norm,
+      to:          norm,
       subject,
       bodyHtml,
-      type:       opts.type,
-      provider:   "ACS",
-      status:     "QUEUED",
-      campaignId: opts.campaignId,
+      type:        opts.type,
+      provider:    "ACS",
+      status:      "QUEUED",
+      campaignId:  opts.campaignId,
+      scheduledAt: opts.scheduledAt ?? new Date(),
     });
   }
 

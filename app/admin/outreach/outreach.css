@@ -489,7 +489,8 @@
 }
 
 .outreach-badge--draft     { background: var(--color-brand-surface); color: var(--color-brand-muted); }
-.outreach-badge--published { background: rgba(74,222,128,0.12); color: #4ade80; }
+.outreach-badge--published { background: rgba(74,222,128,0.12);  color: #4ade80; }
+.outreach-badge--scheduled { background: rgba(251,191,36,0.12);  color: #fbbf24; }
 .outreach-badge--email     { background: rgba(232,201,126,0.1);  color: var(--color-brand-accent); }
 .outreach-badge--inapp     { background: rgba(255,255,255,0.05); color: var(--color-brand-muted); }
 .outreach-badge--type      { background: rgba(255,255,255,0.05); color: var(--color-brand-muted); }
@@ -625,6 +626,149 @@
 .outreach-status-badge--failed    { background: rgba(192,57,43,0.1);   color: var(--color-brand-red); }
 .outreach-status-badge--suppressed{ background: rgba(255,255,255,0.05);color: var(--color-brand-muted); }
 .outreach-status-badge--skipped   { background: rgba(255,255,255,0.05);color: var(--color-brand-muted); }
+
+/* ── Member search ───────────────────────────── */
+
+.outreach-member-search {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* Input + spinner wrapper */
+.outreach-member-input-wrap {
+  position: relative;
+}
+.outreach-member-input-wrap .outreach-input {
+  padding-right: 2rem;
+}
+
+/* CSS-only rotating spinner */
+.outreach-member-spinner {
+  position: absolute;
+  right: 0.65rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--color-brand-border);
+  border-top-color: var(--color-brand-accent);
+  border-radius: 50%;
+  animation: member-spin 0.6s linear infinite;
+  pointer-events: none;
+}
+@keyframes member-spin { to { transform: translateY(-50%) rotate(360deg); } }
+
+/* Dropdown */
+.outreach-member-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--color-brand-dark);
+  border: 1px solid var(--color-brand-border);
+  border-radius: 6px;
+  overflow: hidden;
+  list-style: none;
+  margin: 0;
+  padding: 0.25rem 0;
+  z-index: 50;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.5);
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+/* Result row */
+.outreach-member-result {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.55rem 0.875rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s;
+}
+.outreach-member-result:hover,
+.outreach-member-result--active {
+  background: var(--color-brand-surface);
+}
+.outreach-member-result--active .outreach-member-result-name {
+  color: var(--color-brand-accent);
+}
+
+.outreach-member-result-name {
+  font-size: 0.83rem;
+  font-weight: 500;
+  color: var(--color-brand-light);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+.outreach-member-result-email {
+  font-size: 0.75rem;
+  color: var(--color-brand-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Empty state */
+.outreach-member-empty {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--color-brand-dark);
+  border: 1px solid var(--color-brand-border);
+  border-radius: 6px;
+  padding: 0.75rem 0.875rem;
+  font-size: 0.8rem;
+  color: var(--color-brand-muted);
+  z-index: 50;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.5);
+}
+
+/* Selected chips */
+.outreach-member-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.outreach-member-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.77rem;
+  font-weight: 600;
+  color: var(--color-brand-accent);
+  background: rgba(232,201,126,0.08);
+  border: 1px solid rgba(232,201,126,0.22);
+  border-radius: 20px;
+  padding: 0.25rem 0.5rem 0.25rem 0.65rem;
+  line-height: 1;
+}
+
+.outreach-member-chip-remove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.65rem;
+  color: var(--color-brand-muted);
+  padding: 0;
+  line-height: 1;
+  transition: color 0.12s;
+  display: flex;
+  align-items: center;
+}
+.outreach-member-chip-remove:hover {
+  color: var(--color-brand-red);
+}
 
 /* ── Temp placeholder ────────────────────────── */
 .outreach-coming {

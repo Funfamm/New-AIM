@@ -16,11 +16,17 @@ export type HeroItem = {
 type Props = {
   items: HeroItem[];
   interval?: number; // ms between slides, default 4s
+  onSlideChange?: (index: number) => void;
 };
 
-export default function HeroRotator({ items, interval = 4000 }: Props) {
+export default function HeroRotator({ items, interval = 4000, onSlideChange }: Props) {
   const [active, setActive] = useState(0);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Notify parent when active slide changes
+  useEffect(() => {
+    onSlideChange?.(active);
+  }, [active, onSlideChange]);
 
   useEffect(() => {
     if (items.length <= 1) return;

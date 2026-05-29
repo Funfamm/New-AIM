@@ -47,7 +47,33 @@ enum NotificationType {
   WATCH_PROGRESS
   ACCOUNT
   SYSTEM
-  SECURITY       // NEW — security alerts surfaced in-app
+  SECURITY
+  COMMENT_REPLY   // someone replied to your comment
+  COMMENT_REPORT  // admin: a comment was reported (for admin users)
+}
+
+enum CommentStatus {
+  PUBLISHED
+  HIDDEN
+  DELETED
+  FLAGGED
+}
+
+enum CommentReportReason {
+  SPAM
+  HARASSMENT
+  HATE_OR_ABUSE
+  SEXUAL_CONTENT
+  VIOLENCE_OR_THREATS
+  PERSONAL_INFORMATION
+  OTHER
+}
+
+enum CommentReportStatus {
+  OPEN
+  REVIEWED
+  DISMISSED
+  ACTIONED
 }
 
 enum AnalyticsEventType {
@@ -197,10 +223,15 @@ model User {
   progress      WatchProgress[]
   accounts      Account[]
   sessions      Session[]
+  refreshTokens RefreshToken[]
   savedWorks    SavedWork[]
   likes         WorkLike[]
   preferences   UserPreferences?
   notifications Notification[]
+  comments               Comment[]
+  commentLikes           CommentLike[]
+  commentReports         CommentReport[] @relation("CommentReporter")
+  commentReportsReviewed CommentReport[] @relation("CommentReportReviewer")
 
   // Welcome onboarding — set once on first login/registration, never reset
   welcomeEmailSentAt        DateTime?
@@ -251,9 +282,19 @@ model Work {
   // Display controls
   requiresAuth               Boolean @default(false)
   requiresLoginToViewTrailer Boolean @default(false)
-  featured     Boolean  @default(false)
-  showOnHome   Boolean  @default(false)
-  order        Int      @default(0)
+  featured        Boolean  @default(false)
+  showOnHome      Boolean  @default(false)
+  commentsEnabled Boolean  @default(true)
+  order           Int      @default(0)
+
+  // Player intelligence — optional, admin-configurable per episode/film
+  introStart    Int?      // seconds: Skip Intro button appears
+  introEnd      Int?      // seconds: Skip Intro seeks here
+  creditsStart  Int?      // seconds: Skip Credits button appears
+
+  // Content advisory — admin-selected per work
+  contentRating      String?   // e.g. "G", "PG", "PG-13", "R", "TV-MA", "NR"
+  contentDescriptors String[]  @default([])   // e.g. ["VIOLENCE","LANGUAGE","NUDITY"]
 
   // Series → Episode relationship (self-referential)
   parentId      String?
@@ -271,6 +312,7 @@ model Work {
   notifications   Notification[]
   analyticsEvents AnalyticsEvent[]
   notifyMeCta     NotifyMeCta?
+  comments        Comment[]
 
   @@map("works")
 }
@@ -867,11 +909,14 @@ model Announcement {
   updatedAt   DateTime         @updatedAt
 
   // Delivery tracking — populated on publish
-  audienceType     String @default("all")  // "all" | "admins" | "notify_me" | "saved_work"
-  recipientCount   Int    @default(0)       // in-app notifications created
-  emailQueuedCount Int    @default(0)       // EmailQueue rows created
+  audienceType     String    @default("all")  // "all" | "admins" | "notify_me" | "saved_work" | "specific"
+  targetUserIds    String?                    // JSON array of user IDs for audienceType = "specific"
+  scheduledAt      DateTime?                  // null = publish immediately; set = cron publishes at this time
+  recipientCount   Int       @default(0)      // in-app notifications created
+  emailQueuedCount Int       @default(0)      // EmailQueue rows created
 
   @@index([publishedAt])
+  @@index([scheduledAt])
   @@map("announcements")
 }
 
@@ -904,6 +949,27 @@ model NotifyMeCta {
 // workId + workTitle are plain String snapshots so data is always recoverable.
 // ─────────────────────────────────────────────
 
+// ─────────────────────────────────────────────
+// REFRESH TOKEN
+// One row per active session. Rotated on every 15-minute access-token
+// renewal. Deleted on logout, suspension, deactivation, or purge.
+// Raw token is never stored — only a SHA-256 hash.
+// ─────────────────────────────────────────────
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique  // SHA-256(raw token) — raw token never stored
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
 model NotifyMeSignup {
   id        String      @id @default(cuid())
   ctaId     String?                         // nullable FK — set to null if CTA deleted
@@ -921,4 +987,75 @@ model NotifyMeSignup {
   @@index([email])
   @@index([createdAt])
   @@map("notify_me_signups")
+}
+
+// ─────────────────────────────────────────────
+// COMMENTS
+// ─────────────────────────────────────────────
+
+model Comment {
+  id         String        @id @default(cuid())
+  body       String        @db.VarChar(1000)
+  status     CommentStatus @default(PUBLISHED)
+  isPinned   Boolean       @default(false)
+  likeCount  Int           @default(0)
+  replyCount Int           @default(0)
+  editedAt   DateTime?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  workId String?
+  work   Work?   @relation(fields: [workId], references: [id], onDelete: Cascade)
+
+  parentId String?
+  parent   Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies  Comment[] @relation("CommentReplies")
+
+  likes   CommentLike[]
+  reports CommentReport[]
+
+  @@index([workId, status, createdAt])
+  @@index([parentId])
+  @@index([userId])
+  @@map("comments")
+}
+
+model CommentLike {
+  id        String   @id @default(cuid())
+  commentId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([commentId, userId])
+  @@index([userId])
+  @@map("comment_likes")
+}
+
+model CommentReport {
+  id           String              @id @default(cuid())
+  reason       CommentReportReason
+  details      String?             @db.VarChar(500)
+  status       CommentReportStatus @default(OPEN)
+  createdAt    DateTime            @default(now())
+  reviewedAt   DateTime?
+  reviewedById String?
+
+  commentId String
+  comment   Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation("CommentReporter", fields: [userId], references: [id], onDelete: Cascade)
+
+  reviewer User? @relation("CommentReportReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@unique([commentId, userId])
+  @@index([status])
+  @@index([commentId])
+  @@map("comment_reports")
 }

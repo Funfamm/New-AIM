@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Play, ChevronLeft, ChevronRight } from "lucide-react";
+import { getWorkCtaState } from "@/lib/work-cta";
 import SaveButton from "./save-button";
 import "./mobile-featured-hero.css";
 
@@ -16,8 +17,9 @@ export type MobileHeroItem = {
   requiresAuth: boolean;
   genres: string[];
   type: string;
+  videoUrl?: string | null;
   trailerUrl?: string | null;
-  requiresLoginToViewTrailer?: boolean;
+  requiresLoginToViewTrailer?: boolean | null;
 };
 
 // Pill definitions: shown only if at least one requiredType has published content
@@ -25,6 +27,7 @@ const PILL_DEFS: { label: string; collection: string; requiredTypes: string[] }[
   { label: "Films",      collection: "films",       requiredTypes: ["SHORT_FILM", "FULL_FILM"] },
   { label: "Series",     collection: "series",      requiredTypes: ["SERIES"] },
   { label: "Shorts",     collection: "shorts",      requiredTypes: ["SHORT_FILM"] },
+  { label: "Upcoming",   collection: "upcoming",    requiredTypes: [] },
   { label: "Commercial", collection: "commercials", requiredTypes: ["COMMERCIAL"] },
   { label: "Branding",   collection: "branding",    requiredTypes: ["BRANDING"] },
   { label: "Campaigns",  collection: "campaigns",   requiredTypes: ["CAMPAIGN"] },
@@ -130,7 +133,11 @@ export default function MobileFeaturedHero({ items, isLoggedIn, savedIds, availa
         <div className="mfh-pills">
           <Link href="/works" className="mfh-pill">All</Link>
           {PILL_DEFS
-            .filter(p => p.requiredTypes.some(t => availableTypes.includes(t)))
+            .filter(p =>
+              p.label === "Upcoming"
+                ? availableTypes.length > 0  // Show "Upcoming" if any types exist (upstream filters upcoming status)
+                : p.requiredTypes.some(t => availableTypes.includes(t))
+            )
             .map(p => (
               <Link key={p.label} href={`/works?collection=${p.collection}`} className="mfh-pill">
                 {p.label}
@@ -151,12 +158,7 @@ export default function MobileFeaturedHero({ items, isLoggedIn, savedIds, availa
           onClickCapture={onClickCapture}
         >
           {items.map((item, i) => {
-            const isActive = i === active;
-            const watchHref =
-              item.type === "SERIES"
-                ? `/watch/${item.slug}`
-                : `/watch/${item.slug}?full=1`;
-            const signInHref = `/login?from=${encodeURIComponent(watchHref)}`;
+            const isActive     = i === active;
 
             return (
               <div
@@ -183,6 +185,7 @@ export default function MobileFeaturedHero({ items, isLoggedIn, savedIds, availa
                         alt=""
                         className="mfh-img"
                         loading={i === 0 ? "eager" : "lazy"}
+                        fetchPriority={i === 0 ? "high" : undefined}
                         draggable={false}
                       />
                     ) : (
@@ -211,22 +214,40 @@ export default function MobileFeaturedHero({ items, isLoggedIn, savedIds, availa
                     )}
                     <h2 className="mfh-title">{item.title}</h2>
                     <div className="mfh-actions">
-                      {item.requiresAuth && !isLoggedIn ? (
-                        <Link href={signInHref} className="mfh-btn-play" tabIndex={isActive ? 0 : -1}>
-                          <Play size={14} fill="currentColor" />
-                          Sign In to Watch
-                        </Link>
-                      ) : (
-                        <Link href={watchHref} className="mfh-btn-play" tabIndex={isActive ? 0 : -1}>
-                          <Play size={14} fill="currentColor" />
-                          {item.type === "SERIES" ? "Watch Series" : "Watch"}
-                        </Link>
-                      )}
-                      {item.trailerUrl && (
-                        <Link href={`/works/${item.slug}`} className="mfh-btn-trailer" tabIndex={isActive ? 0 : -1}>
-                          Watch Trailer
-                        </Link>
-                      )}
+                    {(() => {
+                      const cta = getWorkCtaState({
+                        slug: item.slug,
+                        type: item.type,
+                        trailerUrl: item.trailerUrl,
+                        videoUrl: item.videoUrl,
+                        requiresAuth: item.requiresAuth,
+                        requiresLoginToViewTrailer: item.requiresLoginToViewTrailer,
+                        isGuest: !isLoggedIn,
+                      });
+                      return (
+                        <>
+                          {cta.primaryLabel ? (
+                            <Link href={cta.primaryHref} className="mfh-btn-play" tabIndex={isActive ? 0 : -1}>
+                              <Play size={14} fill="currentColor" />
+                              {cta.primaryLabel}
+                            </Link>
+                          ) : (
+                            <Link href={`/works/${item.slug}`} className="mfh-btn-play" tabIndex={isActive ? 0 : -1}>
+                              View Details
+                            </Link>
+                          )}
+                          {cta.secondaryLabel && cta.secondaryHref && (
+                            <Link
+                              href={cta.secondaryHref}
+                              className="mfh-btn-trailer"
+                              tabIndex={isActive ? 0 : -1}
+                            >
+                              {cta.secondaryLabel}
+                            </Link>
+                          )}
+                        </>
+                      );
+                    })()}
                       {isLoggedIn && (
                         <SaveButton
                           workId={item.id}
