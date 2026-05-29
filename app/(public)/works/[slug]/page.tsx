@@ -10,6 +10,7 @@ import { Play, Clock, Calendar, ChevronLeft, Lock } from "lucide-react";
 import type { Metadata } from "next";
 import SynopsisToggle from "@/components/synopsis-toggle";
 import SaveButton from "@/components/save-button";
+import CommentSection from "@/components/comment-section";
 import LikeButton from "@/components/like-button";
 import ShareButton from "@/components/share-button";
 import { isWorkSaved } from "@/lib/actions/watchlist";
@@ -74,7 +75,7 @@ async function getWork(slug: string) {
   return prisma.work.findUnique({
     where: { slug },
     select: {
-      id: true, slug: true, title: true, type: true, status: true,
+      id: true, slug: true, title: true, type: true, status: true, commentsEnabled: true,
       description: true, posterUrl: true, trailerUrl: true, videoUrl: true,
       year: true, duration: true, genre: true, genres: true, director: true,
       requiresAuth: true, requiresLoginToViewTrailer: true,
@@ -416,6 +417,18 @@ export default async function WorkDetailPage({ params }: Props) {
         </section>
       )}
 
+      {/* ── Comments ───────────────────────────────────── */}
+      {work.commentsEnabled && work.status === "PUBLISHED" && (
+        <div className="container-app">
+          <CommentSection
+            workId={work.id}
+            workSlug={work.slug}
+            currentUser={session?.user
+              ? { id: session.user.id!, name: session.user.name ?? null, image: session.user.image ?? null, role: session.user.role as string }
+              : null}
+          />
+        </div>
+      )}
     </main>
   );
 }

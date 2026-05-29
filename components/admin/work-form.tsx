@@ -33,7 +33,7 @@ type WorkData = {
   clientName: string | null; industry: string | null; projectGoal: string | null;
   deliverables: string | null; caseStudy: string | null; galleryUrls: string[];
   requiresAuth: boolean; requiresLoginToViewTrailer: boolean;
-  featured: boolean; showOnHome: boolean; order: number;
+  featured: boolean; showOnHome: boolean; commentsEnabled: boolean; order: number;
   parentId: string | null; episodeNumber: number | null; seasonNumber: number | null;
   introStart: number | null; introEnd: number | null; creditsStart: number | null;
   contentRating: string | null; contentDescriptors: string[];
@@ -347,6 +347,12 @@ export default function WorkForm({ work, workTitle, action, seriesList, error, d
                 <input type="checkbox" name="showOnHome" value="true"
                   defaultChecked={work?.showOnHome ?? false} />
                 <span>Show on Home page</span>
+              </label>
+              <label className="form-check">
+                <input type="hidden" name="commentsEnabled" value="false" />
+                <input type="checkbox" name="commentsEnabled" value="true"
+                  defaultChecked={work?.commentsEnabled ?? true} />
+                <span>Enable viewer comments</span>
               </label>
             </div>
           </>

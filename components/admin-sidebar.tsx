@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { LayoutDashboard, Clapperboard, Users, BarChart2, Mail, Settings, ScrollText, LogOut, Menu, X, ArrowLeft, BellRing, Shield, Megaphone, Database } from "lucide-react";
+import { LayoutDashboard, Clapperboard, Users, BarChart2, Mail, Settings, ScrollText, LogOut, Menu, X, ArrowLeft, BellRing, Shield, Megaphone, Database, MessageSquare } from "lucide-react";
 import { logoutUser } from "@/lib/actions/auth";
 import "./admin-sidebar.css";
 
@@ -13,6 +13,7 @@ const NAV = [
   { href: "/admin/analytics",  label: "Analytics", icon: BarChart2 },
   { href: "/admin/outreach",         label: "Outreach",      icon: Megaphone },
   { href: "/admin/notify-me-ctas", label: "Notify Me",     icon: BellRing },
+  { href: "/admin/comments",       label: "Comments",      icon: MessageSquare },
   { href: "/admin/security",       label: "Security",      icon: Shield },
   { href: "/admin/email",          label: "Email",         icon: Mail },
   { href: "/admin/settings",  label: "Settings",  icon: Settings },

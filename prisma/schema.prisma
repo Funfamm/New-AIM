@@ -47,7 +47,33 @@ enum NotificationType {
   WATCH_PROGRESS
   ACCOUNT
   SYSTEM
-  SECURITY       // NEW — security alerts surfaced in-app
+  SECURITY
+  COMMENT_REPLY   // someone replied to your comment
+  COMMENT_REPORT  // admin: a comment was reported (for admin users)
+}
+
+enum CommentStatus {
+  PUBLISHED
+  HIDDEN
+  DELETED
+  FLAGGED
+}
+
+enum CommentReportReason {
+  SPAM
+  HARASSMENT
+  HATE_OR_ABUSE
+  SEXUAL_CONTENT
+  VIOLENCE_OR_THREATS
+  PERSONAL_INFORMATION
+  OTHER
+}
+
+enum CommentReportStatus {
+  OPEN
+  REVIEWED
+  DISMISSED
+  ACTIONED
 }
 
 enum AnalyticsEventType {
@@ -202,6 +228,10 @@ model User {
   likes         WorkLike[]
   preferences   UserPreferences?
   notifications Notification[]
+  comments               Comment[]
+  commentLikes           CommentLike[]
+  commentReports         CommentReport[] @relation("CommentReporter")
+  commentReportsReviewed CommentReport[] @relation("CommentReportReviewer")
 
   // Welcome onboarding — set once on first login/registration, never reset
   welcomeEmailSentAt        DateTime?
@@ -252,9 +282,10 @@ model Work {
   // Display controls
   requiresAuth               Boolean @default(false)
   requiresLoginToViewTrailer Boolean @default(false)
-  featured     Boolean  @default(false)
-  showOnHome   Boolean  @default(false)
-  order        Int      @default(0)
+  featured        Boolean  @default(false)
+  showOnHome      Boolean  @default(false)
+  commentsEnabled Boolean  @default(true)
+  order           Int      @default(0)
 
   // Player intelligence — optional, admin-configurable per episode/film
   introStart    Int?      // seconds: Skip Intro button appears
@@ -281,6 +312,7 @@ model Work {
   notifications   Notification[]
   analyticsEvents AnalyticsEvent[]
   notifyMeCta     NotifyMeCta?
+  comments        Comment[]
 
   @@map("works")
 }
@@ -955,4 +987,75 @@ model NotifyMeSignup {
   @@index([email])
   @@index([createdAt])
   @@map("notify_me_signups")
+}
+
+// ─────────────────────────────────────────────
+// COMMENTS
+// ─────────────────────────────────────────────
+
+model Comment {
+  id         String        @id @default(cuid())
+  body       String        @db.VarChar(1000)
+  status     CommentStatus @default(PUBLISHED)
+  isPinned   Boolean       @default(false)
+  likeCount  Int           @default(0)
+  replyCount Int           @default(0)
+  editedAt   DateTime?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  workId String?
+  work   Work?   @relation(fields: [workId], references: [id], onDelete: Cascade)
+
+  parentId String?
+  parent   Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies  Comment[] @relation("CommentReplies")
+
+  likes   CommentLike[]
+  reports CommentReport[]
+
+  @@index([workId, status, createdAt])
+  @@index([parentId])
+  @@index([userId])
+  @@map("comments")
+}
+
+model CommentLike {
+  id        String   @id @default(cuid())
+  commentId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([commentId, userId])
+  @@index([userId])
+  @@map("comment_likes")
+}
+
+model CommentReport {
+  id           String              @id @default(cuid())
+  reason       CommentReportReason
+  details      String?             @db.VarChar(500)
+  status       CommentReportStatus @default(OPEN)
+  createdAt    DateTime            @default(now())
+  reviewedAt   DateTime?
+  reviewedById String?
+
+  commentId String
+  comment   Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation("CommentReporter", fields: [userId], references: [id], onDelete: Cascade)
+
+  reviewer User? @relation("CommentReportReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@unique([commentId, userId])
+  @@index([status])
+  @@index([commentId])
+  @@map("comment_reports")
 }
