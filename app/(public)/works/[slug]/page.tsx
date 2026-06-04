@@ -223,15 +223,21 @@ export default async function WorkDetailPage({ params }: Props) {
             {work.cast.length > 0 && (
               <div className="detail-cast-mobile" aria-label="Cast">
                 {work.cast.slice(0, 3).map((m) => (
-                  <div key={m.id} className="detail-cast-circle" title={`${m.name}${m.character ? ` as ${m.character}` : ""}`}>
+                  <Link
+                    key={m.id}
+                    href={`/works/${work.slug}/cast`}
+                    className="detail-cast-circle"
+                    title={`${m.name}${m.character ? ` as ${m.character}` : ""}`}
+                    aria-label={`View cast for ${work.title}`}
+                  >
                     {m.photoUrl
                       ? <img src={m.photoUrl} alt={m.name} className="detail-cast-img" />
-                      : <span className="detail-cast-initial">{m.name.charAt(0).toUpperCase()}</span>
+                      : <span className="detail-cast-initial" aria-hidden="true">{m.name.charAt(0).toUpperCase()}</span>
                     }
-                  </div>
+                  </Link>
                 ))}
                 {work.cast.length > 3 && (
-                  <Link href={`/works/${work.slug}/cast`} className="detail-cast-more">
+                  <Link href={`/works/${work.slug}/cast`} className="detail-cast-more" aria-label="View all cast">
                     +{work.cast.length - 3}
                   </Link>
                 )}
@@ -346,12 +352,18 @@ export default async function WorkDetailPage({ params }: Props) {
                     <span className="detail-cast-label">Cast</span>
                     <div className="detail-cast-circles">
                       {work.cast.slice(0, 4).map((m) => (
-                        <div key={m.id} className="detail-cast-circle" title={`${m.name}${m.character ? ` as ${m.character}` : ""}`}>
+                        <Link
+                          key={m.id}
+                          href={`/works/${work.slug}/cast`}
+                          className="detail-cast-circle"
+                          title={`${m.name}${m.character ? ` as ${m.character}` : ""}`}
+                          aria-label={`View cast for ${work.title}`}
+                        >
                           {m.photoUrl
                             ? <img src={m.photoUrl} alt={m.name} className="detail-cast-img" />
-                            : <span className="detail-cast-initial">{m.name.charAt(0).toUpperCase()}</span>
+                            : <span className="detail-cast-initial" aria-hidden="true">{m.name.charAt(0).toUpperCase()}</span>
                           }
-                        </div>
+                        </Link>
                       ))}
                     </div>
                     <Link href={`/works/${work.slug}/cast`} className="detail-cast-viewall">
