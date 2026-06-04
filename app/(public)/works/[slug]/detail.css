@@ -58,7 +58,6 @@
 }
 @media (min-width: 768px) { .detail-poster-wrap { width: 220px; } }
 @media (min-width: 1024px) { .detail-poster-wrap { width: 260px; } }
-@media (min-width: 1024px) { .detail-poster-wrap { width: 260px; } }
 .detail-poster {
   object-fit: cover; border-radius: var(--radius-md);
   border: 1px solid rgba(255,255,255,0.08);
@@ -492,4 +491,34 @@
   color: var(--color-brand-accent);
   border-color: rgba(232,201,126,0.5);
   background: rgba(232,201,126,0.12);
+}
+
+/* ── Progressive mobile poster/cast sizing ──────────────────
+   320px: stable defaults (220px poster, 44px cast)
+   360px: slightly bigger cast circles only
+   390px: larger cast + slightly wider poster (safe margin confirmed)
+   430px: full poster width (safe margin confirmed)
+   Desktop (≥768px): handled by existing rules above — not touched here.
+───────────────────────────────────────────────────────────── */
+@media (min-width: 360px) and (max-width: 767px) {
+  .detail-cast-mobile .detail-cast-circle {
+    width: 48px;
+    height: 48px;
+  }
+  .detail-cast-mobile .detail-cast-initial { font-size: 1.05rem; }
+  .detail-cast-more { width: 48px; }
+}
+
+@media (min-width: 390px) and (max-width: 767px) {
+  .detail-poster-wrap { max-width: 240px; }
+  .detail-cast-mobile .detail-cast-circle {
+    width: 52px;
+    height: 52px;
+  }
+  .detail-cast-mobile .detail-cast-initial { font-size: 1.1rem; }
+  .detail-cast-more { width: 52px; }
+}
+
+@media (min-width: 430px) and (max-width: 767px) {
+  .detail-poster-wrap { max-width: 260px; }
 }
