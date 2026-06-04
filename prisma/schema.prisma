@@ -313,8 +313,33 @@ model Work {
   analyticsEvents AnalyticsEvent[]
   notifyMeCta     NotifyMeCta?
   comments        Comment[]
+  cast            WorkCast[]
 
   @@map("works")
+}
+
+// ─────────────────────────────────────────────
+// CAST
+// ─────────────────────────────────────────────
+
+model WorkCast {
+  id           String   @id @default(cuid())
+  workId       String
+  name         String
+  jobTitle     String
+  character    String?
+  bio          String?  @db.Text
+  photoUrl     String?
+  instagramUrl String?
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  work Work @relation(fields: [workId], references: [id], onDelete: Cascade)
+
+  @@index([workId])
+  @@index([sortOrder])
+  @@map("work_cast")
 }
 
 // ─────────────────────────────────────────────

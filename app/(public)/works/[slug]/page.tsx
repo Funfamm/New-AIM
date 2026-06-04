@@ -80,6 +80,10 @@ async function getWork(slug: string) {
       trailerUrl: true, videoUrl: true,
       year: true, duration: true, genre: true, genres: true, director: true,
       requiresAuth: true, requiresLoginToViewTrailer: true,
+      cast: {
+        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+        select: { id: true, name: true, jobTitle: true, character: true, photoUrl: true },
+      },
       episodes: {
         where: { status: "PUBLISHED" },
         orderBy: [{ seasonNumber: "asc" }, { episodeNumber: "asc" }, { order: "asc" }],
@@ -193,6 +197,9 @@ export default async function WorkDetailPage({ params }: Props) {
 
           <div className="detail-layout">
 
+            {/* Poster + mobile cast column */}
+            <div className="detail-poster-column">
+
             {/* Portrait poster — prefer heroMobileUrl (9:16), fallback to posterUrl */}
             <div className={`detail-poster-wrap${isSeries ? " detail-poster-wrap--mobile-hide" : ""}`}>
               {portraitImg ? (
@@ -211,6 +218,27 @@ export default async function WorkDetailPage({ params }: Props) {
                 </div>
               )}
             </div>
+
+            {/* Mobile cast circles — shown only on mobile, beside poster */}
+            {work.cast.length > 0 && (
+              <div className="detail-cast-mobile" aria-label="Cast">
+                {work.cast.slice(0, 3).map((m) => (
+                  <div key={m.id} className="detail-cast-circle" title={`${m.name}${m.character ? ` as ${m.character}` : ""}`}>
+                    {m.photoUrl
+                      ? <img src={m.photoUrl} alt={m.name} className="detail-cast-img" />
+                      : <span className="detail-cast-initial">{m.name.charAt(0).toUpperCase()}</span>
+                    }
+                  </div>
+                ))}
+                {work.cast.length > 3 && (
+                  <Link href={`/works/${work.slug}/cast`} className="detail-cast-more">
+                    +{work.cast.length - 3}
+                  </Link>
+                )}
+              </div>
+            )}
+
+            </div>{/* end detail-poster-column */}
 
             {/* Info */}
             <div className="detail-info">
@@ -298,7 +326,7 @@ export default async function WorkDetailPage({ params }: Props) {
                 })()}
               </div>
 
-              {/* Engagement row — Save (members) + Like + Share */}
+              {/* Engagement row — Save (members) + Like + Share + Cast preview */}
               <div className="detail-engagement">
                 {!isGuest && (
                   <SaveButton workId={work.id} initialSaved={isSaved} />
@@ -311,6 +339,26 @@ export default async function WorkDetailPage({ params }: Props) {
                   slug={work.slug}
                 />
                 <ShareButton title={work.title} slug={work.slug} workId={work.id} />
+
+                {/* Desktop cast circles — hidden on mobile */}
+                {work.cast.length > 0 && (
+                  <div className="detail-cast-desktop" aria-label="Cast">
+                    <span className="detail-cast-label">Cast</span>
+                    <div className="detail-cast-circles">
+                      {work.cast.slice(0, 4).map((m) => (
+                        <div key={m.id} className="detail-cast-circle" title={`${m.name}${m.character ? ` as ${m.character}` : ""}`}>
+                          {m.photoUrl
+                            ? <img src={m.photoUrl} alt={m.name} className="detail-cast-img" />
+                            : <span className="detail-cast-initial">{m.name.charAt(0).toUpperCase()}</span>
+                          }
+                        </div>
+                      ))}
+                    </div>
+                    <Link href={`/works/${work.slug}/cast`} className="detail-cast-viewall">
+                      {work.cast.length > 4 ? `+${work.cast.length - 4} more` : "View all"}
+                    </Link>
+                  </div>
+                )}
               </div>
 
               {/* Guest note — only when content is gated */}
