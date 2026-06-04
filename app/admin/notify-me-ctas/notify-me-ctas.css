@@ -109,3 +109,69 @@
   transition: opacity 0.15s;
 }
 .nmc-edit-btn:hover { opacity: 0.75; }
+
+/* ── Actions cell ── */
+.nmc-actions-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: nowrap;
+}
+
+/* ── View signups button ── */
+.nmc-signups-btn {
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  font-family: var(--font-body); font-size: 0.72rem; font-weight: 600;
+  color: rgba(174, 184, 205, 0.8); text-decoration: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  padding: 0.2rem 0.65rem;
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+.nmc-signups-btn:hover {
+  color: var(--color-brand-white);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+/* ── Signup cell ── */
+.nmc-signup-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.nmc-signup-total {
+  font-weight: 600;
+  color: var(--color-brand-white);
+  font-variant-numeric: tabular-nums;
+}
+.nmc-signup-breakdown {
+  font-size: 0.72rem;
+  color: var(--color-brand-muted);
+  letter-spacing: 0.02em;
+}
+
+/* ── Delivery cell ── */
+.nmc-delivery-none {
+  color: var(--color-brand-muted);
+  opacity: 0.4;
+}
+.nmc-delivery-cell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+.nmc-delivery-chip {
+  display: inline-block;
+  font-family: var(--font-body);
+  font-size: 0.67rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.nmc-delivery-chip--sent    { color: #4ade80; background: rgba(74,222,128,0.1); border: 1px solid rgba(74,222,128,0.2); }
+.nmc-delivery-chip--pending { color: var(--color-brand-accent); background: rgba(226,184,101,0.08); border: 1px solid rgba(226,184,101,0.2); }
+.nmc-delivery-chip--inapp   { color: #a78bfa; background: rgba(167,139,250,0.09); border: 1px solid rgba(167,139,250,0.2); }
+.nmc-delivery-chip--failed  { color: #f87171; background: rgba(248,113,113,0.09); border: 1px solid rgba(248,113,113,0.2); }
