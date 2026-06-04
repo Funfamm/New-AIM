@@ -178,12 +178,36 @@
   color: var(--color-brand-accent);
 }
 
+/* CTA label — bottom of info area */
+.fc-cta {
+  display: inline-block;
+  margin-top: 0.55rem;
+  padding: 0.2rem 0.6rem;
+  background: rgba(232, 201, 126, 0.08);
+  border: 1px solid rgba(232, 201, 126, 0.22);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-body);
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(232, 201, 126, 0.85);
+  white-space: nowrap;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+.fc:hover .fc-cta {
+  background: rgba(232, 201, 126, 0.14);
+  border-color: rgba(232, 201, 126, 0.4);
+  color: var(--color-brand-accent);
+}
+
 /* ── Reduced motion ── */
 @media (prefers-reduced-motion: reduce) {
   .fc,
   .fc-play-overlay,
   .fc-play-circle,
-  .fc-poster { transition: none; }
+  .fc-poster,
+  .fc-cta { transition: none; }
   .fc:hover { transform: none; }
   .fc:hover .fc-play-circle { transform: none; }
 }

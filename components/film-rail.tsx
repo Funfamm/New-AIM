@@ -7,8 +7,14 @@ export type RailFilm = {
   slug: string;
   title: string;
   posterUrl?: string | null;
+  heroMobileUrl?: string | null;
   genre?: string | null;
   requiresAuth?: boolean;
+  requiresLoginToViewTrailer?: boolean | null;
+  type?: string;
+  status?: string;
+  videoUrl?: string | null;
+  trailerUrl?: string | null;
   watchHref?: string;
 };
 

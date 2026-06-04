@@ -20,6 +20,7 @@ async function getWorks() {
       id: true, slug: true, title: true, posterUrl: true,
       heroMobileUrl: true, heroDesktopUrl: true,
       genre: true, genres: true, requiresAuth: true, type: true, status: true,
+      videoUrl: true, trailerUrl: true, requiresLoginToViewTrailer: true,
     },
   });
 }
