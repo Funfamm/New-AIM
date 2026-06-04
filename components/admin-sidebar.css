@@ -53,8 +53,22 @@
   color: var(--color-brand-muted); display: block;
 }
 
-/* Nav */
-.adm-nav { display: flex; flex-direction: column; gap: 0.125rem; flex: 1; }
+/* Nav — scrollable, fills space between logo and bottom actions */
+.adm-nav {
+  display: flex; flex-direction: column; gap: 0.125rem; flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(226, 184, 101, 0.28) transparent;
+  /* small right gap so the scrollbar doesn't sit on top of link text */
+  margin-right: -0.25rem;
+  padding-right: 0.25rem;
+}
+.adm-nav::-webkit-scrollbar        { width: 4px; }
+.adm-nav::-webkit-scrollbar-thumb  { background: rgba(226, 184, 101, 0.28); border-radius: 999px; }
+.adm-nav::-webkit-scrollbar-track  { background: transparent; }
+
 .adm-link {
   display: flex; align-items: center; gap: 0.6rem;
   font-family: var(--font-body); font-size: 0.875rem; font-weight: 500;
