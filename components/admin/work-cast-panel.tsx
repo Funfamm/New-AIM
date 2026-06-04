@@ -37,6 +37,9 @@ export default function WorkCastPanel({ workId }: Props) {
   const [editingId, setEditingId] = useState<string | "new" | null>(null);
   const [form, setForm]           = useState(EMPTY_FORM);
 
+  // Inline confirmation — avoids window.confirm() which blocks the main thread
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -109,13 +112,24 @@ export default function WorkCastPanel({ workId }: Props) {
     } finally { setSaving(false); }
   }
 
-  async function remove(id: string, name: string) {
-    if (!confirm(`Remove ${name} from cast?`)) return;
+  async function remove(id: string) {
+    // Optimistic: remove immediately so the UI paints before the network round-trip
+    const removed = cast.find(m => m.id === id);
+    setCast(prev => prev.filter(m => m.id !== id));
+    setConfirmDeleteId(null);
+
     try {
       const res = await fetch(`/api/admin/cast/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Delete failed");
-      setCast(prev => prev.filter(m => m.id !== id));
-    } catch { setError("Could not delete cast member."); }
+    } catch {
+      // Revert: put the item back in sort order
+      if (removed) {
+        setCast(prev =>
+          [...prev, removed].sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id))
+        );
+      }
+      setError("Could not delete cast member.");
+    }
   }
 
   const field = (key: keyof typeof EMPTY_FORM) => ({
@@ -219,12 +233,25 @@ export default function WorkCastPanel({ workId }: Props) {
                   </a>
                 )}
                 <div className="wcp-member-actions">
-                  <button type="button" className="wcp-action-btn" onClick={() => openEdit(m)} title="Edit">
-                    <Pencil size={12} />
-                  </button>
-                  <button type="button" className="wcp-action-btn wcp-action-btn--danger" onClick={() => remove(m.id, m.name)} title="Delete">
-                    <Trash2 size={12} />
-                  </button>
+                  {confirmDeleteId === m.id ? (
+                    <>
+                      <button type="button" className="wcp-action-btn wcp-action-btn--danger" onClick={() => remove(m.id)} title="Confirm delete">
+                        <Check size={12} />
+                      </button>
+                      <button type="button" className="wcp-action-btn" onClick={() => setConfirmDeleteId(null)} title="Cancel">
+                        <X size={12} />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button type="button" className="wcp-action-btn" onClick={() => openEdit(m)} title="Edit">
+                        <Pencil size={12} />
+                      </button>
+                      <button type="button" className="wcp-action-btn wcp-action-btn--danger" onClick={() => setConfirmDeleteId(m.id)} title="Delete">
+                        <Trash2 size={12} />
+                      </button>
+                    </>
+                  )}
                 </div>
               </li>
             ))}
