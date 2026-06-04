@@ -81,8 +81,10 @@ export default function FollowupButton({ ctaId, signupCount, acsReady }: Props) 
       {result && !result.error && (
         <p className="cta-followup-ok">
           ✓ {result.queued} email{result.queued === 1 ? "" : "s"} queued
+          {result.inApp      > 0 ? ` · ${result.inApp} in-app` : ""}
           {result.suppressed > 0 ? ` · ${result.suppressed} suppressed` : ""}
-          {result.skipped   > 0 ? ` · ${result.skipped} skipped` : ""}
+          {result.skipped    > 0 ? ` · ${result.skipped} skipped` : ""}
+          {result.failed     > 0 ? ` · ${result.failed} failed` : ""}
           {" · "}Process from the Email page to send.
         </p>
       )}
