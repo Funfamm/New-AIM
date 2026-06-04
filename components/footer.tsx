@@ -1,22 +1,28 @@
 import Link from "next/link";
+import { auth } from "@/lib/auth";
 import SubscribeForm from "./subscribe-form";
 import "./footer.css";
 
-export default function Footer() {
+export default async function Footer() {
+  const session = await auth();
+  const isGuest = !session?.user;
+
   return (
     <footer className="footer">
       <div className="container-app">
 
-        {/* ── Subscribe strip ── */}
-        <div className="footer-subscribe">
-          <div className="footer-sub-text">
-            <h2 className="footer-sub-heading">Stay close to the stories.</h2>
-            <p className="footer-sub-body">
-              Get new films, trailers, and AIM Studio updates when they go live.
-            </p>
+        {/* ── Subscribe strip — guests only ── */}
+        {isGuest && (
+          <div className="footer-subscribe">
+            <div className="footer-sub-text">
+              <h2 className="footer-sub-heading">Stay close to the stories.</h2>
+              <p className="footer-sub-body">
+                Get new films, trailers, and AIM Studio updates when they go live.
+              </p>
+            </div>
+            <SubscribeForm />
           </div>
-          <SubscribeForm />
-        </div>
+        )}
 
         <div className="footer-inner">
           <div className="footer-brand">
