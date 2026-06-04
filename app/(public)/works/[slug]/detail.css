@@ -9,6 +9,9 @@
   overflow: hidden;
   padding-bottom: 3.5rem;
 }
+@media (max-width: 767px) {
+  .detail-hero { padding-bottom: 5rem; }
+}
 .detail-backdrop {
   position: absolute; inset: 0; z-index: 0; pointer-events: none;
 }
@@ -358,6 +361,12 @@
   gap: 0.75rem;
   margin-top: 1rem;
 }
+@media (max-width: 767px) {
+  .detail-engagement {
+    margin-top: 1.25rem;
+    padding-bottom: 0.5rem;
+  }
+}
 
 /* ── Poster + cast column wrapper (mobile: flex row) ── */
 .detail-poster-column {
@@ -413,6 +422,18 @@
 }
 @media (min-width: 768px) {
   .detail-cast-mobile { display: none; }
+}
+
+/* CAST label — mobile column only */
+.detail-cast-mobile-label {
+  font-family: var(--font-body);
+  font-size: 0.5625rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(226,184,101,0.82);
+  line-height: 1;
+  margin-bottom: 0.1rem;
 }
 
 .detail-cast-more {

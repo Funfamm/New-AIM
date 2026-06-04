@@ -222,6 +222,7 @@ export default async function WorkDetailPage({ params }: Props) {
             {/* Mobile cast circles — shown only on mobile, beside poster */}
             {work.cast.length > 0 && (
               <div className="detail-cast-mobile" aria-label="Cast">
+                <span className="detail-cast-mobile-label" aria-hidden="true">Cast</span>
                 {work.cast.slice(0, 3).map((m) => (
                   <Link
                     key={m.id}
