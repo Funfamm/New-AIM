@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { isAdminRole } from "@/lib/auth-guard";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +20,7 @@ function fmtIso(d: Date | null | undefined): string {
 
 export async function GET() {
   const session = await auth();
-  if (!session?.user || (session.user as { role?: string }).role !== "ADMIN") {
+  if (!session?.user || !isAdminRole((session.user as { role?: string }).role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
