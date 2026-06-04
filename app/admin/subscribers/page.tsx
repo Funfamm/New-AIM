@@ -115,71 +115,67 @@ export default async function AdminSubscribersPage({
     <div className="admin-page">
 
       {/* ── Header ── */}
-      <div className="admin-page-header">
-        <h1 className="admin-page-title">Subscribers</h1>
-        <div className="subs-header-actions">
-          <span className="upage-count">
+      <div className="subs-header">
+        <div className="subs-title-block">
+          <h1 className="admin-page-title">Subscribers</h1>
+          <p className="subs-subtitle">Audience intelligence for global AIM Studio updates.</p>
+        </div>
+        <div className="subs-header-right">
+          <span className="subs-count-badge">
             {isFiltered ? `${filteredTotal} of ${total}` : `${total} total`}
           </span>
-          <a
-            href="/api/admin/subscribers/export"
-            className="subs-export-btn"
-          >
+          <a href="/api/admin/subscribers/export" className="subs-export-btn">
             Export CSV
           </a>
         </div>
       </div>
 
       {/* ── Stats ── */}
-      <div className="ustat-row">
-        <div className="ustat-cell">
-          <div className="ustat-val">{total.toLocaleString()}</div>
-          <div className="ustat-lbl">Total</div>
+      <div className="subs-stat-grid">
+        <div className="subs-stat-card subs-stat-card--gold">
+          <div className="subs-stat-value">{total.toLocaleString()}</div>
+          <div className="subs-stat-label">Total</div>
         </div>
-        <div className="ustat-cell">
-          <div className="ustat-val ustat-val--green">{active.toLocaleString()}</div>
-          <div className="ustat-lbl">Active</div>
+        <div className="subs-stat-card subs-stat-card--green">
+          <div className="subs-stat-value">{active.toLocaleString()}</div>
+          <div className="subs-stat-label">Active</div>
         </div>
-        <div className="ustat-cell">
-          <div className={`ustat-val${inactive > 0 ? " ustat-val--warn" : ""}`}>
-            {inactive.toLocaleString()}
-          </div>
-          <div className="ustat-lbl">Inactive</div>
+        <div className={`subs-stat-card${inactive > 0 ? " subs-stat-card--warn" : ""}`}>
+          <div className="subs-stat-value">{inactive.toLocaleString()}</div>
+          <div className="subs-stat-label">Inactive</div>
         </div>
-        <div className="ustat-cell">
-          <div className={`ustat-val${failedSends > 0 ? " ustat-val--red" : ""}`}>
-            {failedSends.toLocaleString()}
-          </div>
-          <div className="ustat-lbl">Failed Sends</div>
+        <div className={`subs-stat-card${failedSends > 0 ? " subs-stat-card--red" : ""}`}>
+          <div className="subs-stat-value">{failedSends.toLocaleString()}</div>
+          <div className="subs-stat-label">Failed Sends</div>
         </div>
-        <div className="ustat-cell">
-          <div className="ustat-val ustat-val--accent">{converted.toLocaleString()}</div>
-          <div className="ustat-lbl">Converted</div>
+        <div className="subs-stat-card subs-stat-card--gold">
+          <div className="subs-stat-value">{converted.toLocaleString()}</div>
+          <div className="subs-stat-label">Converted</div>
         </div>
-        <div className="ustat-cell">
-          <div className="ustat-val ustat-val--accent">{convRate}%</div>
-          <div className="ustat-lbl">Conv. Rate</div>
+        <div className="subs-stat-card subs-stat-card--gold">
+          <div className="subs-stat-value">{convRate}%</div>
+          <div className="subs-stat-label">Conv. Rate</div>
         </div>
-        <div className="ustat-cell">
-          <div className="ustat-val">{subscriberOnly.toLocaleString()}</div>
-          <div className="ustat-lbl">Sub. Only</div>
+        <div className="subs-stat-card">
+          <div className="subs-stat-value">{subscriberOnly.toLocaleString()}</div>
+          <div className="subs-stat-label">Sub. Only</div>
         </div>
-        <div className="ustat-cell">
-          <div className="ustat-val ustat-val--green">{newThisMonth.toLocaleString()}</div>
-          <div className="ustat-lbl">New This Month</div>
+        <div className="subs-stat-card subs-stat-card--green">
+          <div className="subs-stat-value">{newThisMonth.toLocaleString()}</div>
+          <div className="subs-stat-label">New This Month</div>
         </div>
       </div>
 
-      {/* ── Filters ── */}
-      <form method="GET" action="/admin/subscribers" className="ufilters" style={{ marginBottom: "1rem" }}>
+      {/* ── Toolbar ── */}
+      <form method="GET" action="/admin/subscribers" className="subs-toolbar">
         <input
           type="search"
           name="q"
           defaultValue={q}
           placeholder="Search email, name, country…"
-          className="ufilter-search"
+          className="subs-search"
         />
-        <select name="status" defaultValue={status} className="ufilter-select">
+        <select name="status" defaultValue={status} className="subs-select">
           <option value="">All statuses</option>
           <option value="active">Active</option>
           <option value="inactive">Inactive</option>
@@ -187,86 +183,97 @@ export default async function AdminSubscribersPage({
           <option value="converted">Converted</option>
           <option value="subscriber">Subscriber only</option>
         </select>
-        <select name="sort" defaultValue={sort} className="ufilter-select">
+        <select name="sort" defaultValue={sort} className="subs-select">
           <option value="newest">Newest first</option>
           <option value="oldest">Oldest first</option>
           <option value="fails">Failed sends</option>
           <option value="country">Country</option>
           <option value="email">Email A–Z</option>
         </select>
-        <button type="submit" className="ufilter-btn">Filter</button>
+        <button type="submit" className="subs-filter-btn">Filter</button>
         {isFiltered && (
-          <Link href="/admin/subscribers" className="ufilter-clear">Clear</Link>
+          <Link href="/admin/subscribers" className="subs-clear-btn">Clear</Link>
         )}
       </form>
 
-      {/* ── Table ── */}
+      {/* ── Table / Empty ── */}
       {subscribers.length === 0 ? (
-        <p className="subs-empty">No subscribers found.</p>
+        <div className="subs-empty-panel">
+          <div className="subs-empty-dot" aria-hidden="true" />
+          <p className="subs-empty-heading">No subscribers yet.</p>
+          <p className="subs-empty-body">
+            Guest subscription entries will appear here after visitors join the AIM Studio update list.
+          </p>
+          <p className="subs-empty-hint">
+            The footer subscription form is visible to guests only.
+          </p>
+        </div>
       ) : (
-        <div className="admin-table-wrap">
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>Email</th>
-                <th>Country</th>
-                <th>Status</th>
-                <th>Converted</th>
-                <th>Subscribed</th>
-                <th>Lang</th>
-                <th>Verified</th>
-                <th>Fails</th>
-                <th>Source</th>
-              </tr>
-            </thead>
-            <tbody>
-              {subscribers.map((s) => {
-                const isSuppressed = !!s.suppressedAt;
-                const statusLabel  = isSuppressed ? "Suppressed" : s.active ? "Active" : "Inactive";
-                const statusClass  = isSuppressed ? "badge--draft"
-                  : s.active ? "badge--published" : "badge--draft";
-                const displayCountry = s.country ?? s.countryCode ?? "—";
-                return (
-                  <tr key={s.id}>
-                    <td className="subs-td subs-td--email">
-                      <span className="subs-email">{s.email}</span>
-                      {s.name && <span className="subs-name">{s.name}</span>}
-                    </td>
-                    <td className="subs-td">{displayCountry}</td>
-                    <td className="subs-td">
-                      <span className={statusClass} title={s.suppressReason ?? undefined}>
-                        {statusLabel}
-                      </span>
-                    </td>
-                    <td className="subs-td">
-                      {s.convertedAt
-                        ? <span className="subs-converted">Converted</span>
-                        : <span className="subs-muted">Sub. only</span>}
-                    </td>
-                    <td className="subs-td subs-td--date">{fmtDate(s.subscribedAt)}</td>
-                    <td className="subs-td subs-td--lang">
-                      {s.language ? s.language.split("-")[0].toUpperCase() : "—"}
-                    </td>
-                    <td className="subs-td">
-                      {s.verifiedAt
-                        ? <span className="subs-verified">Verified</span>
-                        : <span className="subs-muted">—</span>}
-                    </td>
-                    <td className="subs-td subs-td--num">
-                      {s.failedSendCount > 0
-                        ? <span className="subs-fails">{s.failedSendCount}</span>
-                        : <span className="subs-muted">0</span>}
-                    </td>
-                    <td className="subs-td subs-td--source">
-                      {s.sourcePath
-                        ? <span title={s.sourcePath}>{s.source ?? "organic"}</span>
-                        : (s.source ?? "organic")}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className="subs-table-panel">
+          <div className="subs-table-scroll">
+            <table className="subs-table">
+              <thead>
+                <tr>
+                  <th>Email</th>
+                  <th>Country</th>
+                  <th>Status</th>
+                  <th>Converted</th>
+                  <th>Subscribed</th>
+                  <th>Lang</th>
+                  <th>Verified</th>
+                  <th>Fails</th>
+                  <th>Source</th>
+                </tr>
+              </thead>
+              <tbody>
+                {subscribers.map((s) => {
+                  const isSuppressed   = !!s.suppressedAt;
+                  const statusLabel    = isSuppressed ? "Suppressed" : s.active ? "Active" : "Inactive";
+                  const statusVariant  = isSuppressed ? "subs-badge--suppressed"
+                    : s.active ? "subs-badge--active" : "subs-badge--inactive";
+                  const displayCountry = s.country ?? s.countryCode ?? "—";
+                  return (
+                    <tr key={s.id}>
+                      <td className="subs-td subs-td--email">
+                        <span className="subs-email">{s.email}</span>
+                        {s.name && <span className="subs-name">{s.name}</span>}
+                      </td>
+                      <td className="subs-td">{displayCountry}</td>
+                      <td className="subs-td">
+                        <span className={`subs-badge ${statusVariant}`} title={s.suppressReason ?? undefined}>
+                          {statusLabel}
+                        </span>
+                      </td>
+                      <td className="subs-td">
+                        {s.convertedAt
+                          ? <span className="subs-converted">Converted</span>
+                          : <span className="subs-muted">Sub. only</span>}
+                      </td>
+                      <td className="subs-td subs-td--date">{fmtDate(s.subscribedAt)}</td>
+                      <td className="subs-td subs-td--lang">
+                        {s.language ? s.language.split("-")[0].toUpperCase() : "—"}
+                      </td>
+                      <td className="subs-td">
+                        {s.verifiedAt
+                          ? <span className="subs-verified">Verified</span>
+                          : <span className="subs-muted">—</span>}
+                      </td>
+                      <td className="subs-td subs-td--num">
+                        {s.failedSendCount > 0
+                          ? <span className="subs-fails">{s.failedSendCount}</span>
+                          : <span className="subs-muted">0</span>}
+                      </td>
+                      <td className="subs-td subs-td--source">
+                        {s.sourcePath
+                          ? <span title={s.sourcePath}>{s.source ?? "organic"}</span>
+                          : (s.source ?? "organic")}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
