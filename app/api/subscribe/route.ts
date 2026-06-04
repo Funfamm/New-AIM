@@ -56,25 +56,36 @@ function isValidEmail(email: string): boolean {
 }
 
 // ── Turnstile verification ──────────────────────────────────────────────────
-async function verifyTurnstile(token: string, remoteIp?: string): Promise<boolean> {
+async function verifyTurnstile(
+  token: string,
+  remoteIp?: string,
+): Promise<boolean> {
   const secret = process.env.TURNSTILE_SECRET_KEY!;
-  const params = new URLSearchParams({ secret, response: token });
-  if (remoteIp) params.set("remoteip", remoteIp);
+
+  // FormData is the format Cloudflare siteverify expects
+  const formData = new FormData();
+  formData.append("secret", secret);
+  formData.append("response", token);
+  if (remoteIp) formData.append("remoteip", remoteIp);
 
   try {
-    const res = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
-      method:  "POST",
-      // Explicit Content-Type prevents Node.js from omitting it when body is URLSearchParams
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body:    params.toString(),
-      signal:  AbortSignal.timeout(8000),
-    });
-    const data = await res.json() as { success: boolean; "error-codes"?: string[] };
+    const res = await fetch(
+      "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+      { method: "POST", body: formData, signal: AbortSignal.timeout(8000) },
+    );
+    const data = await res.json() as {
+      success:       boolean;
+      hostname?:     string;
+      action?:       string;
+      "error-codes"?: string[];
+    };
 
     if (!data.success && process.env.NODE_ENV !== "production") {
-      console.warn("[subscribe] Turnstile verification failed", {
+      console.warn("[subscribe] Turnstile siteverify failed", {
         success:    data.success,
         errorCodes: data["error-codes"],
+        hostname:   data.hostname,
+        action:     data.action,
       });
     }
 
@@ -83,7 +94,6 @@ async function verifyTurnstile(token: string, remoteIp?: string): Promise<boolea
     if (process.env.NODE_ENV !== "production") {
       console.warn("[subscribe] Turnstile siteverify unreachable — failing open", err);
     }
-    // Cloudflare unreachable — fail open rather than block all signups
     return true;
   }
 }
@@ -98,7 +108,11 @@ export async function POST(req: Request) {
   }
 
   // ── IP extraction ────────────────────────────────────────────────────────
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  // cf-connecting-ip is Cloudflare's trusted header; fall back to x-forwarded-for
+  const ip =
+    req.headers.get("cf-connecting-ip") ??
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    "unknown";
 
   // ── 2. Rate limit ────────────────────────────────────────────────────────
   maybePurge();
@@ -146,6 +160,11 @@ export async function POST(req: Request) {
 
   // ── 6. Turnstile verification (nothing saved before this) ────────────────
   const token = typeof body.turnstileToken === "string" ? body.turnstileToken : "";
+
+  if (process.env.NODE_ENV !== "production") {
+    console.log("[subscribe] turnstile token present:", Boolean(token));
+  }
+
   if (!token) {
     return NextResponse.json(
       { success: false, message: "Verification required. Please complete the challenge." },
@@ -156,7 +175,7 @@ export async function POST(req: Request) {
   const verified = await verifyTurnstile(token, ip !== "unknown" ? ip : undefined);
   if (!verified) {
     return NextResponse.json(
-      { success: false, message: "Verification failed. Please try again." },
+      { success: false, message: "We could not confirm this verification. Please try again." },
       { status: 403 }
     );
   }
