@@ -120,25 +120,51 @@
   text-shadow: 0 1px 8px rgba(0,0,0,0.6);
 }
 
-/* Type badge — top-left — frosted glass */
+/* Type badge — top-left — cinematic classification marker */
 .fc-type-badge {
   position: absolute;
   left: 0.75rem;
   top: 0.75rem;
-  background: rgba(10,10,10,0.65);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  padding: 0.2rem 0.55rem;
-  border-radius: var(--radius-sm);
-  border: 1px solid rgba(255,255,255,0.08);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+  padding: 0.28rem 0.62rem;
+  border-radius: 999px;
+  background:
+    linear-gradient(135deg, rgba(232,201,126,0.13) 0%, rgba(255,255,255,0.03) 100%),
+    rgba(8,8,8,0.62);
+  border: 1px solid rgba(232,201,126,0.34);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,0.04),
+    0 6px 20px rgba(0,0,0,0.38);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.fc:hover .fc-type-badge {
+  border-color: rgba(232,201,126,0.55);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,0.06),
+    0 6px 20px rgba(0,0,0,0.38),
+    0 0 10px rgba(232,201,126,0.08);
+}
+/* Gold dot marker */
+.fc-type-badge::before {
+  content: "";
+  flex-shrink: 0;
+  width: 0.34rem;
+  height: 0.34rem;
+  border-radius: 50%;
+  background: rgba(232,201,126,0.9);
+  box-shadow: 0 0 6px rgba(232,201,126,0.5);
 }
 .fc-type-badge span {
   font-family: var(--font-body);
-  font-size: 0.625rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
+  font-size: 0.5625rem;
+  font-weight: 800;
+  letter-spacing: 0.11em;
   text-transform: uppercase;
-  color: rgba(255,255,255,0.85);
+  color: rgba(246,226,171,0.95);
 }
 
 /* Status badge — top-right (upcoming / in-production) */
@@ -178,12 +204,37 @@
   color: var(--color-brand-accent);
 }
 
+/* CTA label — bottom of info area */
+.fc-cta {
+  display: inline-block;
+  margin-top: 0.55rem;
+  padding: 0.2rem 0.6rem;
+  background: rgba(232, 201, 126, 0.08);
+  border: 1px solid rgba(232, 201, 126, 0.22);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-body);
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(232, 201, 126, 0.85);
+  white-space: nowrap;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+.fc:hover .fc-cta {
+  background: rgba(232, 201, 126, 0.14);
+  border-color: rgba(232, 201, 126, 0.4);
+  color: var(--color-brand-accent);
+}
+
 /* ── Reduced motion ── */
 @media (prefers-reduced-motion: reduce) {
   .fc,
   .fc-play-overlay,
   .fc-play-circle,
-  .fc-poster { transition: none; }
+  .fc-poster,
+  .fc-cta,
+  .fc-type-badge { transition: none; }
   .fc:hover { transform: none; }
   .fc:hover .fc-play-circle { transform: none; }
 }

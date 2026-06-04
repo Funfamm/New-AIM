@@ -1,0 +1,281 @@
+/* ── Work Cast Panel — admin UI ───────────────────────────── */
+.wcp {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: var(--color-brand-dark);
+  border: 1px solid var(--color-brand-border);
+  border-radius: 4px;
+}
+
+.wcp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+
+.wcp-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-body);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--color-brand-white);
+  margin: 0;
+}
+
+.wcp-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.4rem;
+  height: 1.4rem;
+  padding: 0 0.35rem;
+  background: var(--color-brand-surface);
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--color-brand-muted);
+}
+
+.wcp-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-brand-accent);
+  background: rgba(232,201,126,0.08);
+  border: 1px solid rgba(232,201,126,0.25);
+  border-radius: var(--radius-sm);
+  padding: 0.4rem 0.85rem;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.wcp-add-btn:hover {
+  background: rgba(232,201,126,0.14);
+  border-color: rgba(232,201,126,0.45);
+}
+
+.wcp-error {
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  color: var(--color-brand-red);
+  margin: 0 0 1rem;
+}
+
+/* ── Form ── */
+.wcp-form {
+  background: var(--color-brand-surface);
+  border: 1px solid var(--color-brand-border);
+  border-radius: 4px;
+  padding: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.wcp-form-title {
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--color-brand-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-bottom: 1rem;
+}
+
+.wcp-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem 1rem;
+  margin-bottom: 0.75rem;
+}
+@media (max-width: 640px) {
+  .wcp-form-grid { grid-template-columns: 1fr; }
+}
+
+.wcp-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-brand-muted);
+}
+
+.wcp-req { color: var(--color-brand-accent); }
+
+.wcp-input,
+.wcp-textarea {
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  color: var(--color-brand-light);
+  background: var(--color-brand-dark);
+  border: 1px solid var(--color-brand-border);
+  border-radius: var(--radius-sm);
+  padding: 0.45rem 0.6rem;
+  transition: border-color 0.15s;
+  width: 100%;
+  box-sizing: border-box;
+}
+.wcp-input:focus,
+.wcp-textarea:focus {
+  outline: none;
+  border-color: rgba(232,201,126,0.4);
+}
+.wcp-input--sm { max-width: 90px; }
+.wcp-textarea { resize: vertical; min-height: 72px; }
+
+.wcp-form-actions {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+
+.wcp-save-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--color-brand-black);
+  background: var(--color-brand-accent);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0.45rem 1rem;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.wcp-save-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.wcp-save-btn:hover:not(:disabled) { opacity: 0.88; }
+
+.wcp-cancel-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-brand-muted);
+  background: transparent;
+  border: 1px solid var(--color-brand-border);
+  border-radius: var(--radius-sm);
+  padding: 0.45rem 0.9rem;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.wcp-cancel-btn:hover { color: var(--color-brand-light); border-color: rgba(255,255,255,0.2); }
+
+/* ── Cast list ── */
+.wcp-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.wcp-empty {
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  color: var(--color-brand-muted);
+  margin: 0;
+  padding: 0.5rem 0;
+}
+
+.wcp-member {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  background: var(--color-brand-surface);
+  border: 1px solid var(--color-brand-border);
+  border-radius: var(--radius-sm);
+}
+
+.wcp-member-photo {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--color-brand-dark);
+  border: 1px solid var(--color-brand-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.wcp-member-img { width: 100%; height: 100%; object-fit: cover; }
+.wcp-member-initials {
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--color-brand-muted);
+}
+
+.wcp-member-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+.wcp-member-name {
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--color-brand-light);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wcp-member-role {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: var(--color-brand-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wcp-ig-link {
+  color: var(--color-brand-muted);
+  transition: color 0.15s;
+  display: flex;
+  align-items: center;
+}
+.wcp-ig-link:hover { color: var(--color-brand-accent); }
+
+.wcp-member-actions {
+  display: flex;
+  gap: 0.3rem;
+  flex-shrink: 0;
+}
+
+.wcp-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: 1px solid var(--color-brand-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-brand-muted);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.wcp-action-btn:hover {
+  color: var(--color-brand-light);
+  border-color: rgba(255,255,255,0.2);
+  background: var(--color-brand-surface);
+}
+.wcp-action-btn--danger:hover {
+  color: var(--color-brand-red);
+  border-color: rgba(192,57,43,0.4);
+  background: rgba(192,57,43,0.06);
+}

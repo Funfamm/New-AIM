@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Lock, Play } from "lucide-react";
+import { getWorkCtaState } from "@/lib/work-cta";
 import "./film-card.css";
 
 const TYPE_LABEL: Record<string, string> = {
@@ -27,9 +28,12 @@ type FilmCardProps = {
   heroMobileUrl?: string | null;
   genre?: string | null;
   requiresAuth?: boolean;
+  requiresLoginToViewTrailer?: boolean | null;
   isLoggedIn?: boolean;
   type?: string;
   status?: string;
+  videoUrl?: string | null;
+  trailerUrl?: string | null;
   priority?: boolean;
   watchHref?: string;
 };
@@ -41,19 +45,40 @@ export default function FilmCard({
   heroMobileUrl,
   genre,
   requiresAuth,
+  requiresLoginToViewTrailer,
   isLoggedIn = false,
   type,
   status,
+  videoUrl,
+  trailerUrl,
   priority = false,
   watchHref,
 }: FilmCardProps) {
   // Prefer heroMobileUrl (9:16 portrait) for cards; fall back to posterUrl
   const cardImage = heroMobileUrl ?? posterUrl;
   const isUpcoming = status === "UPCOMING" || status === "IN_PRODUCTION";
+
+  // Resolve CTA when we have enough data; fall back to detail page
+  const cta = type
+    ? getWorkCtaState({
+        slug,
+        type,
+        videoUrl,
+        trailerUrl,
+        requiresAuth: requiresAuth ?? false,
+        requiresLoginToViewTrailer,
+        isGuest: !isLoggedIn,
+      })
+    : null;
+
+  // Card always navigates to the detail page — only watchHref (Continue Watching) goes direct to player
+  const cardHref = watchHref ?? `/works/${slug}`;
+  const ctaLabel = cta?.primaryLabel || "View Details";
+
   return (
     <Link
-      href={watchHref ?? `/works/${slug}`}
-      aria-label={`View ${watchHref ? "film" : "details for"} ${title}`}
+      href={cardHref}
+      aria-label={watchHref ? `${ctaLabel} — ${title}` : `View details for ${title}`}
       className="fc"
       style={{ touchAction: "manipulation" }}
     >
@@ -85,12 +110,13 @@ export default function FilmCard({
           </div>
         </div>
 
-        {/* Genre + title */}
+        {/* Genre + title + CTA label */}
         <div className="fc-info">
           {genre && (
             <span className="fc-genre">{genre}</span>
           )}
           <h3 className="fc-title">{title}</h3>
+          <span className="fc-cta" aria-hidden="true">{ctaLabel} →</span>
         </div>
 
         {/* Type badge — top-left */}

@@ -253,7 +253,9 @@ export default async function WatchPage({ params, searchParams }: Props) {
       : null;
 
   const backHref  = isEpisode && work.parent ? `/works/${work.parent.slug}` : `/works/${work.slug}`;
-  const backLabel = isEpisode && work.parent ? work.parent.title : work.title;
+  const backLabel = isEpisode && work.parent
+    ? `${work.parent.title} — Details`
+    : `${work.title} — Details`;
 
   // Group sidebar siblings by season
   const seasonGroups = siblings.reduce<Map<number | null, typeof siblings>>((acc, ep) => {
