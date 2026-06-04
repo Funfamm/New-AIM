@@ -58,18 +58,31 @@ function isValidEmail(email: string): boolean {
 // ── Turnstile verification ──────────────────────────────────────────────────
 async function verifyTurnstile(token: string, remoteIp?: string): Promise<boolean> {
   const secret = process.env.TURNSTILE_SECRET_KEY!;
-  const body   = new URLSearchParams({ secret, response: token });
-  if (remoteIp) body.set("remoteip", remoteIp);
+  const params = new URLSearchParams({ secret, response: token });
+  if (remoteIp) params.set("remoteip", remoteIp);
 
   try {
-    const res  = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+    const res = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
       method:  "POST",
-      body,
+      // Explicit Content-Type prevents Node.js from omitting it when body is URLSearchParams
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body:    params.toString(),
       signal:  AbortSignal.timeout(8000),
     });
     const data = await res.json() as { success: boolean; "error-codes"?: string[] };
+
+    if (!data.success && process.env.NODE_ENV !== "production") {
+      console.warn("[subscribe] Turnstile verification failed", {
+        success:    data.success,
+        errorCodes: data["error-codes"],
+      });
+    }
+
     return data.success === true;
-  } catch {
+  } catch (err) {
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("[subscribe] Turnstile siteverify unreachable — failing open", err);
+    }
     // Cloudflare unreachable — fail open rather than block all signups
     return true;
   }
