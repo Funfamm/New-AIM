@@ -52,11 +52,12 @@
 .detail-poster-wrap {
   flex-shrink: 0;
   position: relative;
-  width: 100%; max-width: 260px;
+  width: 100%; max-width: 220px;
   aspect-ratio: 2/3;
-  margin-inline: 0;
+  margin-inline: 0;             /* left-align; info block below aligns to same edge */
 }
 @media (min-width: 768px) { .detail-poster-wrap { width: 220px; } }
+@media (min-width: 1024px) { .detail-poster-wrap { width: 260px; } }
 @media (min-width: 1024px) { .detail-poster-wrap { width: 260px; } }
 .detail-poster {
   object-fit: cover; border-radius: var(--radius-md);
@@ -359,17 +360,15 @@
   margin-top: 1rem;
 }
 
-/* ── Poster + cast column wrapper ── */
-/* Mobile: poster takes full width; cast circles sit absolutely in top-right corner */
+/* ── Poster + cast column wrapper (mobile: flex row) ── */
 .detail-poster-column {
-  position: relative;
-  width: fit-content;   /* shrink-wraps to poster width so absolute cast aligns to it */
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 0.625rem;
 }
 @media (min-width: 768px) {
-  .detail-poster-column {
-    width: auto;         /* desktop: natural flex child width */
-    position: static;   /* desktop uses static flow; cast is in engagement row */
-  }
+  .detail-poster-column { flex-direction: column; gap: 0; }
 }
 
 /* ── Cast circles — shared styles ── */
@@ -405,29 +404,13 @@
   line-height: 1;
 }
 
-/* ── Mobile cast column — overlays top-right corner of poster, mobile only ── */
+/* ── Mobile cast column — right of poster, mobile only ── */
 .detail-cast-mobile {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 2;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.45rem;
-}
-/* Override circle size on mobile to 52px */
-.detail-cast-mobile .detail-cast-circle {
-  width: 52px;
-  height: 52px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.55); /* lift against poster bg */
-}
-.detail-cast-mobile .detail-cast-circle .detail-cast-initial {
-  font-size: 1.2rem;
-}
-.detail-cast-mobile .detail-cast-more {
-  width: 52px;
-  height: 26px;
+  gap: 0.5rem;
+  padding-top: 0.25rem;
 }
 @media (min-width: 768px) {
   .detail-cast-mobile { display: none; }
