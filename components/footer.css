@@ -104,3 +104,50 @@
   font-size: 0.6875rem;
   color: rgba(255,255,255,0.22);
 }
+
+/* ── Subscribe strip ── */
+.footer-subscribe {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 2.5rem 2rem;
+  margin-bottom: 3rem;
+  background:
+    linear-gradient(135deg, rgba(232,201,126,0.05) 0%, rgba(255,255,255,0.01) 100%),
+    rgba(10,10,12,0.6);
+  border: 1px solid rgba(232,201,126,0.12);
+  border-radius: 14px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+@media (min-width: 640px) {
+  .footer-subscribe {
+    flex-direction: row;
+    align-items: center;
+    gap: 3rem;
+    justify-content: space-between;
+  }
+}
+
+.footer-sub-text {
+  flex-shrink: 0;
+  max-width: 320px;
+}
+
+.footer-sub-heading {
+  font-family: var(--font-display);
+  font-size: clamp(1.25rem, 2.5vw, 1.625rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--color-brand-white);
+  margin: 0 0 0.5rem;
+  line-height: 1.2;
+}
+
+.footer-sub-body {
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  color: rgba(255,255,255,0.45);
+  margin: 0;
+  line-height: 1.55;
+}
