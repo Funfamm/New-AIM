@@ -71,13 +71,14 @@ export default function FilmCard({
       })
     : null;
 
-  const cardHref = watchHref ?? cta?.primaryHref ?? `/works/${slug}`;
+  // Card always navigates to the detail page — only watchHref (Continue Watching) goes direct to player
+  const cardHref = watchHref ?? `/works/${slug}`;
   const ctaLabel = cta?.primaryLabel || "View Details";
 
   return (
     <Link
       href={cardHref}
-      aria-label={`${ctaLabel} — ${title}`}
+      aria-label={watchHref ? `${ctaLabel} — ${title}` : `View details for ${title}`}
       className="fc"
       style={{ touchAction: "manipulation" }}
     >
