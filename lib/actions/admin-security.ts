@@ -9,6 +9,7 @@ import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
 import { writeAudit } from "@/lib/audit";
 import { writeSecurityEvent } from "@/lib/security";
+import { ensureWelcomeForUser } from "@/lib/onboarding/welcome";
 
 // ── Demote an admin to member (SUPER_ADMIN only) ─────────────
 export async function demoteAdmin(
@@ -136,6 +137,10 @@ export async function createPowerAdmin(
     email,
     metadata: { strategy: "create_new", role: "ADMIN" },
   });
+
+  // Welcome flow — fire-and-forget so the admin action returns immediately.
+  // ensureWelcomeForUser never throws; respects welcomeEmailEnabled setting.
+  void ensureWelcomeForUser(newUser.id).catch(() => {});
 
   revalidatePath("/admin/security");
   revalidatePath("/admin/users");

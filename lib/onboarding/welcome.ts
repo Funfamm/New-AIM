@@ -28,21 +28,31 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
  */
 export async function ensureWelcomeForUser(userId: string): Promise<void> {
   try {
-    const user = await prisma.user.findUnique({
-      where:  { id: userId },
-      select: {
-        id:                        true,
-        email:                     true,
-        name:                      true,
-        welcomeEmailSentAt:        true,
-        welcomeNotificationSentAt: true,
-      },
-    });
+    // Read user row and admin setting in parallel
+    const [user, settings] = await Promise.all([
+      prisma.user.findUnique({
+        where:  { id: userId },
+        select: {
+          id:                        true,
+          email:                     true,
+          name:                      true,
+          welcomeEmailSentAt:        true,
+          welcomeNotificationSentAt: true,
+        },
+      }),
+      prisma.adminSettings.findUnique({
+        where:  { id: "singleton" },
+        select: { welcomeEmailEnabled: true },
+      }),
+    ]);
 
     if (!user) {
       console.log(`[welcome] user ${userId} not found — skipping`);
       return;
     }
+
+    // welcomeEmailEnabled defaults to true if AdminSettings row is missing
+    const welcomeEmailEnabled = settings?.welcomeEmailEnabled ?? true;
 
     const stampData: {
       welcomeEmailSentAt?:        Date;
@@ -51,17 +61,19 @@ export async function ensureWelcomeForUser(userId: string): Promise<void> {
 
     // ── Welcome email ─────────────────────────────────────────
     if (!user.welcomeEmailSentAt) {
-      try {
-        console.log(`[welcome] sending welcome email to ${user.email} (userId: ${user.id})`);
-        // sendWelcomeEmail uses Microsoft Graph — transactional, not ACS bulk.
-        // Logs attempt in EmailLog internally.
-        await sendWelcomeEmail(user.email, user.name);
-        stampData.welcomeEmailSentAt = new Date();
-        console.log(`[welcome] welcome email sent successfully to ${user.email}`);
-      } catch (err) {
-        // Email failure must never block auth or notification creation.
-        // No stamp written — next call will retry (acceptable for first-login).
-        console.error(`[welcome] welcome email FAILED for ${user.email}:`, err);
+      if (!welcomeEmailEnabled) {
+        console.log(`[welcome] welcome email disabled by admin setting — skipping for ${user.email}`);
+      } else {
+        try {
+          console.log(`[welcome] sending welcome email to ${user.email} (userId: ${user.id})`);
+          await sendWelcomeEmail(user.email, user.name);
+          stampData.welcomeEmailSentAt = new Date();
+          console.log(`[welcome] welcome email sent successfully to ${user.email}`);
+        } catch (err) {
+          // Email failure must never block auth or notification creation.
+          // No stamp written — next call will retry (acceptable for first-login).
+          console.error(`[welcome] welcome email FAILED for ${user.email}:`, err);
+        }
       }
     } else {
       console.log(`[welcome] email already sent for ${user.email} at ${user.welcomeEmailSentAt.toISOString()}`);

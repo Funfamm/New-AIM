@@ -173,7 +173,7 @@ export default async function NotifyMeCtasPage() {
                       ) : (
                         <div className="nmc-delivery-cell">
                           {sent > 0 && (
-                            <span className="nmc-delivery-chip nmc-delivery-chip--sent">{sent} sent</span>
+                            <span className="nmc-delivery-chip nmc-delivery-chip--sent">{sent} queued</span>
                           )}
                           {pending > 0 && (
                             <span className="nmc-delivery-chip nmc-delivery-chip--pending">{pending} pending</span>
