@@ -1,0 +1,92 @@
+/* Admin Subscribers page */
+
+.subs-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.subs-export-btn {
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-brand-accent);
+  border: 1px solid var(--color-brand-accent);
+  border-radius: 4px;
+  padding: 0.35rem 0.85rem;
+  text-decoration: none;
+  letter-spacing: 0.03em;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+
+.subs-export-btn:hover {
+  background: var(--color-brand-accent);
+  color: #0a0a0a;
+}
+
+/* ── Missing ustat-val--warn (used in inactive) ── */
+.ustat-val--warn { color: #f59e0b; }
+
+/* ── Table cells ── */
+.subs-td {
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  color: var(--color-brand-muted);
+  white-space: nowrap;
+}
+
+.subs-td--email {
+  min-width: 200px;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.subs-email {
+  display: block;
+  color: var(--color-brand-light);
+  font-size: 0.875rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.subs-name {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--color-brand-muted);
+  margin-top: 0.1rem;
+}
+
+.subs-td--date  { min-width: 110px; }
+.subs-td--lang  { min-width: 48px; text-align: center; }
+.subs-td--num   { text-align: center; min-width: 48px; }
+.subs-td--source { max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
+
+.subs-muted {
+  color: var(--color-brand-muted);
+  opacity: 0.6;
+}
+
+.subs-converted {
+  color: var(--color-brand-accent);
+  font-weight: 600;
+  font-size: 0.78rem;
+}
+
+.subs-verified {
+  color: #4ade80;
+  font-size: 0.78rem;
+}
+
+.subs-fails {
+  color: var(--color-brand-red);
+  font-weight: 700;
+}
+
+.subs-empty {
+  font-family: var(--font-body);
+  font-size: 0.9375rem;
+  color: var(--color-brand-muted);
+  padding: 2rem 0;
+}

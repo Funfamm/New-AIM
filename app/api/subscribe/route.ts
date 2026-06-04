@@ -129,6 +129,7 @@ export async function POST(req: Request) {
     startedAt?: unknown;
     source?: unknown;
     name?: unknown;
+    sourcePath?: unknown;
   } | null;
 
   if (!body) {
@@ -190,32 +191,71 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true }, { status: 200 });
   }
 
-  // ── 8. Upsert subscriber ─────────────────────────────────────────────────
+  // ── 8. Collect safe metadata from headers + body ────────────────────────
+  const countryCode =
+    req.headers.get("x-vercel-ip-country") ??
+    req.headers.get("cf-ipcountry") ??
+    null;
+
+  const language =
+    req.headers.get("accept-language")?.split(",")[0]?.trim() ?? null;
+
+  const referrer = req.headers.get("referer") ?? null;
+
   const source = typeof body.source === "string" && body.source.trim()
     ? body.source.trim().slice(0, 32)
     : "organic";
+
+  const sourcePath =
+    typeof body.sourcePath === "string" && body.sourcePath.trim().length > 0
+      ? body.sourcePath.trim().slice(0, 300)
+      : null;
+
   const name = typeof body.name === "string" && body.name.trim()
     ? body.name.trim().slice(0, 100)
     : null;
 
+  const now = new Date();
+
+  // ── 9. Upsert subscriber ─────────────────────────────────────────────────
   const existing = await prisma.subscriber.findUnique({
     where:  { email },
-    select: { id: true, active: true },
+    select: { id: true, active: true, verifiedAt: true },
   });
 
   if (existing) {
-    if (!existing.active) {
-      // Reactivate lapsed subscriber
-      await prisma.subscriber.update({
-        where: { email },
-        data:  { active: true, suppressedAt: null, suppressReason: null, subscribedAt: new Date() },
-      });
-    }
+    // Update metadata + mark verified; keep original subscribedAt
+    await prisma.subscriber.update({
+      where: { email },
+      data: {
+        active:       true,
+        lastSeenAt:   now,
+        verifiedAt:   existing.verifiedAt ?? now,
+        source,
+        sourcePath,
+        countryCode,
+        language,
+        referrer,
+        suppressedAt:   null,
+        suppressReason: null,
+      },
+    });
     return NextResponse.json({ success: true, alreadySubscribed: true }, { status: 200 });
   }
 
   await prisma.subscriber.create({
-    data: { email, name, source, active: true },
+    data: {
+      email,
+      name,
+      source,
+      sourcePath,
+      countryCode,
+      language,
+      referrer,
+      active:      true,
+      verifiedAt:  now,
+      lastSeenAt:  now,
+    },
   });
 
   return NextResponse.json({ success: true }, { status: 201 });

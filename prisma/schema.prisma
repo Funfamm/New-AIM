@@ -1090,17 +1090,31 @@ model CommentReport {
 // ─────────────────────────────────────────────
 
 model Subscriber {
-  id             String    @id @default(cuid())
-  email          String    @unique
-  name           String?
-  source         String?   @default("organic")
-  active         Boolean   @default(true)
-  subscribedAt   DateTime  @default(now())
-  suppressedAt   DateTime?
-  suppressReason String?
+  id              String    @id @default(cuid())
+  email           String    @unique
+  name            String?
+  source          String?   @default("organic")
+  active          Boolean   @default(true)
+
+  countryCode     String?
+  country         String?
+  language        String?
+  referrer        String?
+  sourcePath      String?
+
+  verifiedAt      DateTime?
+  subscribedAt    DateTime  @default(now())
+  lastSeenAt      DateTime?
+  convertedAt     DateTime?
+
+  failedSendCount Int       @default(0)
+  suppressedAt    DateTime?
+  suppressReason  String?
 
   @@index([email])
   @@index([active])
+  @@index([countryCode])
+  @@index([subscribedAt])
   @@map("subscribers")
 }
 
