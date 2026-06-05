@@ -195,12 +195,18 @@ export default async function AdminUsersPage({
 
       {/* ── Header ── */}
       <div className="admin-page-header">
-        <h1 className="admin-page-title">Users</h1>
-        <span className="upage-count">
-          {isFiltered
-            ? `${filteredTotal} of ${totalCount}`
-            : `${totalCount} total`}
-        </span>
+        <div>
+          <h1 className="admin-page-title">Users</h1>
+          <p className="upage-subtitle">Member management and audience intelligence.</p>
+        </div>
+        <div className="upage-header-right">
+          <span className="upage-count">
+            {isFiltered
+              ? `${filteredTotal} of ${totalCount}`
+              : `${totalCount} total`}
+          </span>
+          <a href="/admin/users/export" className="uexport-btn">Export CSV</a>
+        </div>
       </div>
 
       {/* ── Stat cards ── */}
