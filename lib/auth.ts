@@ -274,12 +274,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             data:  { lastLoginAt: new Date(), lastLoginProvider: "google" },
           }).catch(() => {});
 
-          // Welcome flow — awaited so Vercel serverless does not exit before it
-          // completes. Previously fired as void and was abandoned before the email
-          // sent (Vercel exits after return true). ensureWelcomeForUser never
-          // throws — all errors are swallowed internally.
-          await ensureWelcomeForUser(dbUser.id);
-
           // Dynamic import — security utilities are server-only
           void import("@/lib/security").then(async (sec) => {
             void sec.writeSecurityEvent({
@@ -337,6 +331,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           });
           token.role         = dbUser?.role         ?? "USER";
           token.tokenVersion = dbUser?.tokenVersion ?? 0;
+          // Welcome flow for Google/OAuth users — runs here (not in signIn callback)
+          // because signIn fires BEFORE handleLoginOrRegister creates the DB user,
+          // so new users don't exist in DB yet when signIn runs. jwt always fires
+          // after the adapter creates the user. ensureWelcomeForUser is idempotent.
+          await ensureWelcomeForUser(user.id!).catch(() => {});
         } else {
           token.role         = (user as { role?: string }).role ?? "USER";
           token.tokenVersion = (user as { tokenVersion?: number }).tokenVersion ?? 0;
