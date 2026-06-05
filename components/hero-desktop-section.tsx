@@ -58,7 +58,7 @@ export default function HeroDesktopSection({ items }: Props) {
       </div>
 
       <div className="hero-content">
-        <span className="hero-eyebrow">— Now Streaming</span>
+        <span className="hero-eyebrow">Don&apos;t Look Away</span>
 
         {/* Active film title — subtle secondary context beneath eyebrow */}
         {current?.title && (

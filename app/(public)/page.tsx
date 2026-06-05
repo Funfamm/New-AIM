@@ -165,27 +165,6 @@ export default async function HomePage() {
         <HeroDesktopSection items={heroDesktopItems} />
       </section>
 
-      {/* ── Desktop category discovery pills ────────── */}
-      {availableTypes.length > 0 && (
-        <div className="home-type-pills">
-          <div className="container-app">
-            <div className="htp-inner">
-              <Link href="/works" className="htp-pill">All Works</Link>
-              {availableTypes.includes("FILM") && (
-                <Link href="/works?type=FILM" className="htp-pill">Films</Link>
-              )}
-              {availableTypes.includes("SERIES") && (
-                <Link href="/works?type=SERIES" className="htp-pill">Series</Link>
-              )}
-              {availableTypes.includes("SHORT") && (
-                <Link href="/works?type=SHORT" className="htp-pill">Shorts</Link>
-              )}
-              <Link href="/works?status=upcoming" className="htp-pill">Upcoming</Link>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* ── Continue Watching ───────────────────────── */}
       {continueWatching.length > 0 && (
         <FilmRail title="Continue Watching" films={continueWatching.map(w => ({ ...w, requiresAuth: false }))} isLoggedIn={!!userId} />
