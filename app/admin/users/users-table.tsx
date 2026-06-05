@@ -354,13 +354,25 @@ export function UsersTable({ users, isFiltered, sessionRole }: Props) {
 
       {/* Table */}
       <div
-        className={`admin-table-wrap${isPending ? " utable--pending" : ""}`}
+        className={`admin-table-wrap utbl-wrap${isPending ? " utable--pending" : ""}`}
         style={{ marginTop: selected.size > 0 ? "0" : "0.75rem" }}
       >
         <table className="admin-table">
+          <colgroup>
+            <col style={{ width: 40 }} />
+            <col />
+            <col style={{ width: 110 }} />
+            <col style={{ width: 75 }} />
+            <col style={{ width: 95 }} />
+            <col style={{ width: 58 }} />
+            <col style={{ width: 88 }} />
+            <col style={{ width: 100 }} />
+            <col style={{ width: 90 }} />
+            <col style={{ width: 110 }} />
+          </colgroup>
           <thead>
             <tr>
-              <th style={{ width: 36, paddingRight: 0 }}>
+              <th style={{ paddingRight: 0 }}>
                 <input
                   type="checkbox"
                   className="ubulk-checkbox"
@@ -455,23 +467,12 @@ export function UsersTable({ users, isFiltered, sessionRole }: Props) {
                   {u.country ?? <span className="ucell-muted">—</span>}
                 </td>
 
-                {/* Activity: saves · progress · devices */}
+                {/* Activity: saves / progress / devices stacked */}
                 <td>
-                  <div className="ucell-activity">
-                    <span className="ucell-act-item">
-                      <span className="ucell-act-val">{u.savedWorksCount}</span>
-                      <span className="ucell-act-lbl">saves</span>
-                    </span>
-                    <span className="ucell-act-sep">·</span>
-                    <span className="ucell-act-item">
-                      <span className="ucell-act-val">{u.progressCount}</span>
-                      <span className="ucell-act-lbl">progress</span>
-                    </span>
-                    <span className="ucell-act-sep">·</span>
-                    <span className="ucell-act-item">
-                      <span className="ucell-act-val">{u.deviceCount}</span>
-                      <span className="ucell-act-lbl">devices</span>
-                    </span>
+                  <div className="ucell-acts">
+                    <div><span className="ucell-act-n">{u.savedWorksCount}</span> saves</div>
+                    <div><span className="ucell-act-n">{u.progressCount}</span> progress</div>
+                    <div><span className="ucell-act-n">{u.deviceCount}</span> devices</div>
                   </div>
                 </td>
 
