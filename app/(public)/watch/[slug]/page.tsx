@@ -32,8 +32,41 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const work = await prisma.work.findUnique({ where: { slug }, select: { title: true } });
-  return { title: work ? `Watch: ${work.title}` : "Watch" };
+  const work = await prisma.work.findUnique({
+    where: { slug },
+    select: { title: true, description: true, posterUrl: true, heroDesktopUrl: true, thumbnailUrl: true, heroMobileUrl: true },
+  });
+  if (!work) return { title: "Watch" };
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://impactaistudio.com";
+  // Fallback chain: posterUrl → heroDesktopUrl → thumbnailUrl → heroMobileUrl → logo
+  const shareImage =
+    work.posterUrl ??
+    work.heroDesktopUrl ??
+    work.thumbnailUrl ??
+    work.heroMobileUrl ??
+    `${appUrl}/images/SP_Logo.jpg`;
+
+  const ogImage = { url: shareImage, width: 1200, height: 630, alt: work.title };
+
+  return {
+    title: `Watch: ${work.title}`,
+    description: work.description ?? undefined,
+    alternates: { canonical: `${appUrl}/watch/${slug}` },
+    openGraph: {
+      title: work.title,
+      description: work.description ?? undefined,
+      url: `${appUrl}/watch/${slug}`,
+      images: [ogImage],
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: work.title,
+      description: work.description ?? undefined,
+      images: [shareImage],
+    },
+  };
 }
 
 async function getWork(slug: string) {
