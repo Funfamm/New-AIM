@@ -269,6 +269,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         ) return false;
 
         if (dbUser) {
+          // ── Welcome flow for Google OAuth ──────────────────────────────
+          // Awaited so Vercel does not exit before the email is sent.
+          // ensureWelcomeForUser is idempotent — safe for repeat logins;
+          // for returning users it exits immediately after checking the
+          // welcomeEmailSentAt / welcomeNotificationSentAt timestamps.
+          // Uses dbUser.id (database CUID) — user.id can be the Google sub.
+          console.log(`[auth] Google signIn: calling ensureWelcomeForUser for ${dbUser.email} (dbId: ${dbUser.id})`);
+          await ensureWelcomeForUser(dbUser.id).catch(() => {});
+
           void prisma.user.update({
             where: { id: dbUser.id },
             data:  { lastLoginAt: new Date(), lastLoginProvider: "google" },
@@ -325,17 +334,29 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // ── Initial sign-in ──────────────────────────────────────
         token.id = user.id;
         if (account?.type === "oauth") {
-          const dbUser = await prisma.user.findUnique({
-            where: { id: user.id! },
-            select: { role: true, tokenVersion: true },
-          });
+          // user.id for OAuth can be the Google sub (numeric provider ID) rather
+          // than the database CUID. Look up by email to get the real DB record.
+          const oauthEmail = (user.email ?? "").toLowerCase().trim();
+          const dbUser = oauthEmail
+            ? await prisma.user.findUnique({
+                where:  { email: oauthEmail },
+                select: { id: true, role: true, tokenVersion: true },
+              })
+            : await prisma.user.findUnique({
+                where:  { id: user.id! },
+                select: { id: true, role: true, tokenVersion: true },
+              });
           token.role         = dbUser?.role         ?? "USER";
           token.tokenVersion = dbUser?.tokenVersion ?? 0;
-          // Welcome flow for Google/OAuth users — runs here (not in signIn callback)
-          // because signIn fires BEFORE handleLoginOrRegister creates the DB user,
-          // so new users don't exist in DB yet when signIn runs. jwt always fires
-          // after the adapter creates the user. ensureWelcomeForUser is idempotent.
-          await ensureWelcomeForUser(user.id!).catch(() => {});
+          // Patch token.id to the real DB CUID so all downstream code works correctly.
+          if (dbUser) token.id = dbUser.id;
+          // Welcome flow — idempotent backstop. The primary call is in the signIn
+          // callback (which uses the correct DB id from an email lookup). This is
+          // a safety net in case signIn was skipped or the user wasn't found there.
+          if (dbUser) {
+            console.log(`[auth] jwt OAuth: ensureWelcomeForUser backstop for dbId ${dbUser.id}`);
+            await ensureWelcomeForUser(dbUser.id).catch(() => {});
+          }
         } else {
           token.role         = (user as { role?: string }).role ?? "USER";
           token.tokenVersion = (user as { tokenVersion?: number }).tokenVersion ?? 0;
