@@ -76,6 +76,7 @@ export default function NotifyMeCtaOverlay({ cta, onDismiss, ctaUser }: Props) {
       role="dialog"
       aria-label="Stay in the loop"
       onClick={(e) => e.stopPropagation()}
+      onMouseMove={(e) => e.stopPropagation()}
       onTouchStart={(e) => e.stopPropagation()}
     >
       <button className="ncta-close" onClick={onDismiss} aria-label="Dismiss">
