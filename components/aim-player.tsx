@@ -364,8 +364,8 @@ export default function AimPlayer({
     <div
       ref={wrapRef}
       className="watch-player-inner aim-player"
-      onMouseMove={reveal}
-      onTouchStart={reveal}
+      onMouseMove={ctaVisible ? undefined : reveal}
+      onTouchStart={ctaVisible ? undefined : reveal}
     >
       {/* ── Video ── */}
       <video
