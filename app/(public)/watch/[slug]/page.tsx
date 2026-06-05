@@ -27,7 +27,7 @@ const WORK_TYPE_LABEL: Record<string, string> = {
 
 type Props = {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ full?: string; trailer?: string; clipStart?: string; clipEnd?: string }>;
+  searchParams: Promise<{ full?: string; trailer?: string; preview?: string; clipStart?: string; clipEnd?: string }>;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -75,7 +75,7 @@ async function getWork(slug: string) {
     select: {
       id: true, slug: true, title: true, status: true, type: true,
       commentsEnabled: true,
-      trailerUrl: true, videoUrl: true,
+      trailerUrl: true, previewClipUrl: true, videoUrl: true,
       requiresAuth: true, requiresLoginToViewTrailer: true,
       posterUrl: true, description: true,
       episodeNumber: true, seasonNumber: true, duration: true,
@@ -143,7 +143,7 @@ function fmtDur(min: number) {
 
 export default async function WatchPage({ params, searchParams }: Props) {
   const { slug } = await params;
-  const { full, trailer, clipStart: clipStartStr, clipEnd: clipEndStr } = await searchParams;
+  const { full, trailer, preview, clipStart: clipStartStr, clipEnd: clipEndStr } = await searchParams;
   const clipStartParam = clipStartStr != null ? Math.max(0, Math.floor(Number(clipStartStr))) : null;
   const clipEndParam   = clipEndStr   != null ? Math.floor(Number(clipEndStr)) : null;
   const isClipMode     = clipStartParam !== null && clipEndParam !== null;
@@ -153,7 +153,7 @@ export default async function WatchPage({ params, searchParams }: Props) {
   if (!work || !PUBLIC_WATCH_STATUSES.has(work.status)) notFound();
 
   // SERIES with episodes → redirect to Episode 1 (smart resume handled on detail page)
-  if (work.type === "SERIES" && work.episodes.length > 0 && !trailer) {
+  if (work.type === "SERIES" && work.episodes.length > 0 && !trailer && !preview) {
     redirect(`/watch/${work.episodes[0].slug}`);
   }
 
@@ -165,11 +165,12 @@ export default async function WatchPage({ params, searchParams }: Props) {
   const mainRequiresAuth =
     isEpisode ? (work.parent?.requiresAuth ?? false) : work.requiresAuth;
   const trailerRequiresAuth = work.requiresLoginToViewTrailer;
-  const isTrailerVisit = work.type === "TRAILER" || (!isEpisode && !wantFull);
-  const requiresAuth   = isTrailerVisit ? trailerRequiresAuth : mainRequiresAuth;
+  const isPreviewVisit = preview === "1";
+  const isTrailerVisit = work.type === "TRAILER" || (!isEpisode && !wantFull && !isPreviewVisit);
+  const requiresAuth   = (isTrailerVisit || isPreviewVisit) ? trailerRequiresAuth : mainRequiresAuth;
 
   if (requiresAuth && !session?.user) {
-    const from = isEpisode ? `/watch/${slug}` : `/watch/${slug}${wantFull ? "?full=1" : ""}`;
+    const from = isEpisode ? `/watch/${slug}` : `/watch/${slug}${wantFull ? "?full=1" : isPreviewVisit ? "?preview=1" : ""}`;
     redirect(`/login?from=${from}`);
   }
 
@@ -181,10 +182,12 @@ export default async function WatchPage({ params, searchParams }: Props) {
     ? work.videoUrl
     : work.type === "TRAILER"
     ? work.videoUrl
+    : isPreviewVisit && work.previewClipUrl
+    ? work.previewClipUrl
     : wantFull && work.videoUrl
     ? work.videoUrl
     : work.trailerUrl;
-  const isTrailer = work.type === "TRAILER" || (!isEpisode && (!wantFull || !work.videoUrl));
+  const isTrailer = work.type === "TRAILER" || (!isEpisode && (!wantFull || !work.videoUrl)) || isPreviewVisit;
 
   const isYouTube = videoUrl?.includes("youtube.com") || videoUrl?.includes("youtu.be");
   const isVimeo   = videoUrl?.includes("vimeo.com");

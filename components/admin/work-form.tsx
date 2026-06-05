@@ -28,7 +28,7 @@ type WorkData = {
   description: string | null;
   posterUrl: string | null; heroMobileUrl: string | null;
   heroDesktopUrl: string | null; thumbnailUrl: string | null;
-  videoUrl: string | null; trailerUrl: string | null; teaserUrl: string | null;
+  videoUrl: string | null; trailerUrl: string | null; previewClipUrl: string | null; teaserUrl: string | null;
   year: number | null; duration: number | null; director: string | null; genres: string[];
   clientName: string | null; industry: string | null; projectGoal: string | null;
   deliverables: string | null; caseStudy: string | null; galleryUrls: string[];
@@ -300,6 +300,16 @@ export default function WorkForm({ work, workTitle, action, seriesList, error, d
             <label className="form-label">Trailer URL</label>
             <input type="url" name="trailerUrl" className="form-input"
               defaultValue={work?.trailerUrl ?? ""} placeholder="YouTube, Vimeo, or .mp4 URL" />
+          </div>
+        )}
+
+        {/* Preview Clip URL */}
+        {showTrailerUrl && (
+          <div className="form-group">
+            <label className="form-label">Preview Clip URL (optional)</label>
+            <input type="url" name="previewClipUrl" className="form-input"
+              defaultValue={work?.previewClipUrl ?? ""} placeholder="YouTube, Vimeo, or .mp4 URL" />
+            <span className="form-hint">Short preview/sample shown only if trailer is unavailable.</span>
           </div>
         )}
 
