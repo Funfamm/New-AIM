@@ -67,8 +67,9 @@ export async function registerUser(formData: FormData) {
       } catch { /* analytics must never break registration */ }
     })();
 
-    // Welcome flow — idempotent, likely already sent for Google users
-    void ensureWelcomeForUser(existing.id).catch(() => {});
+    // Await welcome before signIn — signIn throws NEXT_REDIRECT which abandons
+    // any in-flight fire-and-forget promises before Graph can send the email.
+    await ensureWelcomeForUser(existing.id).catch(() => {});
 
     // Auto-login with new credentials
     await signIn("credentials", { email, password, redirectTo: "/" });
@@ -105,8 +106,9 @@ export async function registerUser(formData: FormData) {
     } catch { /* analytics must never break registration */ }
   })();
 
-  // Welcome email + in-app notification — fire-and-forget, never blocks auth
-  void ensureWelcomeForUser(newUser.id).catch(() => {});
+  // Await welcome before signIn — signIn throws NEXT_REDIRECT which abandons
+  // any in-flight fire-and-forget promises before Graph can send the email.
+  await ensureWelcomeForUser(newUser.id).catch(() => {});
 
   // Auto-login after register
   await signIn("credentials", { email, password, redirectTo: "/" });
