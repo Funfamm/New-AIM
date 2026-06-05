@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
+import R2FileUpload from "@/components/r2-file-upload";
 import "./work-form.css";
 
 type WorkType =
@@ -24,6 +25,7 @@ const TYPE_LABELS: Record<WorkType, string> = {
 };
 
 type WorkData = {
+  slug: string;
   type: WorkType; status: WorkStatus; title: string;
   description: string | null;
   posterUrl: string | null; heroMobileUrl: string | null;
@@ -61,6 +63,14 @@ const GENRES = [
 
 export default function WorkForm({ work, workTitle, action, seriesList, error, defaultType, defaultParentId }: Props) {
   const [type, setType] = useState<WorkType>(work?.type ?? defaultType ?? "SHORT_FILM");
+  const [heroMobileUrl, setHeroMobileUrl] = useState(work?.heroMobileUrl ?? "");
+  const [heroDesktopUrl, setHeroDesktopUrl] = useState(work?.heroDesktopUrl ?? "");
+  const [posterUrl, setPosterUrl] = useState(work?.posterUrl ?? "");
+  const [thumbnailUrl, setThumbnailUrl] = useState(work?.thumbnailUrl ?? "");
+  const [trailerUrl, setTrailerUrl] = useState(work?.trailerUrl ?? "");
+  const [previewClipUrl, setPreviewClipUrl] = useState(work?.previewClipUrl ?? "");
+  const [videoUrl, setVideoUrl] = useState(work?.videoUrl ?? "");
+  const [teaserUrl, setTeaserUrl] = useState(work?.teaserUrl ?? "");
 
   const showFilmMeta      = ["SHORT_FILM", "FULL_FILM", "SERIES", "TRAILER"].includes(type);
   const showDuration      = !["SERIES", ...CLIENT_TYPES].includes(type);
@@ -249,13 +259,33 @@ export default function WorkForm({ work, workTitle, action, seriesList, error, d
             <div className="form-group">
               <label className="form-label">Mobile Image URL</label>
               <input type="url" name="heroMobileUrl" className="form-input"
-                defaultValue={work?.heroMobileUrl ?? ""} placeholder="https://…" />
+                value={heroMobileUrl} onChange={(e) => setHeroMobileUrl(e.target.value)}
+                placeholder="https://…" />
+              <div style={{ marginTop: "0.5rem" }}>
+                <R2FileUpload
+                  targetField="heroMobileUrl"
+                  projectTitle={work?.title || "Untitled"}
+                  projectSlug={work?.slug}
+                  onSuccess={setHeroMobileUrl}
+                  accept="image/*"
+                />
+              </div>
               <span className="form-hint">Recommended 9:16 portrait. Used for mobile hero sections, cards, and posters.</span>
             </div>
             <div className="form-group">
               <label className="form-label">Desktop Image URL</label>
               <input type="url" name="heroDesktopUrl" className="form-input"
-                defaultValue={work?.heroDesktopUrl ?? ""} placeholder="https://…" />
+                value={heroDesktopUrl} onChange={(e) => setHeroDesktopUrl(e.target.value)}
+                placeholder="https://…" />
+              <div style={{ marginTop: "0.5rem" }}>
+                <R2FileUpload
+                  targetField="heroDesktopUrl"
+                  projectTitle={work?.title || "Untitled"}
+                  projectSlug={work?.slug}
+                  onSuccess={setHeroDesktopUrl}
+                  accept="image/*"
+                />
+              </div>
               <span className="form-hint">Recommended 16:9 or wider cinematic. Used for desktop hero sections and wide previews.</span>
             </div>
           </>
@@ -264,7 +294,17 @@ export default function WorkForm({ work, workTitle, action, seriesList, error, d
           <div className="form-group">
             <label className="form-label">Episode Image URL</label>
             <input type="url" name="heroMobileUrl" className="form-input"
-              defaultValue={work?.heroMobileUrl ?? ""} placeholder="https://…" />
+              value={heroMobileUrl} onChange={(e) => setHeroMobileUrl(e.target.value)}
+              placeholder="https://…" />
+            <div style={{ marginTop: "0.5rem" }}>
+              <R2FileUpload
+                targetField="heroMobileUrl"
+                projectTitle={work?.title || "Untitled"}
+                projectSlug={work?.slug}
+                onSuccess={setHeroMobileUrl}
+                accept="image/*"
+              />
+            </div>
             <span className="form-hint">Thumbnail or still for this episode. Falls back to series images if empty.</span>
           </div>
         )}
@@ -282,13 +322,33 @@ export default function WorkForm({ work, workTitle, action, seriesList, error, d
             <div className="form-group">
               <label className="form-label">Card / Poster override</label>
               <input type="url" name="posterUrl" className="form-input"
-                defaultValue={work?.posterUrl ?? ""} placeholder="https://…" />
+                value={posterUrl} onChange={(e) => setPosterUrl(e.target.value)}
+                placeholder="https://…" />
+              <div style={{ marginTop: "0.5rem" }}>
+                <R2FileUpload
+                  targetField="posterUrl"
+                  projectTitle={work?.title || "Untitled"}
+                  projectSlug={work?.slug}
+                  onSuccess={setPosterUrl}
+                  accept="image/*"
+                />
+              </div>
               <span className="form-hint">Overrides the portrait card/poster. Defaults to Mobile Image if empty.</span>
             </div>
             <div className="form-group">
               <label className="form-label">Thumbnail override</label>
               <input type="url" name="thumbnailUrl" className="form-input"
-                defaultValue={work?.thumbnailUrl ?? ""} placeholder="https://…" />
+                value={thumbnailUrl} onChange={(e) => setThumbnailUrl(e.target.value)}
+                placeholder="https://…" />
+              <div style={{ marginTop: "0.5rem" }}>
+                <R2FileUpload
+                  targetField="thumbnailUrl"
+                  projectTitle={work?.title || "Untitled"}
+                  projectSlug={work?.slug}
+                  onSuccess={setThumbnailUrl}
+                  accept="image/*"
+                />
+              </div>
               <span className="form-hint">Overrides episode row thumbnail. Defaults to Desktop Image if empty.</span>
             </div>
           </div>
@@ -299,7 +359,37 @@ export default function WorkForm({ work, workTitle, action, seriesList, error, d
           <div className="form-group">
             <label className="form-label">Trailer URL</label>
             <input type="url" name="trailerUrl" className="form-input"
-              defaultValue={work?.trailerUrl ?? ""} placeholder="YouTube, Vimeo, or .mp4 URL" />
+              value={trailerUrl} onChange={(e) => setTrailerUrl(e.target.value)}
+              placeholder="YouTube, Vimeo, or .mp4 URL" />
+            <div style={{ marginTop: "0.5rem" }}>
+              <R2FileUpload
+                targetField="trailerUrl"
+                projectTitle={work?.title || "Untitled"}
+                projectSlug={work?.slug}
+                onSuccess={setTrailerUrl}
+                accept="video/*"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Preview Clip URL */}
+        {showTrailerUrl && (
+          <div className="form-group">
+            <label className="form-label">Preview Clip URL (optional)</label>
+            <input type="url" name="previewClipUrl" className="form-input"
+              value={previewClipUrl} onChange={(e) => setPreviewClipUrl(e.target.value)}
+              placeholder="YouTube, Vimeo, or .mp4 URL" />
+            <div style={{ marginTop: "0.5rem" }}>
+              <R2FileUpload
+                targetField="previewClipUrl"
+                projectTitle={work?.title || "Untitled"}
+                projectSlug={work?.slug}
+                onSuccess={setPreviewClipUrl}
+                accept="video/*"
+              />
+            </div>
+            <span className="form-hint">Short preview/sample shown only if trailer is unavailable.</span>
           </div>
         )}
 
@@ -318,7 +408,17 @@ export default function WorkForm({ work, workTitle, action, seriesList, error, d
           <div className="form-group">
             <label className="form-label">{videoLabel}</label>
             <input type="url" name="videoUrl" className="form-input"
-              defaultValue={work?.videoUrl ?? ""} placeholder="YouTube, Vimeo, or .mp4 URL" />
+              value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)}
+              placeholder="YouTube, Vimeo, or .mp4 URL" />
+            <div style={{ marginTop: "0.5rem" }}>
+              <R2FileUpload
+                targetField="videoUrl"
+                projectTitle={work?.title || "Untitled"}
+                projectSlug={work?.slug}
+                onSuccess={setVideoUrl}
+                accept="video/*"
+              />
+            </div>
           </div>
         )}
 
@@ -327,7 +427,17 @@ export default function WorkForm({ work, workTitle, action, seriesList, error, d
           <div className="form-group">
             <label className="form-label">Teaser URL (optional)</label>
             <input type="url" name="teaserUrl" className="form-input"
-              defaultValue={work?.teaserUrl ?? ""} placeholder="Short teaser video URL" />
+              value={teaserUrl} onChange={(e) => setTeaserUrl(e.target.value)}
+              placeholder="Short teaser video URL" />
+            <div style={{ marginTop: "0.5rem" }}>
+              <R2FileUpload
+                targetField="teaserUrl"
+                projectTitle={work?.title || "Untitled"}
+                projectSlug={work?.slug}
+                onSuccess={setTeaserUrl}
+                accept="video/*"
+              />
+            </div>
           </div>
         )}
 

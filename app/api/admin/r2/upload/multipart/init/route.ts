@@ -1,0 +1,76 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { requireAdmin } from '@/lib/auth-guard';
+import { initMultipartUpload, getPublicUrl } from '@/lib/r2Client';
+import { randomUUID } from 'crypto';
+
+const APPROVED_FIELDS = ['posterUrl', 'thumbnailUrl', 'heroMobileUrl', 'heroDesktopUrl', 'trailerUrl', 'previewClipUrl', 'videoUrl', 'teaserUrl'];
+
+function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80);
+}
+
+function getFieldCategory(field: string): string {
+  const categories: Record<string, string> = {
+    posterUrl: 'poster',
+    thumbnailUrl: 'thumbnail',
+    heroMobileUrl: 'hero-mobile',
+    heroDesktopUrl: 'hero-desktop',
+    trailerUrl: 'trailer',
+    previewClipUrl: 'preview',
+    videoUrl: 'full-video',
+    teaserUrl: 'teaser',
+  };
+  return categories[field] || field;
+}
+
+function getExtension(filename: string): string {
+  const i = filename.lastIndexOf('.');
+  return i >= 0 ? filename.slice(i).toLowerCase().replace(/[^a-z0-9.]/g, '') : '';
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    await requireAdmin();
+
+    const body = await req.json();
+    const { targetField, projectTitle, projectSlug, filename, contentType } = body as {
+      targetField: string;
+      projectTitle: string;
+      projectSlug?: string;
+      filename: string;
+      contentType: string;
+    };
+
+    if (!targetField || !projectTitle || !filename || !contentType) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+
+    if (!APPROVED_FIELDS.includes(targetField)) {
+      return NextResponse.json({ error: 'Invalid target field' }, { status: 400 });
+    }
+
+    const ext = getExtension(filename);
+    const safeExt = ext || '.bin';
+    const slug = projectSlug || slugify(projectTitle);
+    const category = getFieldCategory(targetField);
+    const timestamp = Date.now();
+    const randomId = randomUUID().slice(0, 8);
+    const r2Key = `projects/${slug}/${category}/${category}-${timestamp}-${randomId}${safeExt}`;
+
+    const uploadId = await initMultipartUpload(r2Key, contentType);
+    const publicUrl = getPublicUrl(r2Key);
+
+    return NextResponse.json({ uploadId, r2Key, publicUrl });
+  } catch (error) {
+    console.error('[Multipart Init] Error:', error);
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
+    return NextResponse.json({ error: 'Failed to initialize multipart upload' }, { status: 500 });
+  }
+}
