@@ -42,14 +42,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const work = await prisma.work.findUnique({
     where: { slug },
-    select: { title: true, description: true, posterUrl: true },
+    select: { title: true, description: true, posterUrl: true, heroDesktopUrl: true, thumbnailUrl: true, heroMobileUrl: true },
   });
   if (!work) return { title: "Not Found" };
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://aimstudio.app";
-  const ogImage = work.posterUrl
-    ? { url: work.posterUrl, width: 1200, height: 630, alt: work.title }
-    : { url: `${appUrl}/images/SP_Logo.jpg`, width: 1200, height: 630, alt: "AIM Studio" };
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://impactaistudio.com";
+  // Fallback chain: posterUrl → heroDesktopUrl → thumbnailUrl → heroMobileUrl → logo
+  const shareImage =
+    work.posterUrl ??
+    work.heroDesktopUrl ??
+    work.thumbnailUrl ??
+    work.heroMobileUrl ??
+    `${appUrl}/images/SP_Logo.jpg`;
+
+  const ogImage = { url: shareImage, width: 1200, height: 630, alt: work.title };
 
   return {
     title: work.title,
@@ -66,7 +72,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       card: "summary_large_image",
       title: work.title,
       description: work.description ?? undefined,
-      images: [work.posterUrl ?? `${appUrl}/images/SP_Logo.jpg`],
+      images: [shareImage],
     },
   };
 }

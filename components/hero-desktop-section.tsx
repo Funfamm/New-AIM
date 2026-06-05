@@ -58,22 +58,9 @@ export default function HeroDesktopSection({ items }: Props) {
       </div>
 
       <div className="hero-content">
-        <span className="hero-eyebrow">Don&apos;t Look Away</span>
+        <span className="hero-eyebrow">{current?.genre || typeLabel || "Now Streaming"}</span>
 
-        {/* Active film title — subtle secondary context beneath eyebrow */}
-        {current?.title && (
-          <p className="hero-film-label">
-            <span className="hero-film-label-dot" />
-            {current.title}
-            {(current.genre || typeLabel) && (
-              <span className="hero-film-label-genre">
-                {" · "}{current.genre ?? typeLabel}
-              </span>
-            )}
-          </p>
-        )}
-
-        <h1 className="hero-title">Cinema, reimagined.</h1>
+        <h1 className="hero-title">{current?.title || "Cinema, reimagined."}</h1>
         <p className="hero-desc">
           Original cinema built around story, emotion, memory, and the moments people refuse to look away from.
         </p>
