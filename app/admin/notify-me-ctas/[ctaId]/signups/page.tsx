@@ -178,7 +178,7 @@ export default async function CtaSignupsPage({ params, searchParams }: Props) {
         </div>
         <div className="nms-stat-card nms-stat-card--green">
           <div className="nms-stat-value">{emailSent}</div>
-          <div className="nms-stat-label">Email Queued</div>
+          <div className="nms-stat-label">Email Sent</div>
         </div>
         <div className="nms-stat-card nms-stat-card--purple">
           <div className="nms-stat-value">{inAppSent}</div>
@@ -208,7 +208,7 @@ export default async function CtaSignupsPage({ params, searchParams }: Props) {
           <option value="guest">Guest</option>
           <option value="member">Member</option>
           <option value="pending">Pending</option>
-          <option value="sent">Email queued</option>
+          <option value="sent">Email sent</option>
           <option value="inapp">In-app sent</option>
           <option value="failed">Failed</option>
         </select>
@@ -248,7 +248,7 @@ export default async function CtaSignupsPage({ params, searchParams }: Props) {
                   <th>Name / Email</th>
                   <th>Type</th>
                   <th>Signed Up</th>
-                  <th>Email Queued</th>
+                  <th>Email Sent</th>
                   <th>In-App</th>
                   <th>Fails</th>
                   <th>Status</th>
@@ -269,8 +269,7 @@ export default async function CtaSignupsPage({ params, searchParams }: Props) {
                     statusLabel   = "In-app sent";
                     statusVariant = "nms-badge--inapp";
                   } else if (s.notifyEmailSentAt) {
-                    // notifyEmailSentAt reflects queue time, not confirmed delivery
-                    statusLabel   = "Queued";
+                    statusLabel   = "Email Sent";
                     statusVariant = "nms-badge--sent";
                   } else {
                     statusLabel   = "Pending";

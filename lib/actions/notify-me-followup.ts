@@ -13,6 +13,7 @@ import {
   enqueueBulkForRecipients,
   buildNotifyMeFollowupEmail,
   checkSelectedBulkProvider,
+  processEmailQueueBatch,
 } from "@/lib/bulk-email";
 
 export type FollowupResult = {
@@ -108,6 +109,14 @@ export async function sendNotifyMeFollowupEmails(
     }),
   });
 
+  // ── Process queue immediately — no manual approval step ──────────────────
+  // Emails should go out as soon as they're queued; don't make admin trigger a
+  // separate batch run. Add a small headroom (+10) in case other queued items
+  // are ahead of this campaign in the same batch.
+  if (emailResult.queued > 0) {
+    await processEmailQueueBatch(emailResult.queued + 10);
+  }
+
   // ── In-app notifications for logged-in signups ────────────────────────────
   const now           = new Date();
   const loggedInSignups = eligibleSignups.filter(s => !!s.userId);
@@ -150,6 +159,29 @@ export async function sendNotifyMeFollowupEmails(
     });
   }
 
+  // ── Back-fill notifyFailCount for emails the batch processor rejected ──────
+  // processEmailQueueBatch marks hard-failed rows as FAILED in EmailQueue.
+  // Reflect that in the signup rows so the signups page shows the right badge.
+  if (emailResult.queued > 0) {
+    const failedQueueItems = await prisma.emailQueue.findMany({
+      where:  { campaignId, status: "FAILED" },
+      select: { to: true },
+    });
+    if (failedQueueItems.length > 0) {
+      const failedEmailSet  = new Set(failedQueueItems.map(q => q.to.toLowerCase().trim()));
+      const failedSignupIds = eligibleSignups
+        .filter(s => failedEmailSet.has(s.email.toLowerCase().trim()))
+        .map(s => s.id);
+      if (failedSignupIds.length > 0) {
+        await prisma.notifyMeSignup.updateMany({
+          where: { id: { in: failedSignupIds } },
+          data:  { notifyFailCount: { increment: 1 } },
+        });
+      }
+    }
+  }
+
+  revalidatePath(`/admin/notify-me-ctas/${ctaId}/signups`);
   revalidatePath(`/admin/notify-me-ctas/${ctaId}`);
   revalidatePath("/admin/email");
   revalidatePath("/admin/email/logs");

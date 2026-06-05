@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { sendNotifyMeFollowupEmails } from "@/lib/actions/notify-me-followup";
 import type { FollowupResult } from "@/lib/actions/notify-me-followup";
 
@@ -11,6 +12,7 @@ type Props = {
 };
 
 export default function SendNoticeButton({ ctaId, total, acsReady }: Props) {
+  const router = useRouter();
   const [pending,   startTransition] = useTransition();
   const [confirmed, setConfirmed]    = useState(false);
   const [result,    setResult]       = useState<FollowupResult | null>(null);
@@ -25,6 +27,7 @@ export default function SendNoticeButton({ ctaId, total, acsReady }: Props) {
     startTransition(async () => {
       const r = await sendNotifyMeFollowupEmails(ctaId);
       setResult(r);
+      router.refresh(); // re-render server component so badges reflect new status
     });
   }
 
@@ -42,7 +45,7 @@ export default function SendNoticeButton({ ctaId, total, acsReady }: Props) {
       {/* Result summary — shown inline after send */}
       {result && !result.error && (
         <span className="nms-send-result">
-          ✓ {result.queued} queued
+          ✓ {result.queued} sent
           {result.inApp   > 0 ? ` · ${result.inApp} in-app`          : ""}
           {result.skipped > 0 ? ` · ${result.skipped} skipped`        : ""}
           {result.failed  > 0 ? ` · ${result.failed} failed`          : ""}
