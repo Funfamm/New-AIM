@@ -192,7 +192,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 browser: parsed.browser, os: parsed.os, deviceType: parsed.deviceType,
                 country: raw.country, region: raw.region, city: raw.city,
               });
-              if (isNew) {
+              if (isNew && user.lastLoginAt) {
+                // Returning user on a new device — send full security alert.
+                // Guard: user.lastLoginAt is null on the very first login (account
+                // just created), so new registrations never trigger a false alert.
                 void sec.writeSecurityEvent({
                   userId: user.id, type: "NEW_DEVICE_LOGIN", severity: "MEDIUM",
                   email, provider: "credentials",
@@ -211,6 +214,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                   title: "New device sign-in",
                   body:  `We noticed a sign-in to your AIM Studio account from a new device — ${parsed.browser} on ${parsed.os}${raw.country ? `, ${raw.country}` : ""}.`,
                 }).catch(() => {});
+              } else if (isNew) {
+                // First-ever login — record for audit trail but no alert email.
+                void sec.writeSecurityEvent({
+                  userId: user.id, type: "NEW_DEVICE_LOGIN", severity: "INFO",
+                  email, provider: "credentials",
+                  ipHash, userAgentHash, deviceFingerprintHash: fpHash,
+                  country: raw.country, region: raw.region, city: raw.city,
+                  metadata: { browser: parsed.browser, os: parsed.os, firstLogin: true },
+                });
               }
             } catch { /* device tracking must never block auth */ }
           })();
@@ -239,9 +251,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         await ensureWelcomeForUser(user.id);
       }
 
-      if (account?.provider === "google" && user.id) {
+      if (account?.provider === "google" && user.email) {
+        // Look up by email rather than user.id — in Auth.js v5 with PrismaAdapter
+        // the user.id in OAuth callbacks can be the provider sub (e.g. the Google
+        // numeric ID) rather than the database CUID, which would cause findUnique
+        // by ID to return null and silently skip the welcome flow.
+        // Email is always the reliable key for OAuth users.
         const dbUser = await prisma.user.findUnique({
-          where: { id: user.id },
+          where: { email: user.email.toLowerCase().trim() },
           // lastLoginAt fetched BEFORE the update below so we can detect first login.
           select: { status: true, email: true, id: true, lastLoginAt: true },
         });
