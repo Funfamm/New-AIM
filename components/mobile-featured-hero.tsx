@@ -19,6 +19,7 @@ export type MobileHeroItem = {
   type: string;
   videoUrl?: string | null;
   trailerUrl?: string | null;
+  previewClipUrl?: string | null;
   requiresLoginToViewTrailer?: boolean | null;
 };
 
@@ -225,6 +226,7 @@ export default function MobileFeaturedHero({ items, isLoggedIn, savedIds, availa
                         slug: item.slug,
                         type: item.type,
                         trailerUrl: item.trailerUrl,
+                        previewClipUrl: item.previewClipUrl,
                         videoUrl: item.videoUrl,
                         requiresAuth: item.requiresAuth,
                         requiresLoginToViewTrailer: item.requiresLoginToViewTrailer,

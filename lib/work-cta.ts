@@ -17,6 +17,7 @@ export type WorkCtaInput = {
   slug: string;
   type: string;
   trailerUrl?: string | null;
+  previewClipUrl?: string | null;
   videoUrl?: string | null;
   requiresAuth: boolean;
   requiresLoginToViewTrailer?: boolean | null;
@@ -48,6 +49,7 @@ export function getWorkCtaState(work: WorkCtaInput): WorkCtaState {
   // TRAILER-type works: the clip lives in videoUrl, not trailerUrl.
   // For all other types, trailerUrl is the separate preview clip.
   const hasTrailer   = !!work.trailerUrl || (isTrailer && !!work.videoUrl);
+  const hasPreview   = !!work.previewClipUrl && !hasTrailer;  // preview only if no trailer
   const hasFullVideo = !isTrailer && !!work.videoUrl;
   const hasEpisodes  = !!work.firstEpisodeSlug;
   const hasPlayable  = hasFullVideo || (isSeries && hasEpisodes);
@@ -63,6 +65,14 @@ export function getWorkCtaState(work: WorkCtaInput): WorkCtaState {
   const trailerLoginHref = isSeries
     ? `/login?from=/watch/${work.slug}?trailer=1`
     : `/login?from=/watch/${work.slug}`;
+
+  // Series preview clip needs ?preview=1 to skip the series→ep1 redirect
+  const previewHref      = isSeries
+    ? `/watch/${work.slug}?preview=1`
+    : `/watch/${work.slug}?preview=1`;
+  const previewLoginHref = isSeries
+    ? `/login?from=/watch/${work.slug}?preview=1`
+    : `/login?from=/watch/${work.slug}?preview=1`;
 
   const fullHref      = isSeries && hasEpisodes
     ? `/watch/${work.firstEpisodeSlug}`
@@ -99,6 +109,14 @@ export function getWorkCtaState(work: WorkCtaInput): WorkCtaState {
     } else {
       primaryLabel = "Watch Trailer";
       primaryHref  = trailerHref;
+    }
+  } else if (hasPreview) {
+    if (isTrailerLocked) {
+      primaryLabel = "Sign In to Watch Preview";
+      primaryHref  = previewLoginHref;
+    } else {
+      primaryLabel = "Watch Preview";
+      primaryHref  = previewHref;
     }
   } else {
     primaryLabel = "";

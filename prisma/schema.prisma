@@ -262,9 +262,10 @@ model Work {
   thumbnailUrl   String?   // landscape thumbnail for episode rows / compact previews
 
   // Video URLs — stored only, files live in R2/S3 later
-  trailerUrl  String?   // short film, full film, series
-  videoUrl    String?   // main video (film, episode, commercial, branding)
-  teaserUrl   String?   // optional second video for commercials
+  trailerUrl     String?   // short film, full film, series
+  previewClipUrl String?   // short preview/sample clip when no trailer exists
+  videoUrl       String?   // main video (film, episode, commercial, branding)
+  teaserUrl      String?   // optional second video for commercials
 
   // Film/series metadata
   year        Int?
