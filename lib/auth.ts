@@ -472,6 +472,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
 
   events: {
+    // ── createUser — fires when PrismaAdapter creates a brand-new user row ──
+    // This is the most reliable hook for first-time OAuth users because it fires
+    // AFTER the user is persisted to the DB. The user.id here is the real DB CUID.
+    // ensureWelcomeForUser is idempotent so duplicate calls from signIn/jwt are safe.
+    async createUser({ user }) {
+      if (user.id) {
+        console.log(`[auth] events.createUser fired for userId: ${user.id}, email: ${user.email}`);
+        await ensureWelcomeForUser(user.id).catch((err) => {
+          console.error(`[auth] events.createUser welcome failed:`, err);
+        });
+      }
+    },
+
     // On explicit sign-out, delete all refresh tokens so the session
     // cannot be renewed — even if the signed cookie is somehow replayed.
     // The signOut event delivers { token } for JWT strategy and { session }
