@@ -295,7 +295,7 @@ a {
 .rail-card { width: 155px; flex-shrink: 0; }
 
 @media (min-width: 640px) { .rail-card { width: 165px; } }
-@media (min-width: 768px) { .rail-track { gap: 1rem; } .rail-card { width: 185px; } }
-@media (min-width: 1024px) { .rail-track { gap: 1.25rem; } .rail-card { width: 210px; } }
+@media (min-width: 768px)  { .rail-track { gap: 1rem;    } .rail-card { width: 185px; } .rail-header { margin-bottom: 1.75rem; } }
+@media (min-width: 1024px) { .rail-track { gap: 1.25rem; } .rail-card { width: 210px; } .rail-header { margin-bottom: 2rem; } .rail-eyebrow { font-size: 0.625rem; } }
 @media (min-width: 1280px) { .rail-card { width: 240px; } }
 

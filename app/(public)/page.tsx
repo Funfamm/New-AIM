@@ -116,10 +116,12 @@ export default async function HomePage() {
       firstEpisodeSlug: firstEpSlug,
     });
     return {
-      posterUrl: w.posterUrl!,
-      title: w.title,
-      slug: w.slug,
-      heroMobileUrl: w.heroMobileUrl ?? null,
+      posterUrl:      w.posterUrl!,
+      title:          w.title,
+      slug:           w.slug,
+      type:           w.type,
+      genre:          w.genre ?? null,
+      heroMobileUrl:  w.heroMobileUrl ?? null,
       heroDesktopUrl: w.heroDesktopUrl ?? null,
       primaryLabel:   cta.primaryLabel,
       primaryHref:    cta.primaryHref,
@@ -162,6 +164,27 @@ export default async function HomePage() {
       <section className="hero">
         <HeroDesktopSection items={heroDesktopItems} />
       </section>
+
+      {/* ── Desktop category discovery pills ────────── */}
+      {availableTypes.length > 0 && (
+        <div className="home-type-pills">
+          <div className="container-app">
+            <div className="htp-inner">
+              <Link href="/works" className="htp-pill">All Works</Link>
+              {availableTypes.includes("FILM") && (
+                <Link href="/works?type=FILM" className="htp-pill">Films</Link>
+              )}
+              {availableTypes.includes("SERIES") && (
+                <Link href="/works?type=SERIES" className="htp-pill">Series</Link>
+              )}
+              {availableTypes.includes("SHORT") && (
+                <Link href="/works?type=SHORT" className="htp-pill">Shorts</Link>
+              )}
+              <Link href="/works?status=upcoming" className="htp-pill">Upcoming</Link>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Continue Watching ───────────────────────── */}
       {continueWatching.length > 0 && (
