@@ -20,23 +20,60 @@
   color: var(--color-brand-muted);
 }
 
+.upage-subtitle {
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  color: var(--color-brand-muted);
+  margin: 0.2rem 0 0;
+}
+
+.upage-header-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.uexport-btn {
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.4rem 1rem;
+  border-radius: 4px;
+  border: 1px solid rgba(232, 201, 126, 0.45);
+  color: var(--color-brand-accent);
+  background: transparent;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.uexport-btn:hover {
+  background: rgba(232, 201, 126, 0.07);
+  border-color: rgba(232, 201, 126, 0.7);
+}
+
 /* ── Stat cards ── */
 .ustat-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1px;
-  background: var(--color-brand-border);
-  border: 1px solid var(--color-brand-border);
-  border-radius: 6px;
-  overflow: hidden;
-  margin-bottom: 1.5rem;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1.75rem;
+}
+
+@media (max-width: 900px) {
+  .ustat-row { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 480px) {
+  .ustat-row { grid-template-columns: repeat(2, 1fr); gap: 0.5rem; }
 }
 
 .ustat-cell {
-  flex: 1;
-  min-width: 110px;
-  background: var(--color-brand-dark);
-  padding: 1rem 1.25rem;
+  background: #111;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 1.1rem 1.25rem;
+  min-width: 0;
 }
 
 .ustat-val {
@@ -71,7 +108,6 @@
 .ufilter-search {
   flex: 1;
   min-width: 180px;
-  max-width: 320px;
   background: var(--color-brand-dark);
   border: 1px solid var(--color-brand-border);
   border-radius: 4px;
@@ -239,8 +275,8 @@
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  padding: 0.2rem 0.55rem;
-  border-radius: 2px;
+  padding: 0.22rem 0.7rem;
+  border-radius: 20px;
   white-space: nowrap;
 }
 
@@ -785,19 +821,9 @@
    PREMIUM DESIGN OVERRIDES
    ══════════════════════════════════════════ */
 
-/* ── Stat cards — tighter, sharper ── */
-.ustat-row {
-  border-radius: 4px;
-  margin-bottom: 1.75rem;
-}
-
-.ustat-cell {
-  padding: 0.9rem 1.1rem;
-  min-width: 100px;
-}
-
+/* ── Stat values — tighter, sharper ── */
 .ustat-val {
-  font-size: 1.4rem;
+  font-size: 1.6rem;
   font-weight: 700;
   letter-spacing: -0.02em;
 }
@@ -805,7 +831,7 @@
 .ustat-lbl {
   font-size: 0.6rem;
   letter-spacing: 0.1em;
-  margin-top: 0.25rem;
+  margin-top: 0.3rem;
   opacity: 0.8;
 }
 
@@ -870,11 +896,16 @@
 }
 
 /* ── Badge refinements ── */
-.uvia-badge,
-.ustatus-badge {
+.uvia-badge {
   border-radius: 3px;
   font-size: 0.58rem;
   letter-spacing: 0.07em;
+}
+
+.ustatus-badge {
+  font-size: 0.58rem;
+  letter-spacing: 0.07em;
+  /* border-radius kept at 20px (pill) from base definition */
 }
 
 /* ── Filters: align with page header ── */
