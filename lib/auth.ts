@@ -211,12 +211,30 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
 
   callbacks: {
-    // Block suspended/deactivated users from completing Google OAuth sign-in
+    // ── signIn callback ──────────────────────────────────────────────────────
+    // Runs for all providers after credentials are validated / OAuth token exchanged.
+    //
+    // Google OAuth: status check, welcome flow (awaited), lastLoginAt, security events.
+    //
+    // Credentials: welcome-flow backstop only.  registerUser() also fires it via
+    // await, but the signIn callback is a safety net so it always finishes.
+    // ensureWelcomeForUser is idempotent — safe to call twice on first registration;
+    // for returning users it exits immediately after a single findUnique check.
     async signIn({ user, account }) {
-      if (account?.provider === "google" && user.id) {
+      // ── Credentials backstop — awaited so Vercel does not exit before send ──
+      if (account?.provider === "credentials" && user.id) {
+        await ensureWelcomeForUser(user.id);
+      }
+
+      if (account?.provider === "google" && user.email) {
+        // Look up by email rather than user.id — in Auth.js v5 with PrismaAdapter
+        // the user.id in OAuth callbacks can be the provider sub (e.g. the Google
+        // numeric ID) rather than the database CUID, which would cause findUnique
+        // by ID to return null and silently skip the welcome flow.
+        // Email is always the reliable key for OAuth users.
         const dbUser = await prisma.user.findUnique({
-          where: { id: user.id },
-          select: { status: true, email: true, id: true },
+          where: { email: user.email.toLowerCase().trim() },
+          select: { status: true, email: true, id: true, lastLoginAt: true },
         });
         if (
           dbUser?.status === "SUSPENDED" ||
@@ -225,13 +243,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         ) return false;
 
         if (dbUser) {
+          // ── Welcome flow for Google OAuth ──────────────────────────────
+          // AWAITED so Vercel does not exit before the email is sent.
+          // ensureWelcomeForUser is idempotent — safe for repeat logins;
+          // for returning users it exits immediately after checking the
+          // welcomeEmailSentAt / welcomeNotificationSentAt timestamps.
+          // Uses dbUser.id (database CUID) — user.id can be the Google sub.
+          console.log(`[auth] Google signIn: calling ensureWelcomeForUser for ${dbUser.email} (dbId: ${dbUser.id})`);
+          await ensureWelcomeForUser(dbUser.id).catch(() => {});
+
           void prisma.user.update({
             where: { id: dbUser.id },
             data:  { lastLoginAt: new Date(), lastLoginProvider: "google" },
           }).catch(() => {});
-
-          // Welcome flow — idempotent, only fires on first sign-in
-          void ensureWelcomeForUser(dbUser.id).catch(() => {});
 
           // Dynamic import — security utilities are server-only
           void import("@/lib/security").then(async (sec) => {
@@ -246,7 +270,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               os:              "Unknown",
               deviceType:      "UNKNOWN",
             });
-            if (isNew) {
+            // Only alert when it is a genuinely new device AND the user has
+            // logged in before — first registration must never trigger alerts.
+            const isGoogleFirstLogin = !dbUser.lastLoginAt;
+            if (isNew && !isGoogleFirstLogin) {
               void sec.writeSecurityEvent({
                 userId: dbUser.id, type: "NEW_DEVICE_LOGIN", severity: "LOW",
                 email: dbUser.email, provider: "google",
@@ -268,12 +295,29 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // ── Initial sign-in ──────────────────────────────────────
         token.id = user.id;
         if (account?.type === "oauth") {
-          const dbUser = await prisma.user.findUnique({
-            where: { id: user.id! },
-            select: { role: true, tokenVersion: true },
-          });
+          // user.id for OAuth can be the Google sub (numeric provider ID) rather
+          // than the database CUID. Look up by email to get the real DB record.
+          const oauthEmail = (user.email ?? "").toLowerCase().trim();
+          const dbUser = oauthEmail
+            ? await prisma.user.findUnique({
+                where:  { email: oauthEmail },
+                select: { id: true, role: true, tokenVersion: true },
+              })
+            : await prisma.user.findUnique({
+                where:  { id: user.id! },
+                select: { id: true, role: true, tokenVersion: true },
+              });
           token.role         = dbUser?.role         ?? "USER";
           token.tokenVersion = dbUser?.tokenVersion ?? 0;
+          // Patch token.id to the real DB CUID so all downstream code works correctly.
+          if (dbUser) token.id = dbUser.id;
+          // Welcome flow — idempotent backstop. The primary call is in the signIn
+          // callback (which uses the correct DB id from an email lookup). This is
+          // a safety net in case signIn was skipped or the user wasn't found there.
+          if (dbUser) {
+            console.log(`[auth] jwt OAuth: ensureWelcomeForUser backstop for dbId ${dbUser.id}`);
+            await ensureWelcomeForUser(dbUser.id).catch(() => {});
+          }
         } else {
           token.role         = (user as { role?: string }).role ?? "USER";
           token.tokenVersion = (user as { tokenVersion?: number }).tokenVersion ?? 0;
@@ -311,6 +355,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.role = token.role as string;
       }
       return session;
+    },
+  },
+
+  events: {
+    // ── createUser — fires when PrismaAdapter creates a brand-new user row ──
+    // This is the most reliable hook for first-time OAuth users because it fires
+    // AFTER the user is persisted to the DB but BEFORE signIn/jwt callbacks.
+    // ensureWelcomeForUser is idempotent so duplicate calls from signIn/jwt are safe.
+    async createUser({ user }) {
+      if (user.id) {
+        console.log(`[auth] events.createUser fired for userId: ${user.id}, email: ${user.email}`);
+        await ensureWelcomeForUser(user.id).catch((err) => {
+          console.error(`[auth] events.createUser welcome failed:`, err);
+        });
+      }
     },
   },
 });
