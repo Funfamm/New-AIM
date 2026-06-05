@@ -82,6 +82,70 @@
   color: #0a0a0a;
 }
 
+.nms-send-wrap {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  white-space: nowrap;
+}
+
+.nms-send-btn {
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  font-family: var(--font-body); font-size: 0.78rem; font-weight: 600;
+  color: var(--color-brand-accent);
+  border: 1px solid rgba(226,184,101,0.4);
+  border-radius: 999px;
+  padding: 0.4rem 1rem;
+  text-decoration: none;
+  background: rgba(226,184,101,0.06);
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.nms-send-btn:hover:not(:disabled) {
+  background: var(--color-brand-accent);
+  border-color: var(--color-brand-accent);
+  color: #0a0a0a;
+}
+.nms-send-btn:disabled {
+  opacity: 0.6; cursor: not-allowed;
+}
+.nms-send-btn--disabled {
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  font-family: var(--font-body); font-size: 0.78rem; font-weight: 600;
+  color: var(--color-brand-muted);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 999px;
+  padding: 0.4rem 1rem;
+  background: rgba(255,255,255,0.03);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  cursor: not-allowed;
+}
+.nms-send-btn--confirm {
+  border-color: rgba(226,184,101,0.8);
+  background: rgba(226,184,101,0.16);
+}
+
+.nms-send-cancel {
+  display: inline-flex; align-items: center;
+  font-family: var(--font-body); font-size: 0.78rem; font-weight: 500;
+  color: var(--color-brand-muted);
+  border: none; background: none; padding: 0; cursor: pointer;
+  text-decoration: underline; text-decoration-color: rgba(226,184,101,0.3);
+  transition: color 0.15s;
+}
+.nms-send-cancel:hover { color: var(--color-brand-light); text-decoration-color: rgba(226,184,101,0.6); }
+
+.nms-send-result {
+  display: inline-block;
+  font-family: var(--font-body); font-size: 0.75rem; font-weight: 500;
+  color: #4ade80; letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+.nms-send-result--err {
+  color: #f87171;
+}
+
 /* ── Stats grid ── */
 .nms-stat-grid {
   display: grid;

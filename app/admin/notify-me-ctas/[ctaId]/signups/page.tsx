@@ -1,9 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { isAdminRole } from "@/lib/auth-guard";
+import { isAcsConfigured } from "@/lib/bulk-email";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft, BellRing } from "lucide-react";
+import SendNoticeButton from "./send-notice-button";
 import type { Metadata } from "next";
 import "./signups.css";
 
@@ -146,6 +148,7 @@ export default async function CtaSignupsPage({ params, searchParams }: Props) {
           <span className="nms-count-badge">
             {isFiltered ? `${filteredTotal} of ${total}` : `${total} total`}
           </span>
+          <SendNoticeButton ctaId={ctaId} total={total} acsReady={isAcsConfigured()} />
           <a
             href={`/api/admin/notify-me-ctas/${ctaId}/signups/export`}
             className="nms-export-btn"
