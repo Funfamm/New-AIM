@@ -232,10 +232,16 @@ a {
 .rail-section {
   padding: 2.5rem 0 0;
 }
-@media (min-width: 768px) { .rail-section { padding: 3rem 0 0; } }
-@media (min-width: 1024px) { .rail-section { padding: 4rem 0 0; } }
+/* Tighter top gap on desktop — hero transitions directly into rails */
+@media (min-width: 768px)  { .rail-section { padding: 2rem 0 0; } }
+@media (min-width: 1024px) { .rail-section { padding: 2.5rem 0 0; } }
 
-.rail-header { margin-bottom: 1.5rem; }
+.rail-header {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
 .rail-eyebrow {
   display: inline-block;
   font-family: var(--font-body);
@@ -245,9 +251,9 @@ a {
   text-transform: uppercase;
   color: var(--color-brand-accent);
   margin-bottom: 0.5rem;
-  padding: 0.2rem 0.5rem;
-  background: rgba(232,201,126,0.06);
-  border: 1px solid rgba(232,201,126,0.12);
+  padding: 0.2rem 0.55rem;
+  background: rgba(232,201,126,0.07);
+  border: 1px solid rgba(232,201,126,0.16);
   border-radius: var(--radius-pill);
 }
 .rail-title-row {
@@ -257,7 +263,7 @@ a {
 }
 .rail-title {
   font-family: var(--font-display);
-  font-size: clamp(1.375rem, 2.5vw, 1.75rem);
+  font-size: clamp(1.375rem, 2.5vw, 1.875rem);
   font-weight: 700;
   letter-spacing: -0.02em;
   line-height: 1.15;
@@ -265,19 +271,24 @@ a {
   margin: 0;
 }
 .rail-view-all {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 0.2rem;
+  gap: 0.25rem;
   font-family: var(--font-body);
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: rgba(255,255,255,0.35);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.32);
   text-decoration: none;
   transition: color 0.15s;
   white-space: nowrap;
   margin-left: 1rem;
 }
 .rail-view-all:hover { color: var(--color-brand-accent); }
+
+/* Track wrap — needed to position scroll buttons */
+.rail-track-wrap { position: relative; }
 
 .rail-track {
   display: flex;
@@ -287,7 +298,6 @@ a {
   overflow-y: hidden;
   scrollbar-width: none;
   padding-bottom: 1rem;
-  /* Fade edges to indicate scrollability */
   mask-image: linear-gradient(to right, transparent 0%, black 2%, black 95%, transparent 100%);
   -webkit-mask-image: linear-gradient(to right, transparent 0%, black 2%, black 95%, transparent 100%);
 }
@@ -295,7 +305,49 @@ a {
 .rail-card { width: 155px; flex-shrink: 0; }
 
 @media (min-width: 640px) { .rail-card { width: 165px; } }
-@media (min-width: 768px) { .rail-track { gap: 1rem; } .rail-card { width: 185px; } }
-@media (min-width: 1024px) { .rail-track { gap: 1.25rem; } .rail-card { width: 210px; } }
+@media (min-width: 768px)  { .rail-track { gap: 1rem;    } .rail-card { width: 185px; } .rail-header { margin-bottom: 1.75rem; } }
+@media (min-width: 1024px) { .rail-track { gap: 1.25rem; } .rail-card { width: 210px; } .rail-header { margin-bottom: 2rem; } .rail-eyebrow { font-size: 0.625rem; } }
 @media (min-width: 1280px) { .rail-card { width: 240px; } }
+
+/* ── Rail scroll buttons (desktop only) ── */
+.rail-scroll-btn {
+  display: none; /* mobile: hidden */
+  position: absolute;
+  top: 50%;
+  transform: translateY(-60%); /* offset slightly up from card center */
+  z-index: 4;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background:
+    linear-gradient(180deg, rgba(30,28,24,0.96) 0%, rgba(18,16,12,0.96) 100%);
+  border: 1px solid rgba(232,201,126,0.18);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: rgba(232,201,126,0.8);
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s, background 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+.rail-scroll-btn--left  { left:  -14px; }
+.rail-scroll-btn--right { right: -14px; }
+.rail-scroll-btn:hover {
+  background:
+    linear-gradient(180deg, rgba(232,201,126,0.14) 0%, rgba(232,201,126,0.06) 100%),
+    rgba(18,16,12,0.96);
+  border-color: rgba(232,201,126,0.45);
+  color: var(--color-brand-accent);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5), 0 0 16px rgba(232,201,126,0.1), inset 0 1px 0 rgba(255,255,255,0.08);
+}
+@media (min-width: 768px) {
+  .rail-scroll-btn { display: flex; }
+  .rail-scroll-btn--visible { opacity: 1; pointer-events: auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rail-scroll-btn { transition: none; }
+}
 

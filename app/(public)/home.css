@@ -67,15 +67,27 @@
   transform: translateY(-2px);
   box-shadow: 0 8px 40px rgba(232,201,126,0.35), 0 0 60px rgba(232,201,126,0.1);
 }
+/* "Find Your Way In" — glass pill */
 .hero-btn-secondary {
   display: inline-flex; align-items: center;
   font-family: var(--font-body); font-size: 0.8125rem; font-weight: 500;
-  color: rgba(255,255,255,0.6);
-  height: 52px; padding: 0 1.25rem; text-decoration: none;
-  transition: color 0.15s;
+  letter-spacing: 0.05em;
+  color: rgba(255,255,255,0.62);
+  height: 44px; padding: 0 1.5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.13);
+  background: rgba(255,255,255,0.05);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  text-decoration: none;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
   touch-action: manipulation;
+  white-space: nowrap;
 }
-.hero-btn-secondary:hover { color: var(--color-brand-white); }
+.hero-btn-secondary:hover {
+  color: var(--color-brand-white);
+  background: rgba(255,255,255,0.09);
+  border-color: rgba(255,255,255,0.24);
+}
 .hero-btn-trailer {
   display: inline-flex; align-items: center; gap: 0.4rem;
   font-family: var(--font-body); font-size: 0.875rem; font-weight: 500;
@@ -90,6 +102,80 @@
 .hero-btn-trailer:hover {
   background: rgba(255,255,255,0.14);
   border-color: rgba(255,255,255,0.4);
+}
+
+/* ── Hero: desktop gradient upgrade ── */
+@media (min-width: 768px) {
+  .hero-bg-gradient {
+    background:
+      linear-gradient(to right,  rgba(5,5,5,0.93) 0%, rgba(5,5,5,0.65) 30%, rgba(5,5,5,0.18) 56%, rgba(5,5,5,0) 74%),
+      linear-gradient(to top,    rgba(5,5,5,1) 0%, rgba(5,5,5,0.8) 16%, rgba(5,5,5,0.1) 52%, rgba(5,5,5,0) 72%),
+      radial-gradient(ellipse 55% 75% at 8% 92%, rgba(5,5,5,0.4) 0%, transparent 70%);
+  }
+}
+
+/* ── Hero: active film label (desktop) ── */
+.hero-film-label {
+  display: none;
+}
+@media (min-width: 768px) {
+  .hero-film-label {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    font-family: var(--font-body);
+    font-size: 0.725rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.38);
+    margin-bottom: 0.9rem;
+  }
+}
+.hero-film-label-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--color-brand-accent);
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+.hero-film-label-genre {
+  color: rgba(255,255,255,0.25);
+}
+
+/* ── Hero: slide dot indicators (desktop) ── */
+.hero-dots {
+  display: none;
+  position: absolute;
+  bottom: 2.25rem;
+  right: 7vw;
+  z-index: 2;
+  gap: 0.5rem;
+  align-items: center;
+}
+@media (min-width: 768px) {
+  .hero-dots { display: flex; }
+}
+@media (min-width: 1280px) {
+  .hero-dots { right: 8vw; }
+}
+.hero-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.2);
+  transition: background 0.35s, transform 0.35s, box-shadow 0.35s;
+  cursor: default;
+}
+.hero-dot--active {
+  background: var(--color-brand-accent);
+  transform: scale(1.5);
+  box-shadow: 0 0 7px rgba(232,201,126,0.55);
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-dot { transition: none; }
+  .hero-dot--active { transform: none; }
 }
 
 /* ── Empty state ── */
