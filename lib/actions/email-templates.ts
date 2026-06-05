@@ -1,4 +1,4 @@
-﻿"use server";
+"use server";
 
 import { requireAdmin, isAdminRole } from "@/lib/auth-guard";
 import { auth } from "@/lib/auth";
@@ -6,8 +6,17 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import type { EmailType } from "@prisma/client";
+import {
+  getDefaultTemplates,
+  getDefaultTemplateByName,
+  renderEmailTemplate,
+  SAMPLE_VARS,
+  type TemplateRow,
+} from "@/lib/email-template-defaults";
 
-// System templates are critical auth/security flows — cannot be deleted or deactivated.
+export type { TemplateRow };
+
+// System templates — cannot be deleted or deactivated.
 const SYSTEM_NAMES = new Set([
   "PASSWORD_RESET",
   "WELCOME",
@@ -15,316 +24,72 @@ const SYSTEM_NAMES = new Set([
   "ADMIN_ALERT",
 ]);
 
-// ── Shared HTML primitives ────────────────────────────────────
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://aimstudio.app";
-
-const T = {
-  // Outer wrapper
-  wrap: (inner: string) => `<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#0a0a0a;font-family:system-ui,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0a;padding:40px 16px;">
-    <tr><td align="center">
-      <table width="100%" style="max-width:480px;background:#111111;border:1px solid #2a2a2a;border-radius:12px;padding:40px 32px;">
-        <tr><td>
-          <p style="margin:0 0 24px;font-size:20px;font-weight:700;color:#f9fafb;letter-spacing:-0.3px;">AIM<span style="color:#e8c97e;">Studio</span></p>
-          ${inner}
-          <hr style="margin:28px 0;border:none;border-top:1px solid #2a2a2a;">
-          <p style="margin:0;font-size:11px;color:#4b5563;line-height:1.6;letter-spacing:0.06em;text-transform:uppercase;">AIM Studio &nbsp;&middot;&nbsp; Don&rsquo;t look away.</p>
-        </td></tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`,
-
-  // Bulk wrapper — adds unsubscribe footer
-  wrapBulk: (inner: string) => `<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#0a0a0a;font-family:system-ui,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0a;padding:40px 16px;">
-    <tr><td align="center">
-      <table width="100%" style="max-width:480px;background:#111111;border:1px solid #2a2a2a;border-radius:12px;padding:40px 32px;">
-        <tr><td>
-          <p style="margin:0 0 24px;font-size:20px;font-weight:700;color:#f9fafb;letter-spacing:-0.3px;">AIM<span style="color:#e8c97e;">Studio</span></p>
-          ${inner}
-          <hr style="margin:28px 0;border:none;border-top:1px solid #2a2a2a;">
-          <p style="margin:0 0 8px;font-size:11px;color:#4b5563;line-height:1.6;letter-spacing:0.06em;text-transform:uppercase;">AIM Studio &nbsp;&middot;&nbsp; Don&rsquo;t look away.</p>
-          <p style="margin:0;font-size:11px;color:#374151;line-height:1.6;">
-            <a href="{{preferencesUrl}}" style="color:#374151;">Manage preferences</a>
-            &nbsp;&middot;&nbsp;
-            <a href="{{unsubscribeUrl}}" style="color:#374151;">Unsubscribe</a>
-          </p>
-        </td></tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`,
-
-  h1: (text: string) =>
-    `<h1 style="margin:0 0 16px;font-size:20px;font-weight:600;color:#f9fafb;line-height:1.3;">${text}</h1>`,
-
-  p: (text: string) =>
-    `<p style="margin:0 0 20px;font-size:14px;color:#9ca3af;line-height:1.7;">${text}</p>`,
-
-  btn: (label: string, href: string) =>
-    `<a href="${href}" style="display:inline-block;background:#e8c97e;color:#0a0a0a;font-size:13px;font-weight:700;letter-spacing:0.04em;text-decoration:none;padding:12px 28px;border-radius:3px;">${label}</a>`,
-
-  ghost: (label: string, href: string) =>
-    `<a href="${href}" style="display:inline-block;color:#e5e7eb;font-size:13px;font-weight:500;text-decoration:none;padding:12px 20px;border:1px solid #3a3a3a;border-radius:3px;">${label}</a>`,
-
-  note: (text: string) =>
-    `<p style="margin:20px 0 0;font-size:12px;color:#6b7280;line-height:1.6;">${text}</p>`,
-
-  preheader: (text: string) =>
-    `<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">${text}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;</div>`,
-};
-
-// ── Default system templates ──────────────────────────────────
-// Called from the admin templates list page — idempotent, safe to call on every page load.
-// Uses createMany + skipDuplicates so existing admin edits are never overwritten.
-
-type TemplateRow = {
-  name:        string;
-  label:       string;
-  description: string;
-  type:        EmailType;
-  subject:     string;
-  preheader:   string;
-  bodyHtml:    string;
-  bodyText:    string;
-  isActive:    boolean;
-  isSystem:    boolean;
-  isDefault:   boolean;
-};
+// ── Seed ──────────────────────────────────────────────────────────
+// Idempotent: skipDuplicates never overwrites existing admin-edited records.
 
 export async function ensureSystemEmailTemplates(): Promise<void> {
-  const templates: TemplateRow[] = [
-    // ── PASSWORD_RESET ──────────────────────────────
-    {
-      name:        "PASSWORD_RESET",
-      label:       "Password Reset",
-      description: "Sent when a user requests a password reset. System — always active.",
-      type:        "PASSWORD_RESET",
-      subject:     "Reset your AIM Studio password",
-      preheader:   "A password reset was requested for your account.",
-      bodyHtml: T.wrap(`
-        ${T.preheader("A password reset was requested for your account.")}
-        ${T.h1("Reset your password")}
-        ${T.p("We received a request to reset the password for your AIM Studio account. Click the button below to choose a new password. <strong style='color:#e5e7eb;'>This link expires in 30 minutes.</strong>")}
-        ${T.btn("Reset Password", "{{actionUrl}}")}
-        ${T.note("If you did not request a password reset, you can safely ignore this email. Your password will not change.")}
-        ${T.note("Do not share this link with anyone. AIM Studio will never ask for your password.")}
-        ${T.note(`If the button doesn&rsquo;t work, copy this link:<br><span style="color:#9ca3af;word-break:break-all;font-size:11px;">{{actionUrl}}</span>`)}
-      `),
-      bodyText: `Reset your AIM Studio password\n\nWe received a request to reset the password for your account.\n\nReset link (expires in 30 minutes):\n{{actionUrl}}\n\nIf you did not request a password reset, you can safely ignore this email.\nDo not share this link with anyone.\n\n—\nAIM Studio | Don't look away.`,
-      isActive: true, isSystem: true, isDefault: true,
-    },
-
-    // ── WELCOME ─────────────────────────────────────
-    {
-      name:        "WELCOME",
-      label:       "Welcome",
-      description: "Sent after a new account is created. System — always active.",
-      type:        "WELCOME",
-      subject:     "Welcome to AIM Studio",
-      preheader:   "Your account is ready. Start watching.",
-      bodyHtml: T.wrap(`
-        ${T.preheader("Your account is ready. Start watching.")}
-        ${T.h1("Welcome, {{userName}}")}
-        ${T.p("Your AIM Studio account is ready. Here&rsquo;s what&rsquo;s waiting for you:")}
-        <table cellpadding="0" cellspacing="0" style="margin:0 0 24px;width:100%;">
-          <tr><td style="padding:6px 0;font-size:13px;color:#d1d5db;line-height:1.6;">
-            <span style="color:#e8c97e;margin-right:8px;">&#9654;</span> Exclusive AIM Studio films and series
-          </td></tr>
-          <tr><td style="padding:6px 0;font-size:13px;color:#d1d5db;line-height:1.6;">
-            <span style="color:#e8c97e;margin-right:8px;">&#9654;</span> Behind-the-scenes work from the studio
-          </td></tr>
-          <tr><td style="padding:6px 0;font-size:13px;color:#d1d5db;line-height:1.6;">
-            <span style="color:#e8c97e;margin-right:8px;">&#9654;</span> New releases when they drop
-          </td></tr>
-        </table>
-        ${T.btn("Enter AIM Studio", "{{actionUrl}}")}
-        ${T.note("If you did not create this account, please ignore this email.")}
-      `),
-      bodyText: `Welcome to AIM Studio\n\nYour account is ready, {{userName}}.\n\nWhat's waiting for you:\n- Exclusive AIM Studio films and series\n- Behind-the-scenes work from the studio\n- New releases when they drop\n\nEnter AIM Studio:\n{{actionUrl}}\n\nIf you did not create this account, please ignore this email.\n\n—\nAIM Studio | Don't look away.`,
-      isActive: true, isSystem: true, isDefault: true,
-    },
-
-    // ── SECURITY_ALERT ──────────────────────────────
-    {
-      name:        "SECURITY_ALERT",
-      label:       "Security Alert",
-      description: "Sent on suspicious login, new device, or security events. System — always active. No tracking pixels.",
-      type:        "SECURITY_ALERT",
-      subject:     "Security alert for your AIM Studio account",
-      preheader:   "We noticed something unusual on your account.",
-      bodyHtml: T.wrap(`
-        ${T.preheader("We noticed something unusual on your account.")}
-        <p style="margin:0 0 6px;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#f87171;">Security Alert</p>
-        ${T.h1("{{eventTitle}}")}
-        ${T.p("{{eventDescription}}")}
-        <table cellpadding="0" cellspacing="0" style="margin:0 0 24px;width:100%;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:6px;">
-          <tr><td style="padding:16px 20px;">
-            <table cellpadding="0" cellspacing="0" width="100%">
-              <tr>
-                <td style="padding:5px 0;font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:#6b7280;width:90px;">Date</td>
-                <td style="padding:5px 0;font-size:13px;color:#e5e7eb;">{{date}}</td>
-              </tr>
-              <tr>
-                <td style="padding:5px 0;font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:#6b7280;">Device</td>
-                <td style="padding:5px 0;font-size:13px;color:#e5e7eb;">{{deviceInfo}}</td>
-              </tr>
-              <tr>
-                <td style="padding:5px 0;font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:#6b7280;">Location</td>
-                <td style="padding:5px 0;font-size:13px;color:#e5e7eb;">{{ipAddress}}</td>
-              </tr>
-            </table>
-          </td></tr>
-        </table>
-        ${T.btn("Review Account Security", "{{actionUrl}}")}
-        ${T.note("If this was you, no action is needed.")}
-        ${T.note("If this was <strong>not</strong> you, <a href='{{resetUrl}}' style='color:#f87171;'>reset your password immediately</a> and contact support at <a href='mailto:{{supportEmail}}' style='color:#e8c97e;'>{{supportEmail}}</a>.")}
-      `),
-      bodyText: `Security Alert — AIM Studio\n\n{{eventTitle}}\n\n{{eventDescription}}\n\nDate: {{date}}\nDevice: {{deviceInfo}}\nLocation: {{ipAddress}}\n\nReview your account:\n{{actionUrl}}\n\nIf this was you, no action is needed.\nIf this was NOT you, reset your password immediately:\n{{resetUrl}}\n\n—\nAIM Studio | Don't look away.`,
-      isActive: true, isSystem: true, isDefault: true,
-    },
-
-    // ── ADMIN_ALERT ─────────────────────────────────
-    {
-      name:        "ADMIN_ALERT",
-      label:       "Admin Alert / Test",
-      description: "Used for admin test emails and internal alerts. System — always active.",
-      type:        "ADMIN_ALERT",
-      subject:     "{{subject}}",
-      preheader:   "Admin notification from AIM Studio.",
-      bodyHtml: T.wrap(`
-        ${T.preheader("Admin notification from AIM Studio.")}
-        <p style="margin:0 0 6px;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#6b7280;">Admin Notification</p>
-        ${T.h1("{{subject}}")}
-        ${T.p("{{body}}")}
-        ${T.note("Sent: {{date}}")}
-      `),
-      bodyText: `[Admin] {{subject}}\n\n{{body}}\n\nSent: {{date}}\n\n—\nAIM Studio | Don't look away.`,
-      isActive: true, isSystem: true, isDefault: true,
-    },
-
-    // ── NEW_RELEASE ─────────────────────────────────
-    {
-      name:        "NEW_RELEASE",
-      label:       "New Release",
-      description: "Sent to opted-in users when a new film, series, or work is published.",
-      type:        "NEW_RELEASE",
-      subject:     "New Release: {{workTitle}}",
-      preheader:   "{{workTitle}} is now available on AIM Studio.",
-      bodyHtml: T.wrapBulk(`
-        ${T.preheader("{{workTitle}} is now available on AIM Studio.")}
-        <p style="margin:0 0 4px;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#e8c97e;">Now Available</p>
-        <p style="margin:0 0 12px;font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#6b7280;">{{workType}}</p>
-        ${T.h1("{{workTitle}}")}
-        ${T.p("{{description}}")}
-        <table cellpadding="0" cellspacing="0" style="margin:0 0 8px;">
-          <tr>
-            <td style="padding-right:8px;">${T.btn("Watch Now", "{{watchUrl}}")}</td>
-            <td>${T.ghost("View Details", "{{detailUrl}}")}</td>
-          </tr>
-        </table>
-      `),
-      bodyText: `Now Available — {{workTitle}}\n\n{{workType}}\n\n{{description}}\n\nWatch now:\n{{watchUrl}}\n\nView details:\n{{detailUrl}}\n\n—\nAIM Studio | Don't look away.\n\nManage preferences: {{preferencesUrl}}\nUnsubscribe: {{unsubscribeUrl}}`,
-      isActive: true, isSystem: false, isDefault: true,
-    },
-
-    // ── NEW_EPISODE ─────────────────────────────────
-    {
-      name:        "NEW_EPISODE",
-      label:       "New Episode",
-      description: "Sent to opted-in users when a new episode is published.",
-      type:        "NEW_EPISODE",
-      subject:     "New episode: {{seriesTitle}} — {{episodeLabel}}",
-      preheader:   "{{episodeTitle}} is now streaming.",
-      bodyHtml: T.wrapBulk(`
-        ${T.preheader("{{episodeTitle}} is now streaming.")}
-        <p style="margin:0 0 4px;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#e8c97e;">New Episode</p>
-        <p style="margin:0 0 12px;font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#6b7280;">{{seriesTitle}}</p>
-        ${T.h1("{{episodeLabel}} — {{episodeTitle}}")}
-        ${T.p("A new episode of <strong style='color:#e5e7eb;'>{{seriesTitle}}</strong> is now available.")}
-        ${T.btn("Watch Now", "{{watchUrl}}")}
-      `),
-      bodyText: `New Episode — {{seriesTitle}}\n\n{{episodeLabel}} — {{episodeTitle}}\n\nA new episode of {{seriesTitle}} is now available.\n\nWatch now:\n{{watchUrl}}\n\n—\nAIM Studio | Don't look away.\n\nManage preferences: {{preferencesUrl}}\nUnsubscribe: {{unsubscribeUrl}}`,
-      isActive: true, isSystem: false, isDefault: true,
-    },
-
-    // ── ANNOUNCEMENT ────────────────────────────────
-    {
-      name:        "ANNOUNCEMENT",
-      label:       "Studio Announcement",
-      description: "Studio-wide broadcast sent via /admin/notifications.",
-      type:        "ANNOUNCEMENT",
-      subject:     "{{title}}",
-      preheader:   "{{title}}",
-      bodyHtml: T.wrapBulk(`
-        ${T.preheader("{{title}}")}
-        <p style="margin:0 0 20px;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#6b7280;text-align:center;">From the Studio</p>
-        ${T.h1("{{title}}")}
-        ${T.p("{{body}}")}
-        <p style="margin:0 0 8px;">{{ctaButton}}</p>
-      `),
-      bodyText: `From the Studio\n\n{{title}}\n\n{{body}}\n\n{{ctaUrl}}\n\n—\nAIM Studio | Don't look away.\n\nManage preferences: {{preferencesUrl}}\nUnsubscribe: {{unsubscribeUrl}}`,
-      isActive: true, isSystem: false, isDefault: true,
-    },
-
-    // ── NOTIFY_ME_FOLLOWUP ──────────────────────────
-    {
-      name:        "NOTIFY_ME_FOLLOWUP",
-      label:       "Send Notice",
-      description: "Sent to CTA signups when a work is ready. Triggered via Send Notice from the CTA edit page.",
-      type:        "NOTIFY_ME_FOLLOWUP",
-      subject:     "It's here: {{workTitle}}",
-      preheader:   "{{workTitle}} is now available on AIM Studio.",
-      bodyHtml: T.wrapBulk(`
-        ${T.preheader("{{workTitle}} is now available on AIM Studio.")}
-        <p style="margin:0 0 4px;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#e8c97e;">You asked us to let you know.</p>
-        ${T.h1("{{workTitle}}")}
-        ${T.p("{{greeting}} <strong style='color:#e5e7eb;'>{{workTitle}}</strong> is ready now.")}
-        <table cellpadding="0" cellspacing="0" style="margin:0 0 8px;">
-          <tr>
-            <td style="padding-right:8px;">${T.btn("View the Project", "{{detailUrl}}")}</td>
-            <td>${T.ghost("Watch Now", "{{watchUrl}}")}</td>
-          </tr>
-        </table>
-      `),
-      bodyText: `It's here: {{workTitle}}\n\n{{greeting}} You asked us to let you know. {{workTitle}} is ready now.\n\nView the project:\n{{detailUrl}}\n\nWatch now:\n{{watchUrl}}\n\n—\nAIM Studio | Don't look away.\n\nManage preferences: {{preferencesUrl}}\nUnsubscribe: {{unsubscribeUrl}}`,
-      isActive: true, isSystem: false, isDefault: true,
-    },
-
-    // ── ACCOUNT ─────────────────────────────────────
-    {
-      name:        "ACCOUNT",
-      label:       "Account Update",
-      description: "Sent on account changes such as suspension, restoration, or status updates.",
-      type:        "ACCOUNT",
-      subject:     "Account update — AIM Studio",
-      preheader:   "An update was made to your AIM Studio account.",
-      bodyHtml: T.wrap(`
-        ${T.preheader("An update was made to your AIM Studio account.")}
-        <p style="margin:0 0 6px;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#6b7280;">Account</p>
-        ${T.h1("Account update")}
-        ${T.p("{{changeDescription}}")}
-        ${T.note("If you did not initiate this change, <a href='{{resetUrl}}' style='color:#e8c97e;'>reset your password</a> or contact support at <a href='mailto:{{supportEmail}}' style='color:#e8c97e;'>{{supportEmail}}</a>.")}
-      `),
-      bodyText: `Account update — AIM Studio\n\n{{changeDescription}}\n\nIf you did not initiate this change, reset your password immediately:\n{{resetUrl}}\n\n—\nAIM Studio | Don't look away.`,
-      isActive: true, isSystem: false, isDefault: true,
-    },
-  ];
-
-  // Idempotent: skipDuplicates skips any row whose unique `name` already exists.
-  // Admin edits to existing records are never touched.
-  await prisma.emailTemplate.createMany({ data: templates, skipDuplicates: true });
+  await prisma.emailTemplate.createMany({
+    data:           getDefaultTemplates(),
+    skipDuplicates: true,
+  });
 }
 
+// ── Preview (admin only) ──────────────────────────────────────────
+// Returns rendered subject + HTML using safe sample variables.
+// Has NO effect on live sendEmail() or enqueueBulkForRecipients().
+
+export async function getTemplatePreview(
+  id: string,
+): Promise<{ subject: string; renderedHtml: string } | { error: string }> {
+  const admin = await requireAdmin().catch(() => null);
+  if (!admin) return { error: "Forbidden" };
+
+  const t = await prisma.emailTemplate.findUnique({
+    where:  { id },
+    select: { name: true, subject: true, bodyHtml: true },
+  });
+  if (!t) return { error: "Template not found." };
+
+  const vars = SAMPLE_VARS[t.name] ?? {};
+  return {
+    subject:      renderEmailTemplate(t.subject, vars),
+    renderedHtml: renderEmailTemplate(t.bodyHtml, vars),
+  };
+}
+
+// ── Reset to premium default (admin only) ─────────────────────────
+// Replaces subject/preheader/bodyHtml/bodyText with the premium default.
+// Preserves id, type, isSystem, isActive.
+
+export async function resetTemplateToDefault(id: string): Promise<TemplateResult> {
+  await requireAdmin();
+
+  const t = await prisma.emailTemplate.findUnique({
+    where:  { id },
+    select: { name: true },
+  });
+  if (!t) return { error: "Template not found." };
+
+  const defaults = getDefaultTemplateByName(t.name);
+  if (!defaults) return { error: "No premium default exists for this template." };
+
+  await prisma.emailTemplate.update({
+    where: { id },
+    data: {
+      subject:   defaults.subject,
+      preheader: defaults.preheader || null,
+      bodyHtml:  defaults.bodyHtml,
+      bodyText:  defaults.bodyText || null,
+      label:     defaults.label,
+    },
+  });
+
+  revalidatePath("/admin/email/templates");
+  revalidatePath(`/admin/email/templates/${id}`);
+  return {};
+}
+
+// ── Types ─────────────────────────────────────────────────────────
 
 export type TemplateResult = {
   error?: string;
@@ -420,7 +185,7 @@ export async function updateTemplate(
   }
 
   const existing = await prisma.emailTemplate.findUnique({
-    where: { id },
+    where:  { id },
     select: { name: true, isSystem: true },
   });
   if (!existing) return { error: "Template not found." };
@@ -432,7 +197,7 @@ export async function updateTemplate(
   try {
     await prisma.emailTemplate.update({
       where: { id },
-      data: { label, description, subject, preheader, bodyHtml, bodyText, isActive },
+      data:  { label, description, subject, preheader, bodyHtml, bodyText, isActive },
     });
     revalidatePath("/admin/email/templates");
     revalidatePath(`/admin/email/templates/${id}`);
@@ -451,7 +216,7 @@ export async function toggleTemplateActive(
   await requireAdmin();
 
   const t = await prisma.emailTemplate.findUnique({
-    where: { id },
+    where:  { id },
     select: { name: true, isSystem: true },
   });
   if (!t) return { error: "Template not found." };
@@ -502,7 +267,7 @@ export async function deleteTemplate(id: string): Promise<TemplateResult> {
   await requireAdmin();
 
   const t = await prisma.emailTemplate.findUnique({
-    where: { id },
+    where:  { id },
     select: { name: true, isSystem: true, isDefault: true },
   });
   if (!t) return { error: "Template not found." };
