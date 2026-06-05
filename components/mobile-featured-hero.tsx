@@ -37,13 +37,14 @@ type Props = {
   items: MobileHeroItem[];
   isLoggedIn: boolean;
   savedIds: string[];
-  availableTypes: string[];
+  availableTypes: string[];  // distinct WorkType values from PUBLISHED showOnHome works
+  hasUpcoming: boolean;      // true when any UPCOMING/IN_PRODUCTION showOnHome works exist
 };
 
 const ROTATE_MS = 7000; // auto-rotation interval
 const RESUME_MS = 3000; // pause after interaction before resuming
 
-export default function MobileFeaturedHero({ items, isLoggedIn, savedIds, availableTypes }: Props) {
+export default function MobileFeaturedHero({ items, isLoggedIn, savedIds, availableTypes, hasUpcoming }: Props) {
   const [active, setActive] = useState(0);
   const count = items.length;
 
@@ -129,23 +130,28 @@ export default function MobileFeaturedHero({ items, isLoggedIn, savedIds, availa
     <section className="mfh" aria-label="Featured works">
 
       {/* ── Category pills ── */}
-      <div className="mfh-pills-wrap">
-        <div className="mfh-pills">
-          <Link href="/works" className="mfh-pill">All</Link>
-          {PILL_DEFS
-            .filter(p =>
-              p.label === "Upcoming"
-                ? availableTypes.length > 0  // Show "Upcoming" if any types exist (upstream filters upcoming status)
-                : p.requiredTypes.some(t => availableTypes.includes(t))
-            )
-            .map(p => (
-              <Link key={p.label} href={`/works?collection=${p.collection}`} className="mfh-pill">
-                {p.label}
-              </Link>
-            ))
-          }
+      {/* "All" shows only when at least one published or upcoming work exists.   */}
+      {/* Each other pill shows only when its specific content type is published. */}
+      {/* Draft / unpublished works never create a tab.                           */}
+      {(availableTypes.length > 0 || hasUpcoming) && (
+        <div className="mfh-pills-wrap">
+          <div className="mfh-pills">
+            <Link href="/works" className="mfh-pill">All</Link>
+            {PILL_DEFS
+              .filter(p =>
+                p.label === "Upcoming"
+                  ? hasUpcoming
+                  : p.requiredTypes.some(t => availableTypes.includes(t))
+              )
+              .map(p => (
+                <Link key={p.label} href={`/works?collection=${p.collection}`} className="mfh-pill">
+                  {p.label}
+                </Link>
+              ))
+            }
+          </div>
         </div>
-      </div>
+      )}
 
       {/* ── Hero card stack ── */}
       <div className="mfh-slides-wrap">

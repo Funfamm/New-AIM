@@ -47,13 +47,26 @@ async function getHomeWorks() {
   return { featured, newReleases };
 }
 
-async function getPublishedTypes(): Promise<string[]> {
-  const rows = await prisma.work.findMany({
-    where: { status: HOME_STATUSES, type: { not: "EPISODE" } },
-    select: { type: true },
-    distinct: ["type"],
-  });
-  return rows.map((r) => r.type as string);
+async function getPublishedTypes(): Promise<{ types: string[]; hasUpcoming: boolean }> {
+  // Two separate queries so the concepts stay clean:
+  //   types      = distinct WorkType values from PUBLISHED works shown on home
+  //   hasUpcoming = whether any UPCOMING/IN_PRODUCTION works exist on home
+  // This way Films/Series/Shorts tabs only appear when real published content
+  // exists, and Upcoming only appears when there is genuinely upcoming content.
+  const [typeRows, upcomingCount] = await Promise.all([
+    prisma.work.findMany({
+      where: { status: "PUBLISHED", showOnHome: true, type: { not: "EPISODE" } },
+      select: { type: true },
+      distinct: ["type"],
+    }),
+    prisma.work.count({
+      where: { status: { in: ["UPCOMING", "IN_PRODUCTION"] }, showOnHome: true, type: { not: "EPISODE" } },
+    }),
+  ]);
+  return {
+    types:       typeRows.map((r) => r.type as string),
+    hasUpcoming: upcomingCount > 0,
+  };
 }
 
 async function getSavedIds(userId: string): Promise<string[]> {
@@ -90,7 +103,12 @@ export default async function HomePage() {
   const session = await auth();
   const userId = session?.user?.id ?? null;
 
-  const [{ featured, newReleases }, continueWatching, savedIds, availableTypes] = await Promise.all([
+  const [
+    { featured, newReleases },
+    continueWatching,
+    savedIds,
+    { types: availableTypes, hasUpcoming },
+  ] = await Promise.all([
     getHomeWorks(),
     userId
       ? getContinueWatching(userId)
@@ -155,6 +173,7 @@ export default async function HomePage() {
         isLoggedIn={!!userId}
         savedIds={savedIds}
         availableTypes={availableTypes}
+        hasUpcoming={hasUpcoming}
       />
 
       {/* ── Desktop cinematic hero (≥768px) ──────────── */}
