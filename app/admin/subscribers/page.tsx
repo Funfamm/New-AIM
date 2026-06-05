@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import "./subscribers.css";
 
+export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Admin — Subscribers" };
 
 const PAGE_SIZE = 50;

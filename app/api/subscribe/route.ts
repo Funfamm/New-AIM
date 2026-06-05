@@ -117,6 +117,9 @@ export async function POST(req: Request) {
   // ── 2. Rate limit ────────────────────────────────────────────────────────
   maybePurge();
   if (!checkRateLimit(ip)) {
+    if (process.env.NODE_ENV !== "production") {
+      console.log("[subscribe] blocked: rate_limited", { ip });
+    }
     // Return fake success — don't tell bots they're being limited
     return NextResponse.json({ success: true }, { status: 200 });
   }
@@ -138,12 +141,21 @@ export async function POST(req: Request) {
 
   // ── 3. Honeypot ──────────────────────────────────────────────────────────
   if (body.hp && typeof body.hp === "string" && body.hp.length > 0) {
+    if (process.env.NODE_ENV !== "production") {
+      console.log("[subscribe] blocked: honeypot_triggered");
+    }
     return NextResponse.json({ success: true }, { status: 200 });
   }
 
   // ── 4. Time-delay ────────────────────────────────────────────────────────
+  // Lowered from 1500ms to 800ms — Turnstile can auto-pass in <500ms for
+  // trusted browsers, causing genuine fast users to hit this check at 1500ms.
   if (typeof body.startedAt === "number") {
-    if (Date.now() - body.startedAt < 1500) {
+    const elapsed = Date.now() - body.startedAt;
+    if (elapsed < 800) {
+      if (process.env.NODE_ENV !== "production") {
+        console.log("[subscribe] blocked: time_delay", { elapsed });
+      }
       return NextResponse.json({ success: true }, { status: 200 });
     }
   }
@@ -187,7 +199,10 @@ export async function POST(req: Request) {
     select: { active: true },
   });
   if (suppressed?.active) {
-    // Silent fake success — do not reveal suppression
+    if (process.env.NODE_ENV !== "production") {
+      console.log("[subscribe] blocked: suppressed_fake_success");
+    }
+    // Silent fake success — do not reveal suppression to public
     return NextResponse.json({ success: true }, { status: 200 });
   }
 
@@ -240,6 +255,9 @@ export async function POST(req: Request) {
         suppressReason: null,
       },
     });
+    if (process.env.NODE_ENV !== "production") {
+      console.log("[subscribe] decision", { result: "duplicate", emailValid: true, tokenPresent: true });
+    }
     return NextResponse.json({ success: true, alreadySubscribed: true }, { status: 200 });
   }
 
@@ -258,5 +276,8 @@ export async function POST(req: Request) {
     },
   });
 
+  if (process.env.NODE_ENV !== "production") {
+    console.log("[subscribe] decision", { result: "created", emailValid: true, tokenPresent: true });
+  }
   return NextResponse.json({ success: true }, { status: 201 });
 }

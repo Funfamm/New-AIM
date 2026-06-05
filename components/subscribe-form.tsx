@@ -15,33 +15,42 @@ declare global {
 }
 
 export default function SubscribeForm() {
-  const [email,     setEmail]     = useState("");
-  const [status,    setStatus]    = useState<"idle" | "submitting" | "success" | "error">("idle");
-  const [errorMsg,  setErrorMsg]  = useState("");
-  const [token,     setToken]     = useState<string | null>(null);
+  const [email,       setEmail]       = useState("");
+  const [status,      setStatus]      = useState<"idle" | "submitting" | "success" | "error">("idle");
+  const [errorMsg,    setErrorMsg]    = useState("");
+  const [hint,        setHint]        = useState("");
+  const [token,       setToken]       = useState<string | null>(null);
   const [scriptReady, setScriptReady] = useState(false);
 
-  const widgetDivRef = useRef<HTMLDivElement>(null);
-  const widgetIdRef  = useRef<string | null>(null);
-  const startedAtRef = useRef<number>(Date.now());
+  const widgetDivRef  = useRef<HTMLDivElement>(null);
+  const widgetIdRef   = useRef<string | null>(null);
+  // tokenRef lets handleSubmit read the current token without waiting for React re-render.
+  // Without this, a click right after Turnstile fires its callback sees a stale null token.
+  const tokenRef      = useRef<string | null>(null);
+  // Sync guard prevents double-submission between setStatus("submitting") and re-render.
+  const submittingRef = useRef(false);
+  const startedAtRef  = useRef<number>(Date.now());
 
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
   const mountWidget = useCallback(() => {
     if (!widgetDivRef.current || !window.turnstile || !siteKey) return;
-    if (widgetIdRef.current) return; // already mounted
+    if (widgetIdRef.current) return;
     widgetIdRef.current = window.turnstile.render(widgetDivRef.current, {
-      sitekey:           siteKey,
-      callback:          (t: string) => setToken(t),
-      "expired-callback": () => setToken(null),
-      "error-callback":  () => setToken(null),
-      retry:             "auto",
-      "retry-interval":  5000,
-      theme:             "dark",
+      sitekey:            siteKey,
+      callback:           (t: string) => {
+        tokenRef.current = t;
+        setToken(t);
+        setHint("");
+      },
+      "expired-callback": () => { tokenRef.current = null; setToken(null); },
+      "error-callback":   () => { tokenRef.current = null; setToken(null); },
+      retry:              "auto",
+      "retry-interval":   5000,
+      theme:              "dark",
     });
   }, [siteKey]);
 
-  // Mount after script loads
   useEffect(() => {
     if (scriptReady) mountWidget();
   }, [scriptReady, mountWidget]);
@@ -50,29 +59,44 @@ export default function SubscribeForm() {
     if (widgetIdRef.current && window.turnstile) {
       window.turnstile.reset(widgetIdRef.current);
     }
+    tokenRef.current     = null;
     setToken(null);
+    startedAtRef.current = Date.now(); // reset timing so retries aren't blocked by time-delay
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!token || !email.trim() || status === "submitting") return;
+
+    // Sync guard — prevents double-submission before React re-renders with "submitting" state
+    if (submittingRef.current) return;
+
+    const currentToken = tokenRef.current; // always current — no React render lag
+
+    if (!currentToken) {
+      setHint("Please complete the verification below to continue.");
+      return;
+    }
+
+    if (!email.trim()) return;
 
     const hp = (e.currentTarget.elements.namedItem("hp") as HTMLInputElement)?.value ?? "";
 
+    submittingRef.current = true;
     setStatus("submitting");
     setErrorMsg("");
+    setHint("");
 
     try {
       const res = await fetch("/api/subscribe", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email:           email.trim(),
-          turnstileToken:  token,
+          email:          email.trim(),
+          turnstileToken: currentToken,
           hp,
-          startedAt:       startedAtRef.current,
-          source:          "footer",
-          sourcePath:      window.location.pathname,
+          startedAt:      startedAtRef.current,
+          source:         "footer",
+          sourcePath:     window.location.pathname,
         }),
       });
 
@@ -89,15 +113,16 @@ export default function SubscribeForm() {
       setErrorMsg("Something went wrong. Please try again.");
       setStatus("error");
       resetWidget();
+    } finally {
+      submittingRef.current = false;
     }
   }
 
-  // If site key is not configured, silently render nothing — don't break the page
   if (!siteKey) return null;
 
   return (
     <form onSubmit={handleSubmit} className="sub-form" noValidate>
-      {/* Honeypot — hidden from real users */}
+      {/* Honeypot — invisible to real users, must stay empty */}
       <input
         type="text"
         name="hp"
@@ -107,7 +132,6 @@ export default function SubscribeForm() {
         autoComplete="off"
       />
 
-      {/* Turnstile script — loaded lazily */}
       <Script
         src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
         strategy="lazyOnload"
@@ -143,6 +167,10 @@ export default function SubscribeForm() {
 
           {/* Turnstile widget mount point */}
           <div ref={widgetDivRef} className="sub-turnstile" />
+
+          {hint && (
+            <p className="sub-hint" role="status">{hint}</p>
+          )}
 
           {status === "error" && (
             <p className="sub-error" role="alert">{errorMsg}</p>
