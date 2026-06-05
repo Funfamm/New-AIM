@@ -114,12 +114,13 @@ export async function ensureSystemEmailTemplates(): Promise<void> {
       bodyHtml: T.wrap(`
         ${T.preheader("A password reset was requested for your account.")}
         ${T.h1("Reset your password")}
-        ${T.p("We received a request to reset the password for your AIM Studio account. Click the button below to choose a new password. This link expires in 30 minutes.")}
+        ${T.p("We received a request to reset the password for your AIM Studio account. Click the button below to choose a new password. <strong style='color:#e5e7eb;'>This link expires in 30 minutes.</strong>")}
         ${T.btn("Reset Password", "{{actionUrl}}")}
         ${T.note("If you did not request a password reset, you can safely ignore this email. Your password will not change.")}
-        ${T.note(`If the button doesn't work, copy this link:<br><span style="color:#e5e7eb;word-break:break-all;">{{actionUrl}}</span>`)}
+        ${T.note("Do not share this link with anyone. AIM Studio will never ask for your password.")}
+        ${T.note(`If the button doesn&rsquo;t work, copy this link:<br><span style="color:#9ca3af;word-break:break-all;font-size:11px;">{{actionUrl}}</span>`)}
       `),
-      bodyText: `Reset your AIM Studio password\n\nWe received a request to reset your password.\n\nReset link (expires in 30 minutes):\n{{actionUrl}}\n\nIf you did not request this, you can safely ignore this email.\n\n—\nAIM Studio | Don't look away.`,
+      bodyText: `Reset your AIM Studio password\n\nWe received a request to reset the password for your account.\n\nReset link (expires in 30 minutes):\n{{actionUrl}}\n\nIf you did not request a password reset, you can safely ignore this email.\nDo not share this link with anyone.\n\n—\nAIM Studio | Don't look away.`,
       isActive: true, isSystem: true, isDefault: true,
     },
 
@@ -134,11 +135,22 @@ export async function ensureSystemEmailTemplates(): Promise<void> {
       bodyHtml: T.wrap(`
         ${T.preheader("Your account is ready. Start watching.")}
         ${T.h1("Welcome, {{userName}}")}
-        ${T.p("Your AIM Studio account is ready. Explore films, series, and behind-the-scenes work from the studio.")}
-        ${T.btn("Go to Dashboard", "{{actionUrl}}")}
+        ${T.p("Your AIM Studio account is ready. Here&rsquo;s what&rsquo;s waiting for you:")}
+        <table cellpadding="0" cellspacing="0" style="margin:0 0 24px;width:100%;">
+          <tr><td style="padding:6px 0;font-size:13px;color:#d1d5db;line-height:1.6;">
+            <span style="color:#e8c97e;margin-right:8px;">&#9654;</span> Exclusive AIM Studio films and series
+          </td></tr>
+          <tr><td style="padding:6px 0;font-size:13px;color:#d1d5db;line-height:1.6;">
+            <span style="color:#e8c97e;margin-right:8px;">&#9654;</span> Behind-the-scenes work from the studio
+          </td></tr>
+          <tr><td style="padding:6px 0;font-size:13px;color:#d1d5db;line-height:1.6;">
+            <span style="color:#e8c97e;margin-right:8px;">&#9654;</span> New releases when they drop
+          </td></tr>
+        </table>
+        ${T.btn("Enter AIM Studio", "{{actionUrl}}")}
         ${T.note("If you did not create this account, please ignore this email.")}
       `),
-      bodyText: `Welcome to AIM Studio\n\nYour account is ready.\n\nGo to your dashboard:\n{{actionUrl}}\n\n—\nAIM Studio | Don't look away.`,
+      bodyText: `Welcome to AIM Studio\n\nYour account is ready, {{userName}}.\n\nWhat's waiting for you:\n- Exclusive AIM Studio films and series\n- Behind-the-scenes work from the studio\n- New releases when they drop\n\nEnter AIM Studio:\n{{actionUrl}}\n\nIf you did not create this account, please ignore this email.\n\n—\nAIM Studio | Don't look away.`,
       isActive: true, isSystem: true, isDefault: true,
     },
 
@@ -152,13 +164,32 @@ export async function ensureSystemEmailTemplates(): Promise<void> {
       preheader:   "We noticed something unusual on your account.",
       bodyHtml: T.wrap(`
         ${T.preheader("We noticed something unusual on your account.")}
+        <p style="margin:0 0 6px;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#f87171;">Security Alert</p>
         ${T.h1("{{eventTitle}}")}
         ${T.p("{{eventDescription}}")}
-        ${T.p("Event time: {{date}}")}
+        <table cellpadding="0" cellspacing="0" style="margin:0 0 24px;width:100%;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:6px;">
+          <tr><td style="padding:16px 20px;">
+            <table cellpadding="0" cellspacing="0" width="100%">
+              <tr>
+                <td style="padding:5px 0;font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:#6b7280;width:90px;">Date</td>
+                <td style="padding:5px 0;font-size:13px;color:#e5e7eb;">{{date}}</td>
+              </tr>
+              <tr>
+                <td style="padding:5px 0;font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:#6b7280;">Device</td>
+                <td style="padding:5px 0;font-size:13px;color:#e5e7eb;">{{deviceInfo}}</td>
+              </tr>
+              <tr>
+                <td style="padding:5px 0;font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:#6b7280;">Location</td>
+                <td style="padding:5px 0;font-size:13px;color:#e5e7eb;">{{ipAddress}}</td>
+              </tr>
+            </table>
+          </td></tr>
+        </table>
         ${T.btn("Review Account Security", "{{actionUrl}}")}
-        ${T.note("If this was you, no action is needed. If this was not you, <a href='{{resetUrl}}' style='color:#e8c97e;'>reset your password immediately</a> and contact support at <a href='mailto:{{supportEmail}}' style='color:#e8c97e;'>{{supportEmail}}</a>.")}
+        ${T.note("If this was you, no action is needed.")}
+        ${T.note("If this was <strong>not</strong> you, <a href='{{resetUrl}}' style='color:#f87171;'>reset your password immediately</a> and contact support at <a href='mailto:{{supportEmail}}' style='color:#e8c97e;'>{{supportEmail}}</a>.")}
       `),
-      bodyText: `Security alert — AIM Studio\n\n{{eventTitle}}\n\n{{eventDescription}}\n\nEvent time: {{date}}\n\nReview your account:\n{{actionUrl}}\n\nIf this wasn't you, reset your password immediately.\n\n—\nAIM Studio | Don't look away.`,
+      bodyText: `Security Alert — AIM Studio\n\n{{eventTitle}}\n\n{{eventDescription}}\n\nDate: {{date}}\nDevice: {{deviceInfo}}\nLocation: {{ipAddress}}\n\nReview your account:\n{{actionUrl}}\n\nIf this was you, no action is needed.\nIf this was NOT you, reset your password immediately:\n{{resetUrl}}\n\n—\nAIM Studio | Don't look away.`,
       isActive: true, isSystem: true, isDefault: true,
     },
 
@@ -172,11 +203,12 @@ export async function ensureSystemEmailTemplates(): Promise<void> {
       preheader:   "Admin notification from AIM Studio.",
       bodyHtml: T.wrap(`
         ${T.preheader("Admin notification from AIM Studio.")}
+        <p style="margin:0 0 6px;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#6b7280;">Admin Notification</p>
         ${T.h1("{{subject}}")}
         ${T.p("{{body}}")}
         ${T.note("Sent: {{date}}")}
       `),
-      bodyText: `{{subject}}\n\n{{body}}\n\nSent: {{date}}\n\n—\nAIM Studio | Don't look away.`,
+      bodyText: `[Admin] {{subject}}\n\n{{body}}\n\nSent: {{date}}\n\n—\nAIM Studio | Don't look away.`,
       isActive: true, isSystem: true, isDefault: true,
     },
 
@@ -190,7 +222,8 @@ export async function ensureSystemEmailTemplates(): Promise<void> {
       preheader:   "{{workTitle}} is now available on AIM Studio.",
       bodyHtml: T.wrapBulk(`
         ${T.preheader("{{workTitle}} is now available on AIM Studio.")}
-        <p style="margin:0 0 8px;font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#e8c97e;">{{workType}}</p>
+        <p style="margin:0 0 4px;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#e8c97e;">Now Available</p>
+        <p style="margin:0 0 12px;font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#6b7280;">{{workType}}</p>
         ${T.h1("{{workTitle}}")}
         ${T.p("{{description}}")}
         <table cellpadding="0" cellspacing="0" style="margin:0 0 8px;">
@@ -200,7 +233,7 @@ export async function ensureSystemEmailTemplates(): Promise<void> {
           </tr>
         </table>
       `),
-      bodyText: `New Release: {{workTitle}}\n\n{{workType}}\n\n{{description}}\n\nWatch now:\n{{watchUrl}}\n\nView details:\n{{detailUrl}}\n\n—\nAIM Studio | Don't look away.\n\nManage preferences: {{preferencesUrl}}\nUnsubscribe: {{unsubscribeUrl}}`,
+      bodyText: `Now Available — {{workTitle}}\n\n{{workType}}\n\n{{description}}\n\nWatch now:\n{{watchUrl}}\n\nView details:\n{{detailUrl}}\n\n—\nAIM Studio | Don't look away.\n\nManage preferences: {{preferencesUrl}}\nUnsubscribe: {{unsubscribeUrl}}`,
       isActive: true, isSystem: false, isDefault: true,
     },
 
@@ -214,12 +247,13 @@ export async function ensureSystemEmailTemplates(): Promise<void> {
       preheader:   "{{episodeTitle}} is now streaming.",
       bodyHtml: T.wrapBulk(`
         ${T.preheader("{{episodeTitle}} is now streaming.")}
-        <p style="margin:0 0 8px;font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#e8c97e;">{{seriesTitle}}</p>
+        <p style="margin:0 0 4px;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#e8c97e;">New Episode</p>
+        <p style="margin:0 0 12px;font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#6b7280;">{{seriesTitle}}</p>
         ${T.h1("{{episodeLabel}} — {{episodeTitle}}")}
-        ${T.p("A new episode of {{seriesTitle}} is now available.")}
+        ${T.p("A new episode of <strong style='color:#e5e7eb;'>{{seriesTitle}}</strong> is now available.")}
         ${T.btn("Watch Now", "{{watchUrl}}")}
       `),
-      bodyText: `New episode: {{seriesTitle}} — {{episodeLabel}}\n\n{{episodeTitle}} is now available.\n\nWatch now:\n{{watchUrl}}\n\n—\nAIM Studio | Don't look away.\n\nManage preferences: {{preferencesUrl}}\nUnsubscribe: {{unsubscribeUrl}}`,
+      bodyText: `New Episode — {{seriesTitle}}\n\n{{episodeLabel}} — {{episodeTitle}}\n\nA new episode of {{seriesTitle}} is now available.\n\nWatch now:\n{{watchUrl}}\n\n—\nAIM Studio | Don't look away.\n\nManage preferences: {{preferencesUrl}}\nUnsubscribe: {{unsubscribeUrl}}`,
       isActive: true, isSystem: false, isDefault: true,
     },
 
@@ -233,34 +267,36 @@ export async function ensureSystemEmailTemplates(): Promise<void> {
       preheader:   "{{title}}",
       bodyHtml: T.wrapBulk(`
         ${T.preheader("{{title}}")}
+        <p style="margin:0 0 20px;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#6b7280;text-align:center;">From the Studio</p>
         ${T.h1("{{title}}")}
         ${T.p("{{body}}")}
-        <p style="margin:0;">{{ctaButton}}</p>
+        <p style="margin:0 0 8px;">{{ctaButton}}</p>
       `),
-      bodyText: `{{title}}\n\n{{body}}\n\n{{ctaUrl}}\n\n—\nAIM Studio | Don't look away.\n\nManage preferences: {{preferencesUrl}}\nUnsubscribe: {{unsubscribeUrl}}`,
+      bodyText: `From the Studio\n\n{{title}}\n\n{{body}}\n\n{{ctaUrl}}\n\n—\nAIM Studio | Don't look away.\n\nManage preferences: {{preferencesUrl}}\nUnsubscribe: {{unsubscribeUrl}}`,
       isActive: true, isSystem: false, isDefault: true,
     },
 
     // ── NOTIFY_ME_FOLLOWUP ──────────────────────────
     {
       name:        "NOTIFY_ME_FOLLOWUP",
-      label:       "Notify Me Follow-up",
-      description: "Sent to CTA signups when a work is released. Triggered from the CTA edit page.",
+      label:       "Send Notice",
+      description: "Sent to CTA signups when a work is ready. Triggered via Send Notice from the CTA edit page.",
       type:        "NOTIFY_ME_FOLLOWUP",
       subject:     "It's here: {{workTitle}}",
       preheader:   "{{workTitle}} is now available on AIM Studio.",
       bodyHtml: T.wrapBulk(`
         ${T.preheader("{{workTitle}} is now available on AIM Studio.")}
+        <p style="margin:0 0 4px;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#e8c97e;">You asked us to let you know.</p>
         ${T.h1("{{workTitle}}")}
-        ${T.p("{{greeting}} You asked us to let you know when <strong style='color:#e5e7eb;'>{{workTitle}}</strong> was ready. It&rsquo;s ready now.")}
+        ${T.p("{{greeting}} <strong style='color:#e5e7eb;'>{{workTitle}}</strong> is ready now.")}
         <table cellpadding="0" cellspacing="0" style="margin:0 0 8px;">
           <tr>
-            <td style="padding-right:8px;">${T.btn("Watch Now", "{{watchUrl}}")}</td>
-            <td>${T.ghost("View Details", "{{detailUrl}}")}</td>
+            <td style="padding-right:8px;">${T.btn("View the Project", "{{detailUrl}}")}</td>
+            <td>${T.ghost("Watch Now", "{{watchUrl}}")}</td>
           </tr>
         </table>
       `),
-      bodyText: `It's here: {{workTitle}}\n\n{{greeting}} You asked us to notify you when {{workTitle}} was ready. It's ready now.\n\nWatch now:\n{{watchUrl}}\n\nView details:\n{{detailUrl}}\n\n—\nAIM Studio | Don't look away.\n\nManage preferences: {{preferencesUrl}}\nUnsubscribe: {{unsubscribeUrl}}`,
+      bodyText: `It's here: {{workTitle}}\n\n{{greeting}} You asked us to let you know. {{workTitle}} is ready now.\n\nView the project:\n{{detailUrl}}\n\nWatch now:\n{{watchUrl}}\n\n—\nAIM Studio | Don't look away.\n\nManage preferences: {{preferencesUrl}}\nUnsubscribe: {{unsubscribeUrl}}`,
       isActive: true, isSystem: false, isDefault: true,
     },
 
@@ -268,17 +304,18 @@ export async function ensureSystemEmailTemplates(): Promise<void> {
     {
       name:        "ACCOUNT",
       label:       "Account Update",
-      description: "Sent on account changes such as email or password updates.",
+      description: "Sent on account changes such as suspension, restoration, or status updates.",
       type:        "ACCOUNT",
       subject:     "Account update — AIM Studio",
       preheader:   "An update was made to your AIM Studio account.",
       bodyHtml: T.wrap(`
         ${T.preheader("An update was made to your AIM Studio account.")}
+        <p style="margin:0 0 6px;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#6b7280;">Account</p>
         ${T.h1("Account update")}
         ${T.p("{{changeDescription}}")}
-        ${T.p("If you did not make this change, <a href='{{resetUrl}}' style='color:#e8c97e;'>reset your password</a> or contact support at <a href='mailto:{{supportEmail}}' style='color:#e8c97e;'>{{supportEmail}}</a>.")}
+        ${T.note("If you did not initiate this change, <a href='{{resetUrl}}' style='color:#e8c97e;'>reset your password</a> or contact support at <a href='mailto:{{supportEmail}}' style='color:#e8c97e;'>{{supportEmail}}</a>.")}
       `),
-      bodyText: `Account update — AIM Studio\n\n{{changeDescription}}\n\nIf you did not make this change, reset your password immediately.\n\n—\nAIM Studio | Don't look away.`,
+      bodyText: `Account update — AIM Studio\n\n{{changeDescription}}\n\nIf you did not initiate this change, reset your password immediately:\n{{resetUrl}}\n\n—\nAIM Studio | Don't look away.`,
       isActive: true, isSystem: false, isDefault: true,
     },
   ];

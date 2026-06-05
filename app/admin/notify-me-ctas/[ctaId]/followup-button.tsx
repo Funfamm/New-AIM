@@ -43,14 +43,14 @@ export default function FollowupButton({ ctaId, signupCount, acsReady }: Props) 
       {canSend && (
         <>
           <p className="cta-followup-desc">
-            Queues a <strong>release-ready email</strong> to {signupCount} signup{signupCount === 1 ? "" : "s"}.
+            Queue a notice email to pending signup{signupCount === 1 ? "" : "s"} who have not been notified yet.
+            Logged-in members also receive an in-app notification.
             Suppressed addresses and opted-out users are automatically skipped.
-            Emails are sent when the queue is processed from the Email page.
           </p>
 
           {confirmed && !pending && (
             <p className="cta-followup-confirm">
-              Send follow-up emails to {signupCount} address{signupCount === 1 ? "" : "es"}?
+              Send notice to {signupCount} pending signup{signupCount === 1 ? "" : "s"}?
               Click again to confirm.
             </p>
           )}
@@ -61,10 +61,10 @@ export default function FollowupButton({ ctaId, signupCount, acsReady }: Props) 
             disabled={pending}
           >
             {pending
-              ? "Queuing…"
+              ? "Sending…"
               : confirmed
-                ? "Confirm — Queue Emails"
-                : "Send Follow-up Emails"}
+                ? "Confirm — Send Notice"
+                : "Send Notice"}
           </button>
 
           {confirmed && !pending && (
