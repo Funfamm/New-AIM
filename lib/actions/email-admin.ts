@@ -5,6 +5,7 @@ import { requireAdmin } from "@/lib/auth-guard";
 import { sendEmail } from "@/lib/email";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { getTemplatePreview } from "@/lib/actions/email-templates";
 
 // ── Test Graph email ──────────────────────────────────────────
 export async function testGraphEmail(): Promise<{ ok: boolean; message: string }> {
@@ -45,6 +46,35 @@ export async function testGraphEmail(): Promise<{ ok: boolean; message: string }
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     return { ok: false, message };
+  }
+}
+
+// ── Send test email for a specific template (admin only) ──────
+// Renders the template with safe sample variables and sends to the admin's email.
+// Has NO effect on live sendEmail() or production queue behavior.
+
+export async function sendTemplateTestEmail(
+  templateId: string,
+): Promise<{ ok: boolean; message: string }> {
+  const admin = await requireAdmin();
+
+  const settings = await prisma.adminSettings.findUnique({ where: { id: "singleton" } });
+  const to = settings?.testEmailRecipient?.trim() || admin.email!;
+
+  const preview = await getTemplatePreview(templateId);
+  if ("error" in preview) return { ok: false, message: preview.error };
+
+  try {
+    await sendEmail({
+      to,
+      subject: `[TEST] ${preview.subject}`,
+      html:    preview.renderedHtml,
+      type:    "ADMIN_ALERT",
+      metadata: { test: true, templateId },
+    });
+    return { ok: true, message: `Test email sent to ${to}` };
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : "Send failed." };
   }
 }
 

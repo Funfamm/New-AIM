@@ -50,6 +50,7 @@ enum NotificationType {
   SECURITY
   COMMENT_REPLY   // someone replied to your comment
   COMMENT_REPORT  // admin: a comment was reported (for admin users)
+  NOTIFY_ME       // CTA release-ready follow-up (in-app)
 }
 
 enum CommentStatus {
@@ -232,6 +233,7 @@ model User {
   commentLikes           CommentLike[]
   commentReports         CommentReport[] @relation("CommentReporter")
   commentReportsReviewed CommentReport[] @relation("CommentReportReviewer")
+  notifyMeSignups        NotifyMeSignup[]
 
   // Welcome onboarding — set once on first login/registration, never reset
   welcomeEmailSentAt        DateTime?
@@ -1002,14 +1004,23 @@ model NotifyMeSignup {
   workTitle String?                         // snapshot at time of signup
   email     String
   name      String?
+  userId    String?                         // set when signed up by a logged-in user
+
+  notifyEmailSentAt  DateTime?              // set after email is queued/sent
+  notifyInAppSentAt  DateTime?              // set after in-app notification created
+  lastNotifiedAt     DateTime?              // latest of the two above
+  notifyFailCount    Int        @default(0) // incremented on delivery failure
+
   createdAt DateTime    @default(now())
 
-  cta NotifyMeCta? @relation(fields: [ctaId], references: [id], onDelete: SetNull)
+  cta  NotifyMeCta? @relation(fields: [ctaId], references: [id], onDelete: SetNull)
+  user User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@unique([ctaId, email])   // one signup per person per CTA (NULL-safe in Postgres)
   @@index([ctaId])
   @@index([workId])
   @@index([email])
+  @@index([userId])
   @@index([createdAt])
   @@map("notify_me_signups")
 }
@@ -1090,17 +1101,31 @@ model CommentReport {
 // ─────────────────────────────────────────────
 
 model Subscriber {
-  id             String    @id @default(cuid())
-  email          String    @unique
-  name           String?
-  source         String?   @default("organic")
-  active         Boolean   @default(true)
-  subscribedAt   DateTime  @default(now())
-  suppressedAt   DateTime?
-  suppressReason String?
+  id              String    @id @default(cuid())
+  email           String    @unique
+  name            String?
+  source          String?   @default("organic")
+  active          Boolean   @default(true)
+
+  countryCode     String?
+  country         String?
+  language        String?
+  referrer        String?
+  sourcePath      String?
+
+  verifiedAt      DateTime?
+  subscribedAt    DateTime  @default(now())
+  lastSeenAt      DateTime?
+  convertedAt     DateTime?
+
+  failedSendCount Int       @default(0)
+  suppressedAt    DateTime?
+  suppressReason  String?
 
   @@index([email])
   @@index([active])
+  @@index([countryCode])
+  @@index([subscribedAt])
   @@map("subscribers")
 }
 

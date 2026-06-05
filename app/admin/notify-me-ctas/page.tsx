@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { isAdminRole } from "@/lib/auth-guard";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { BellRing, Plus, CheckCircle2, Circle, Pencil } from "lucide-react";
+import { BellRing, Plus, CheckCircle2, Circle, Pencil, Users } from "lucide-react";
 import type { Metadata } from "next";
 import "./notify-me-ctas.css";
 
@@ -24,17 +24,66 @@ export default async function NotifyMeCtasPage() {
     },
   });
 
-  // Signups in the last 7 days per CTA
+  const ctaIds = ctas.map((c) => c.id);
+
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-  const recentCounts = await prisma.notifyMeSignup.groupBy({
-    by: ["ctaId"],
-    where: {
-      ctaId: { in: ctas.map((c) => c.id) },
-      createdAt: { gte: sevenDaysAgo },
-    },
-    _count: { id: true },
-  });
-  const recentMap = new Map(recentCounts.map((r) => [r.ctaId, r._count.id]));
+
+  const [
+    recentCounts,
+    guestCounts,
+    memberCounts,
+    sentCounts,
+    pendingCounts,
+    inAppCounts,
+    failedCounts,
+  ] = await Promise.all([
+    prisma.notifyMeSignup.groupBy({
+      by: ["ctaId"],
+      where: { ctaId: { in: ctaIds }, createdAt: { gte: sevenDaysAgo } },
+      _count: { id: true },
+    }),
+    prisma.notifyMeSignup.groupBy({
+      by: ["ctaId"],
+      where: { ctaId: { in: ctaIds }, userId: null },
+      _count: { id: true },
+    }),
+    prisma.notifyMeSignup.groupBy({
+      by: ["ctaId"],
+      where: { ctaId: { in: ctaIds }, userId: { not: null } },
+      _count: { id: true },
+    }),
+    prisma.notifyMeSignup.groupBy({
+      by: ["ctaId"],
+      where: { ctaId: { in: ctaIds }, notifyEmailSentAt: { not: null } },
+      _count: { id: true },
+    }),
+    prisma.notifyMeSignup.groupBy({
+      by: ["ctaId"],
+      where: { ctaId: { in: ctaIds }, notifyEmailSentAt: null },
+      _count: { id: true },
+    }),
+    prisma.notifyMeSignup.groupBy({
+      by: ["ctaId"],
+      where: { ctaId: { in: ctaIds }, notifyInAppSentAt: { not: null } },
+      _count: { id: true },
+    }),
+    prisma.notifyMeSignup.groupBy({
+      by: ["ctaId"],
+      where: { ctaId: { in: ctaIds }, notifyFailCount: { gt: 0 } },
+      _count: { id: true },
+    }),
+  ]);
+
+  const toMap = (rows: { ctaId: string | null; _count: { id: number } }[]) =>
+    new Map(rows.filter((r) => r.ctaId !== null).map((r) => [r.ctaId!, r._count.id]));
+
+  const recentMap  = toMap(recentCounts);
+  const guestMap   = toMap(guestCounts);
+  const memberMap  = toMap(memberCounts);
+  const sentMap    = toMap(sentCounts);
+  const pendingMap = toMap(pendingCounts);
+  const inAppMap   = toMap(inAppCounts);
+  const failedMap  = toMap(failedCounts);
 
   const CTA_TYPE_LABEL: Record<string, string> = {
     RELEASE: "Pre-Release",
@@ -71,48 +120,97 @@ export default async function NotifyMeCtasPage() {
                 <th>Type</th>
                 <th>Status</th>
                 <th>Signups</th>
+                <th>Delivery</th>
                 <th>Last 7 Days</th>
-                <th>Trigger</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {ctas.map((cta) => (
-                <tr key={cta.id}>
-                  <td>
-                    <div className="nmc-work-cell">
-                      <span className="nmc-work-title">{cta.work.title}</span>
-                      <span className="nmc-work-type">{cta.work.type.replace("_", " ")}</span>
-                    </div>
-                  </td>
-                  <td>
-                    <span className="nmc-type-chip">{CTA_TYPE_LABEL[cta.type] ?? cta.type}</span>
-                  </td>
-                  <td>
-                    {cta.isEnabled ? (
-                      <span className="nmc-status nmc-status--active">
-                        <CheckCircle2 size={12} /> Active
-                      </span>
-                    ) : (
-                      <span className="nmc-status nmc-status--off">
-                        <Circle size={12} /> Off
-                      </span>
-                    )}
-                  </td>
-                  <td className="nmc-num">{cta._count.signups}</td>
-                  <td className="nmc-num">{recentMap.get(cta.id) ?? 0}</td>
-                  <td className="nmc-num">{cta.triggerSecondsFromEnd}s from end</td>
-                  <td>
-                    <Link
-                      href={`/admin/notify-me-ctas/${cta.id}`}
-                      className="nmc-edit-btn"
-                      aria-label={`Edit CTA for ${cta.work.title}`}
-                    >
-                      <Pencil size={12} /> Edit
-                    </Link>
-                  </td>
-                </tr>
-              ))}
+              {ctas.map((cta) => {
+                const total   = cta._count.signups;
+                const guest   = guestMap.get(cta.id)   ?? 0;
+                const member  = memberMap.get(cta.id)  ?? 0;
+                const sent    = sentMap.get(cta.id)    ?? 0;
+                const pending = pendingMap.get(cta.id) ?? 0;
+                const inApp   = inAppMap.get(cta.id)   ?? 0;
+                const failed  = failedMap.get(cta.id)  ?? 0;
+
+                return (
+                  <tr key={cta.id}>
+                    <td>
+                      <div className="nmc-work-cell">
+                        <span className="nmc-work-title">{cta.work.title}</span>
+                        <span className="nmc-work-type">{cta.work.type.replace(/_/g, " ")}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <span className="nmc-type-chip">{CTA_TYPE_LABEL[cta.type] ?? cta.type}</span>
+                    </td>
+                    <td>
+                      {cta.isEnabled ? (
+                        <span className="nmc-status nmc-status--active">
+                          <CheckCircle2 size={12} /> Active
+                        </span>
+                      ) : (
+                        <span className="nmc-status nmc-status--off">
+                          <Circle size={12} /> Off
+                        </span>
+                      )}
+                    </td>
+                    <td>
+                      <div className="nmc-signup-cell">
+                        <span className="nmc-signup-total">{total}</span>
+                        {total > 0 && (
+                          <span className="nmc-signup-breakdown">
+                            {guest}g · {member}m
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td>
+                      {total === 0 ? (
+                        <span className="nmc-delivery-none">—</span>
+                      ) : (
+                        <div className="nmc-delivery-cell">
+                          {sent > 0 && (
+                            <span className="nmc-delivery-chip nmc-delivery-chip--sent">{sent} queued</span>
+                          )}
+                          {pending > 0 && (
+                            <span className="nmc-delivery-chip nmc-delivery-chip--pending">{pending} pending</span>
+                          )}
+                          {inApp > 0 && (
+                            <span className="nmc-delivery-chip nmc-delivery-chip--inapp">{inApp} in‑app</span>
+                          )}
+                          {failed > 0 && (
+                            <span className="nmc-delivery-chip nmc-delivery-chip--failed">{failed} failed</span>
+                          )}
+                        </div>
+                      )}
+                    </td>
+                    <td className="nmc-num">{recentMap.get(cta.id) ?? 0}</td>
+                    <td>
+                      <div className="nmc-actions-cell">
+                        <Link
+                          href={`/admin/notify-me-ctas/${cta.id}`}
+                          className="nmc-edit-btn"
+                          aria-label={`Edit CTA for ${cta.work.title}`}
+                        >
+                          <Pencil size={12} /> Edit
+                        </Link>
+                        {total > 0 && (
+                          <Link
+                            href={`/admin/notify-me-ctas/${cta.id}/signups`}
+                            className="nmc-signups-btn"
+                            aria-label={`View signups for ${cta.work.title}`}
+                          >
+                            <Users size={12} /> Signups
+                          </Link>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

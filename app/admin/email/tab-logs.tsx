@@ -51,35 +51,37 @@ export default async function TabLogs({ statusFilter, typeFilter }: Props) {
 
   return (
     <>
-      {/* ── Stats ────────────────────────────────── */}
+      {/* ── Stats ── */}
       <section className="email-section">
-        <div className="email-stats">
+        <div className="email-stats" style={{ marginBottom: "1.5rem" }}>
           <div className="email-stat">
-            <span className="email-stat-val">{totalAll}</span>
+            <span className="email-stat-val">{totalAll.toLocaleString()}</span>
             <span className="email-stat-label">Total</span>
           </div>
           <div className="email-stat">
-            <span className="email-stat-val">{countMap["SENT"] ?? 0}</span>
+            <span className="email-stat-val email-stat-val--green">{(countMap["SENT"] ?? 0).toLocaleString()}</span>
             <span className="email-stat-label">Sent</span>
           </div>
           <div className="email-stat">
-            <span className="email-stat-val email-stat-val--red">{countMap["FAILED"] ?? 0}</span>
+            <span className={`email-stat-val${(countMap["FAILED"] ?? 0) > 0 ? " email-stat-val--red" : ""}`}>
+              {(countMap["FAILED"] ?? 0).toLocaleString()}
+            </span>
             <span className="email-stat-label">Failed</span>
           </div>
           <div className="email-stat">
-            <span className="email-stat-val email-stat-val--muted">{countMap["SUPPRESSED"] ?? 0}</span>
+            <span className="email-stat-val email-stat-val--muted">{(countMap["SUPPRESSED"] ?? 0).toLocaleString()}</span>
             <span className="email-stat-label">Suppressed</span>
           </div>
           {(countMap["QUEUED"] ?? 0) > 0 && (
             <div className="email-stat">
-              <span className="email-stat-val email-stat-val--muted">{countMap["QUEUED"]}</span>
+              <span className="email-stat-val email-stat-val--amber">{countMap["QUEUED"]!.toLocaleString()}</span>
               <span className="email-stat-label">Queued</span>
             </div>
           )}
         </div>
       </section>
 
-      {/* ── Filters ───────────────────────────────── */}
+      {/* ── Filters ── */}
       <section className="email-section">
         <div className="email-filter-row">
           {STATUS_OPTIONS.map((s) => (
@@ -88,58 +90,60 @@ export default async function TabLogs({ statusFilter, typeFilter }: Props) {
               href={`/admin/email?tab=logs&status=${s}${typeFilter ? `&type=${typeFilter}` : ""}`}
               className={`email-filter-pill${statusFilter === s ? " email-filter-pill--active" : ""}`}
             >
-              {s === "ALL" ? `All (${totalAll})` : `${s} (${countMap[s] ?? 0})`}
+              {s === "ALL" ? `All (${totalAll.toLocaleString()})` : `${s} (${(countMap[s] ?? 0).toLocaleString()})`}
             </Link>
           ))}
         </div>
       </section>
 
-      {/* ── Table ─────────────────────────────────── */}
+      {/* ── Table ── */}
       <section className="email-section">
         {logs.length === 0 ? (
           <p className="email-empty">No logs match the current filter.</p>
         ) : (
           <>
             <p className="email-hint" style={{ marginBottom: "0.75rem" }}>
-              Showing {logs.length} most recent{statusFilter !== "ALL" ? ` ${statusFilter}` : ""} emails
-              {logs.length === 200 ? " (limit 200)" : ""}.
+              Showing {logs.length.toLocaleString()} most recent{statusFilter !== "ALL" ? ` ${statusFilter}` : ""} emails
+              {logs.length === 200 ? " · limit 200" : ""}.
             </p>
             <div className="email-log-wrap">
-              <table className="email-log-table">
-                <thead>
-                  <tr>
-                    <th>Status</th><th>To</th><th>Subject</th>
-                    <th>Type</th><th>Provider</th><th>Date</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {logs.map((log) => (
-                    <>
-                      <tr key={log.id}>
-                        <td>
-                          <span className="elog-status-cell">
-                            {statusIcon(log.status)}
-                            <span>{log.status}</span>
-                          </span>
-                        </td>
-                        <td className="elog-to">{log.to}</td>
-                        <td className="elog-subject" title={log.subject}>{log.subject}</td>
-                        <td><span className="elog-badge">{log.type}</span></td>
-                        <td className="elog-provider">{log.provider}</td>
-                        <td className="elog-date">{fmtDate(log.createdAt)}</td>
-                      </tr>
-                      {log.status === "FAILED" && log.error && (
-                        <tr key={`${log.id}-err`} className="elog-error-row">
-                          <td />
-                          <td colSpan={5} className="elog-error-cell">
-                            {log.error.slice(0, 300)}
+              <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+                <table className="email-log-table">
+                  <thead>
+                    <tr>
+                      <th>Status</th><th>To</th><th>Subject</th>
+                      <th>Type</th><th>Provider</th><th>Date</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {logs.map((log) => (
+                      <>
+                        <tr key={log.id}>
+                          <td>
+                            <span className="elog-status-cell">
+                              {statusIcon(log.status)}
+                              <span>{log.status}</span>
+                            </span>
                           </td>
+                          <td className="elog-to">{log.to}</td>
+                          <td className="elog-subject" title={log.subject}>{log.subject}</td>
+                          <td><span className="elog-badge">{log.type}</span></td>
+                          <td className="elog-provider">{log.provider}</td>
+                          <td className="elog-date">{fmtDate(log.createdAt)}</td>
                         </tr>
-                      )}
-                    </>
-                  ))}
-                </tbody>
-              </table>
+                        {log.status === "FAILED" && log.error && (
+                          <tr key={`${log.id}-err`} className="elog-error-row">
+                            <td />
+                            <td colSpan={5} className="elog-error-cell">
+                              {log.error.slice(0, 300)}
+                            </td>
+                          </tr>
+                        )}
+                      </>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </>
         )}

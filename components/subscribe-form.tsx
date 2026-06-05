@@ -72,6 +72,7 @@ export default function SubscribeForm() {
           hp,
           startedAt:       startedAtRef.current,
           source:          "footer",
+          sourcePath:      window.location.pathname,
         }),
       });
 
