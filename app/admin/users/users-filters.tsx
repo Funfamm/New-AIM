@@ -54,6 +54,7 @@ export function UsersFilters({ q, role, via, sort, status }: Props) {
         <option value="">All Statuses</option>
         <option value="ACTIVE">Active</option>
         <option value="SUSPENDED">Suspended</option>
+        <option value="DEACTIVATED">Deactivated</option>
       </select>
       <select name="sort" defaultValue={sort} onChange={submit} className="ufilter-select">
         <option value="newest">Newest First</option>

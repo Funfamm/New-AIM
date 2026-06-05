@@ -144,16 +144,30 @@ export default async function AdminUsersPage({
   const totalPages  = Math.ceil(filteredTotal / PAGE_SIZE);
   const isFiltered  = !!(q || role || via || status);
 
-  // Device counts — UserDevice.userId is a plain string (no FK), so we group separately
+  // Device counts + last-seen country — UserDevice.userId is a plain string (no FK)
   const userIds = users.map((u) => u.id);
-  const deviceGroups = userIds.length > 0
-    ? await prisma.userDevice.groupBy({
-        by: ["userId"],
-        where: { userId: { in: userIds } },
-        _count: { id: true },
-      })
-    : [];
+  const [deviceGroups, latestDevices] = await Promise.all([
+    userIds.length > 0
+      ? prisma.userDevice.groupBy({
+          by: ["userId"],
+          where: { userId: { in: userIds } },
+          _count: { id: true },
+        })
+      : Promise.resolve([]),
+    userIds.length > 0
+      ? prisma.userDevice.findMany({
+          where: { userId: { in: userIds } },
+          orderBy: { createdAt: "desc" },
+          select: { userId: true, country: true },
+        })
+      : Promise.resolve([]),
+  ]);
   const deviceCountMap = Object.fromEntries(deviceGroups.map((d) => [d.userId, d._count.id]));
+  // First occurrence per userId is the most recent (ordered desc)
+  const countryMap: Record<string, string | null> = {};
+  for (const d of latestDevices) {
+    if (!(d.userId in countryMap)) countryMap[d.userId] = d.country;
+  }
 
   // Compute UserRow[] — serializable shape for the client component
   // Password hash is used as a boolean check here and never forwarded.
@@ -171,6 +185,7 @@ export default async function AdminUsersPage({
     deviceCount:       deviceCountMap[u.id] ?? 0,
     savedWorksCount:   u._count.savedWorks,
     progressCount:     u._count.progress,
+    country:           countryMap[u.id] ?? null,
     createdAt:         u.createdAt.toISOString(),
     isSelf:            u.id === actorId,
   }));
