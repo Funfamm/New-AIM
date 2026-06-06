@@ -3,48 +3,44 @@
 import { useState } from "react";
 import { createRow } from "@/lib/actions/rows";
 import { useFormState } from "react-dom";
+import { Plus } from "lucide-react";
 
 export default function RowCreateForm() {
   const [state, formAction] = useFormState(createRow, null);
-  const [title, setTitle] = useState("");
-
-  const handleReset = () => {
-    setTitle("");
-  };
 
   return (
-    <form action={formAction} className="quick-create-form" onSubmit={() => {
-      if (state?.ok) handleReset();
-    }}>
+    <form action={formAction} className="quick-create-form">
       <div className="form-group">
-        <label className="form-label">Row Title</label>
+        <label className="form-label">Title</label>
         <input
           type="text"
           name="title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="e.g., Featured Works, New Releases"
           className="form-input"
+          placeholder="e.g. Featured Works, New Releases"
           required
         />
       </div>
 
       <div className="form-group">
         <label className="form-label">Placement</label>
-        <select name="placement" className="form-input" defaultValue="HOME">
+        <select name="placement" className="form-input form-select" defaultValue="HOME">
           <option value="HOME">Homepage only</option>
           <option value="WORKS">Works page only</option>
           <option value="BOTH">Both pages</option>
         </select>
       </div>
 
-      {state?.error && (
-        <div className="form-error">{state.error}</div>
-      )}
+      <div className="form-group" style={{ justifyContent: "flex-end" }}>
+        <label className="form-label" style={{ opacity: 0 }}>.</label>
+        <button type="submit" className="btn-primary">
+          <Plus size={14} />
+          Create
+        </button>
+      </div>
 
-      <button type="submit" className="btn btn-primary">
-        Create Row
-      </button>
+      {state?.error && (
+        <div className="form-error" style={{ gridColumn: "1 / -1" }}>{state.error}</div>
+      )}
     </form>
   );
 }
