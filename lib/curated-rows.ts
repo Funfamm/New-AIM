@@ -48,7 +48,7 @@ export async function getPublicContentRows(
   const rows = await prisma.contentRow.findMany({
     where: {
       placement: {
-        in: placement === "BOTH" ? ["BOTH", placement] : [placement],
+        in: [placement, "BOTH"] as RowPlacement[],
       },
       active: true,
     },
