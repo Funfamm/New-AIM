@@ -10,9 +10,12 @@ interface UploadProps {
   targetField: string;
   projectTitle: string;
   projectSlug?: string;
-  onSuccess: (url: string) => void;
+  onSuccess: (urlOrKey: string) => void;
   onError?: (error: string) => void;
   accept?: string;
+  /** When true, calls onSuccess with the R2 object key instead of a public URL.
+   *  Use for masterVideoKey uploads where no public URL exists. */
+  returnKey?: boolean;
 }
 
 export default function R2FileUpload({
@@ -22,6 +25,7 @@ export default function R2FileUpload({
   onSuccess,
   onError,
   accept = 'image/*',
+  returnKey = false,
 }: UploadProps) {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -82,7 +86,7 @@ export default function R2FileUpload({
       throw new Error(data.error || 'Failed to get upload URL');
     }
 
-    const { presignedUrl, publicUrl } = await presignRes.json();
+    const { presignedUrl, publicUrl, r2Key } = await presignRes.json();
 
     const uploadRes = await fetch(presignedUrl, {
       method: 'PUT',
@@ -94,7 +98,7 @@ export default function R2FileUpload({
 
     setProgress(100);
     setSuccess(true);
-    onSuccess(publicUrl);
+    onSuccess(returnKey ? r2Key : publicUrl);
   }
 
   async function uploadMultipart(file: File) {
@@ -175,7 +179,7 @@ export default function R2FileUpload({
     setProgress(100);
     setSuccess(true);
     setUploadId(null);
-    onSuccess(publicUrl);
+    onSuccess(returnKey ? r2Key : publicUrl);
   }
 
   return (

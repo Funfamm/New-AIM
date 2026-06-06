@@ -31,6 +31,7 @@ type WorkData = {
   posterUrl: string | null; heroMobileUrl: string | null;
   heroDesktopUrl: string | null; thumbnailUrl: string | null;
   videoUrl: string | null; trailerUrl: string | null; previewClipUrl: string | null; teaserUrl: string | null;
+  masterVideoKey: string | null;
   year: number | null; duration: number | null; director: string | null; genres: string[];
   clientName: string | null; industry: string | null; projectGoal: string | null;
   deliverables: string | null; caseStudy: string | null; galleryUrls: string[];
@@ -76,6 +77,7 @@ export default function WorkForm({ work, workTitle, action, seriesList, error, d
   const [previewClipUrl, setPreviewClipUrl] = useState(work?.previewClipUrl ?? "");
   const [videoUrl, setVideoUrl] = useState(work?.videoUrl ?? "");
   const [teaserUrl, setTeaserUrl] = useState(work?.teaserUrl ?? "");
+  const [masterVideoKey, setMasterVideoKey] = useState(work?.masterVideoKey ?? "");
 
   const showFilmMeta      = ["SHORT_FILM", "FULL_FILM", "SERIES", "TRAILER"].includes(type);
   const showDuration      = !["SERIES", ...CLIENT_TYPES].includes(type);
@@ -415,6 +417,29 @@ export default function WorkForm({ work, workTitle, action, seriesList, error, d
                 accept="video/*"
               />
             </div>
+            <span className="form-hint">Public playback URL. Use an HLS master.m3u8 URL here for adaptive streaming.</span>
+          </div>
+        )}
+
+        {/* Master Video Source — private upload for background HLS processing */}
+        {showVideoUrl && (
+          <div className="form-group">
+            <label className="form-label">Master Video Source</label>
+            <input type="hidden" name="masterVideoKey" value={masterVideoKey} />
+            {masterVideoKey ? (
+              <div style={{ marginBottom: "0.5rem", fontSize: "0.75rem", color: "var(--color-brand-muted)", fontFamily: "var(--font-body)", wordBreak: "break-all" }}>
+                Stored: <code style={{ color: "var(--color-brand-light)" }}>{masterVideoKey}</code>
+              </div>
+            ) : null}
+            <R2FileUpload
+              targetField="masterVideoKey"
+              projectTitle={title || "untitled"}
+              projectSlug={work?.slug}
+              onSuccess={setMasterVideoKey}
+              accept="video/mp4,video/quicktime,video/webm"
+              returnKey
+            />
+            <span className="form-hint">Private source file for background HLS processing. This file is not shown publicly.</span>
           </div>
         )}
 

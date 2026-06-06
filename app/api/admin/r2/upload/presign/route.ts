@@ -3,7 +3,7 @@ import { requireAdmin } from '@/lib/auth-guard';
 import { getPresignedUrl, getPublicUrl } from '@/lib/r2Client';
 import { createHash, randomUUID } from 'crypto';
 
-const APPROVED_FIELDS = ['posterUrl', 'thumbnailUrl', 'heroMobileUrl', 'heroDesktopUrl', 'trailerUrl', 'previewClipUrl', 'videoUrl', 'teaserUrl'];
+const APPROVED_FIELDS = ['posterUrl', 'thumbnailUrl', 'heroMobileUrl', 'heroDesktopUrl', 'trailerUrl', 'previewClipUrl', 'videoUrl', 'teaserUrl', 'masterVideoKey'];
 const ALLOWED_MIME_TYPES = {
   posterUrl: ['image/jpeg', 'image/png', 'image/webp'],
   thumbnailUrl: ['image/jpeg', 'image/png', 'image/webp'],
@@ -13,6 +13,7 @@ const ALLOWED_MIME_TYPES = {
   previewClipUrl: ['video/mp4', 'video/webm', 'video/quicktime', 'application/vnd.apple.mpegurl', 'video/mp2t'],
   videoUrl: ['video/mp4', 'video/webm', 'video/quicktime', 'application/vnd.apple.mpegurl', 'video/mp2t'],
   teaserUrl: ['video/mp4', 'video/webm', 'video/quicktime', 'application/vnd.apple.mpegurl', 'video/mp2t'],
+  masterVideoKey: ['video/mp4', 'video/quicktime', 'video/webm'],
 };
 
 function slugify(value: string): string {
@@ -40,6 +41,7 @@ function getFieldCategory(field: string): string {
     previewClipUrl: 'preview',
     videoUrl: 'full-video',
     teaserUrl: 'teaser',
+    masterVideoKey: 'master',
   };
   return categories[field] || field;
 }
@@ -81,15 +83,24 @@ export async function POST(req: NextRequest) {
 
     // Generate safe project slug
     const slug = projectSlug || slugify(projectTitle);
-    const category = getFieldCategory(targetField);
     const timestamp = Date.now();
     const randomId = randomUUID().slice(0, 8);
-    const r2Key = `projects/${slug}/${category}/${category}-${timestamp}-${randomId}${safeExt}`;
 
-    // Get presigned URL
+    // Master video goes to a private path — never exposed publicly
+    const isMasterUpload = targetField === 'masterVideoKey';
+    const r2Key = isMasterUpload
+      ? `private/masters/${slug}/master-${timestamp}-${randomId}${safeExt}`
+      : `projects/${slug}/${getFieldCategory(targetField)}/${getFieldCategory(targetField)}-${timestamp}-${randomId}${safeExt}`;
+
+    // Get presigned upload URL
     const presignedUrl = await getPresignedUrl(r2Key, contentType, 600);
-    const publicUrl = getPublicUrl(r2Key);
 
+    // Master uploads return only the key — no public URL exists for private objects
+    if (isMasterUpload) {
+      return NextResponse.json({ presignedUrl, r2Key });
+    }
+
+    const publicUrl = getPublicUrl(r2Key);
     return NextResponse.json({ presignedUrl, publicUrl, r2Key });
   } catch (error) {
     console.error('[Presign] Error:', error);
