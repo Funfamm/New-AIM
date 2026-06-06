@@ -69,8 +69,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ uploadId, r2Key, publicUrl });
   } catch (error) {
     console.error('[Multipart Init] Error:', error);
-    if (error instanceof Error && error.message === 'Unauthorized') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    if (error instanceof Error) {
+      if (error.message === 'Unauthorized') {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+      }
+      if (error.message.includes('R2_PUBLIC_BASE_URL is not set')) {
+        return NextResponse.json({ error: 'Upload not configured: R2_PUBLIC_BASE_URL is missing. Add it to your environment variables.' }, { status: 500 });
+      }
+      if (error.message.includes('Missing required Cloudflare R2 environment variables')) {
+        return NextResponse.json({ error: 'Upload not configured: R2 credentials are missing. Set R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and R2_BUCKET_NAME in your environment variables.' }, { status: 500 });
+      }
     }
     return NextResponse.json({ error: 'Failed to initialize multipart upload' }, { status: 500 });
   }

@@ -1,2 +1,2 @@
 -- AddColumn previewClipUrl to Work model
-ALTER TABLE "Work" ADD COLUMN "previewClipUrl" TEXT;
+ALTER TABLE "works" ADD COLUMN IF NOT EXISTS "previewClipUrl" TEXT;
