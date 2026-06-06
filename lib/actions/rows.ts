@@ -66,7 +66,7 @@ export async function getRowById(rowId: string): Promise<{
     id: string;
     workId: string;
     sortOrder: number;
-    work: { id: string; title: string; type: string; slug: string };
+    work: { id: string; title: string; type: string; slug: string; posterUrl: string | null };
   }>;
 } | null> {
   await requireAdmin();
@@ -86,7 +86,7 @@ export async function getRowById(rowId: string): Promise<{
           id: true,
           workId: true,
           sortOrder: true,
-          work: { select: { id: true, title: true, type: true, slug: true } },
+          work: { select: { id: true, title: true, type: true, slug: true, posterUrl: true } },
         },
         orderBy: { sortOrder: "asc" },
       },
