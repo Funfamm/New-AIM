@@ -7,6 +7,7 @@ import { slugify } from "@/lib/utils";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { WorkType, WorkStatus } from "@prisma/client";
+import { updateWorkRowAssignments } from "@/lib/actions/rows";
 
 function parseFormData(formData: FormData) {
   const galleryRaw = (formData.get("galleryUrls") as string) ?? "";
@@ -25,6 +26,7 @@ function parseFormData(formData: FormData) {
     heroDesktopUrl: (formData.get("heroDesktopUrl") as string) || null,
     thumbnailUrl:   (formData.get("thumbnailUrl") as string)   || null,
     trailerUrl:     (formData.get("trailerUrl") as string)     || null,
+    previewClipUrl: (formData.get("previewClipUrl") as string) || null,
     videoUrl:    (formData.get("videoUrl") as string)    || null,
     teaserUrl:   (formData.get("teaserUrl") as string)   || null,
     year:        formData.get("year")     ? Number(formData.get("year"))     : null,
@@ -156,7 +158,10 @@ export async function createWork(formData: FormData) {
     redirect("/admin/works/new?error=" + encodeURIComponent("A work with this title already exists."));
   }
 
-  await prisma.work.create({ data: { ...data, slug } });
+  const newWork = await prisma.work.create({ data: { ...data, slug } });
+
+  const rowIds = (formData.getAll("rowIds") as string[]).filter(Boolean);
+  await updateWorkRowAssignments(newWork.id, rowIds);
 
   revalidateAll();
   redirect("/admin/works");
@@ -223,6 +228,9 @@ export async function updateWork(id: string, formData: FormData) {
 
   // ── Non-episode path ──────────────────────────────────────
   await prisma.work.update({ where: { id }, data });
+
+  const rowIds = (formData.getAll("rowIds") as string[]).filter(Boolean);
+  await updateWorkRowAssignments(id, rowIds);
 
   revalidateAll();
   redirect(`/admin/works/${id}`);

@@ -321,3 +321,65 @@ export async function updateRowSortOrder(
     return { ok: false, error: "Failed to update row order." };
   }
 }
+
+// ── Admin: Sync work → row assignments from work create/edit form ─────────────
+export async function updateWorkRowAssignments(
+  workId: string,
+  rowIds: string[]
+): Promise<{ ok: boolean; error?: string }> {
+  await requireAdmin();
+
+  const work = await prisma.work.findUnique({ where: { id: workId }, select: { id: true } });
+  if (!work) return { ok: false, error: "Work not found." };
+
+  // Validate that every selected rowId actually exists
+  if (rowIds.length > 0) {
+    const valid = await prisma.contentRow.findMany({
+      where: { id: { in: rowIds } },
+      select: { id: true },
+    });
+    const validSet = new Set(valid.map((r) => r.id));
+    const invalid = rowIds.filter((id) => !validSet.has(id));
+    if (invalid.length > 0) return { ok: false, error: "One or more selected rows do not exist." };
+  }
+
+  const current = await prisma.contentRowItem.findMany({
+    where: { workId },
+    select: { rowId: true },
+  });
+  const currentSet = new Set(current.map((item) => item.rowId));
+  const newSet = new Set(rowIds);
+
+  const toAdd = rowIds.filter((id) => !currentSet.has(id));
+  const toRemove = [...currentSet].filter((id) => !newSet.has(id));
+
+  try {
+    for (const rowId of toAdd) {
+      const last = await prisma.contentRowItem.findFirst({
+        where: { rowId },
+        orderBy: { sortOrder: "desc" },
+        select: { sortOrder: true },
+      });
+      await prisma.contentRowItem.upsert({
+        where: { rowId_workId: { rowId, workId } },
+        create: { rowId, workId, sortOrder: (last?.sortOrder ?? -1) + 10 },
+        update: {},
+      });
+    }
+
+    if (toRemove.length > 0) {
+      await prisma.contentRowItem.deleteMany({
+        where: { workId, rowId: { in: toRemove } },
+      });
+    }
+
+    revalidatePath("/");
+    revalidatePath("/works");
+    revalidatePath("/admin/works");
+    revalidatePath("/admin/rows");
+    return { ok: true };
+  } catch (err) {
+    console.error("[updateWorkRowAssignments] Error:", err);
+    return { ok: false, error: "Failed to update row assignments." };
+  }
+}
