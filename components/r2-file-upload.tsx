@@ -30,7 +30,11 @@ export default function R2FileUpload({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadId, setUploadId] = useState<string | null>(null);
 
-  const handleClick = () => fileInputRef.current?.click();
+  const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    fileInputRef.current?.click();
+  };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -212,6 +216,7 @@ export default function R2FileUpload({
       )}
 
       <button
+        type="button"
         onClick={handleClick}
         disabled={uploading || success}
         className="inline-flex items-center gap-2 rounded px-3 py-2 text-sm font-medium text-brand-light bg-brand-surface hover:bg-brand-border disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
