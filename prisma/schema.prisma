@@ -192,6 +192,12 @@ enum SecurityAlertStatus {
   DISMISSED
 }
 
+enum RowPlacement {
+  HOME
+  WORKS
+  BOTH
+}
+
 // ─────────────────────────────────────────────
 // USER
 // ─────────────────────────────────────────────
@@ -317,6 +323,7 @@ model Work {
   notifyMeCta     NotifyMeCta?
   comments        Comment[]
   cast            WorkCast[]
+  rowItems        ContentRowItem[]
 
   @@map("works")
 }
@@ -343,6 +350,43 @@ model WorkCast {
   @@index([workId])
   @@index([sortOrder])
   @@map("work_cast")
+}
+
+// ─────────────────────────────────────────────
+// CURATED ROWS & COLLECTIONS
+// ─────────────────────────────────────────────
+
+model ContentRow {
+  id          String       @id @default(cuid())
+  title       String
+  slug        String       @unique
+  description String?
+  placement   RowPlacement @default(HOME)
+  active      Boolean      @default(true)
+  sortOrder   Int          @default(0)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  items       ContentRowItem[]
+
+  @@index([placement, active, sortOrder])
+  @@map("content_rows")
+}
+
+model ContentRowItem {
+  id        String   @id @default(cuid())
+  rowId     String
+  workId    String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  row       ContentRow @relation(fields: [rowId], references: [id], onDelete: Cascade)
+  work      Work       @relation(fields: [workId], references: [id], onDelete: Cascade)
+
+  @@unique([rowId, workId])
+  @@index([rowId, sortOrder])
+  @@index([workId])
+  @@map("content_row_items")
 }
 
 // ─────────────────────────────────────────────
