@@ -9,9 +9,10 @@ function slugify(value: string): string {
   return value
     .toLowerCase()
     .trim()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 80);
+    .replace(/[''']/g, '')         // strip apostrophes before splitting on spaces
+    .replace(/[^a-z0-9]+/g, '-')  // all remaining non-alphanumeric → hyphen
+    .replace(/^-+|-+$/g, '')      // trim leading/trailing hyphens
+    .slice(0, 80) || 'untitled';
 }
 
 function getFieldCategory(field: string): string {

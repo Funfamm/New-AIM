@@ -39,7 +39,10 @@ export async function getPresignedUrl(key: string, contentType: string, expiresI
 
 export function getPublicUrl(key: string): string {
   const baseUrl = (R2_PUBLIC_BASE_URL || '').replace(/\/$/, '');
-  return baseUrl ? `${baseUrl}/${key}` : key;
+  if (!baseUrl) {
+    throw new Error('[r2Client] R2_PUBLIC_BASE_URL is not set. Cannot construct a public URL.');
+  }
+  return `${baseUrl}/${key}`;
 }
 
 export async function initMultipartUpload(key: string, contentType: string): Promise<string> {

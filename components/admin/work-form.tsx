@@ -63,6 +63,7 @@ const GENRES = [
 
 export default function WorkForm({ work, workTitle, action, seriesList, error, defaultType, defaultParentId }: Props) {
   const [type, setType] = useState<WorkType>(work?.type ?? defaultType ?? "SHORT_FILM");
+  const [title, setTitle] = useState(work?.title ?? "");
   const [heroMobileUrl, setHeroMobileUrl] = useState(work?.heroMobileUrl ?? "");
   const [heroDesktopUrl, setHeroDesktopUrl] = useState(work?.heroDesktopUrl ?? "");
   const [posterUrl, setPosterUrl] = useState(work?.posterUrl ?? "");
@@ -163,7 +164,8 @@ export default function WorkForm({ work, workTitle, action, seriesList, error, d
         <div className="form-group">
           <label className="form-label">Title *</label>
           <input type="text" name="title" className="form-input"
-            defaultValue={work?.title ?? ""} required placeholder="Work title" />
+            value={title} onChange={(e) => setTitle(e.target.value)}
+            required placeholder="Work title" />
         </div>
 
         {/* Description */}
@@ -264,7 +266,7 @@ export default function WorkForm({ work, workTitle, action, seriesList, error, d
               <div style={{ marginTop: "0.5rem" }}>
                 <R2FileUpload
                   targetField="heroMobileUrl"
-                  projectTitle={work?.title || "Untitled"}
+                  projectTitle={title || "untitled"}
                   projectSlug={work?.slug}
                   onSuccess={setHeroMobileUrl}
                   accept="image/*"
@@ -280,7 +282,7 @@ export default function WorkForm({ work, workTitle, action, seriesList, error, d
               <div style={{ marginTop: "0.5rem" }}>
                 <R2FileUpload
                   targetField="heroDesktopUrl"
-                  projectTitle={work?.title || "Untitled"}
+                  projectTitle={title || "untitled"}
                   projectSlug={work?.slug}
                   onSuccess={setHeroDesktopUrl}
                   accept="image/*"
@@ -299,7 +301,7 @@ export default function WorkForm({ work, workTitle, action, seriesList, error, d
             <div style={{ marginTop: "0.5rem" }}>
               <R2FileUpload
                 targetField="heroMobileUrl"
-                projectTitle={work?.title || "Untitled"}
+                projectTitle={title || "untitled"}
                 projectSlug={work?.slug}
                 onSuccess={setHeroMobileUrl}
                 accept="image/*"
@@ -327,7 +329,7 @@ export default function WorkForm({ work, workTitle, action, seriesList, error, d
               <div style={{ marginTop: "0.5rem" }}>
                 <R2FileUpload
                   targetField="posterUrl"
-                  projectTitle={work?.title || "Untitled"}
+                  projectTitle={title || "untitled"}
                   projectSlug={work?.slug}
                   onSuccess={setPosterUrl}
                   accept="image/*"
@@ -343,7 +345,7 @@ export default function WorkForm({ work, workTitle, action, seriesList, error, d
               <div style={{ marginTop: "0.5rem" }}>
                 <R2FileUpload
                   targetField="thumbnailUrl"
-                  projectTitle={work?.title || "Untitled"}
+                  projectTitle={title || "untitled"}
                   projectSlug={work?.slug}
                   onSuccess={setThumbnailUrl}
                   accept="image/*"
@@ -364,7 +366,7 @@ export default function WorkForm({ work, workTitle, action, seriesList, error, d
             <div style={{ marginTop: "0.5rem" }}>
               <R2FileUpload
                 targetField="trailerUrl"
-                projectTitle={work?.title || "Untitled"}
+                projectTitle={title || "untitled"}
                 projectSlug={work?.slug}
                 onSuccess={setTrailerUrl}
                 accept="video/*"
@@ -383,7 +385,7 @@ export default function WorkForm({ work, workTitle, action, seriesList, error, d
             <div style={{ marginTop: "0.5rem" }}>
               <R2FileUpload
                 targetField="previewClipUrl"
-                projectTitle={work?.title || "Untitled"}
+                projectTitle={title || "untitled"}
                 projectSlug={work?.slug}
                 onSuccess={setPreviewClipUrl}
                 accept="video/*"
@@ -403,7 +405,7 @@ export default function WorkForm({ work, workTitle, action, seriesList, error, d
             <div style={{ marginTop: "0.5rem" }}>
               <R2FileUpload
                 targetField="previewClipUrl"
-                projectTitle={work?.title || "Untitled"}
+                projectTitle={title || "untitled"}
                 projectSlug={work?.slug}
                 onSuccess={setPreviewClipUrl}
                 accept="video/*"
@@ -423,7 +425,7 @@ export default function WorkForm({ work, workTitle, action, seriesList, error, d
             <div style={{ marginTop: "0.5rem" }}>
               <R2FileUpload
                 targetField="videoUrl"
-                projectTitle={work?.title || "Untitled"}
+                projectTitle={title || "untitled"}
                 projectSlug={work?.slug}
                 onSuccess={setVideoUrl}
                 accept="video/*"
@@ -442,7 +444,7 @@ export default function WorkForm({ work, workTitle, action, seriesList, error, d
             <div style={{ marginTop: "0.5rem" }}>
               <R2FileUpload
                 targetField="teaserUrl"
-                projectTitle={work?.title || "Untitled"}
+                projectTitle={title || "untitled"}
                 projectSlug={work?.slug}
                 onSuccess={setTeaserUrl}
                 accept="video/*"
