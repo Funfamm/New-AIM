@@ -33,8 +33,8 @@ export default async function AdminWorkFormPage({ params, searchParams }: Props)
   const defaultType = defaultTypeRaw as WorkType | undefined;
   const isNew = id === "new";
 
-  // Fetch the work being edited (if any), the full series list, and lean CTA id in parallel
-  const [work, seriesList, ctaRow] = await Promise.all([
+  // Fetch the work being edited (if any), the full series list, lean CTA id, and custom rows in parallel
+  const [work, seriesList, ctaRow, allRows, assignedItems] = await Promise.all([
     isNew
       ? Promise.resolve(null)
       : prisma.work.findUnique({ where: { id } }),
@@ -49,7 +49,20 @@ export default async function AdminWorkFormPage({ params, searchParams }: Props)
           where: { workId: id },
           select: { id: true, isEnabled: true },
         }),
+    prisma.contentRow.findMany({
+      where: { active: true },
+      select: { id: true, title: true, placement: true },
+      orderBy: { sortOrder: "asc" },
+    }),
+    isNew
+      ? Promise.resolve([] as { rowId: string }[])
+      : prisma.contentRowItem.findMany({
+          where: { workId: id },
+          select: { rowId: true },
+        }),
   ]);
+
+  const assignedRowIds = assignedItems.map((item) => item.rowId);
 
   if (!isNew && !work) notFound();
 
@@ -85,6 +98,8 @@ export default async function AdminWorkFormPage({ params, searchParams }: Props)
         error={error}
         defaultType={defaultType}
         defaultParentId={defaultParentId}
+        rows={allRows}
+        assignedRowIds={assignedRowIds}
       />
 
       {/* Episodes panel — only rendered when editing a Series */}

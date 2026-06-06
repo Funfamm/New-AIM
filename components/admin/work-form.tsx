@@ -51,6 +51,10 @@ type Props = {
   defaultType?: WorkType;
   /** Pre-select parent series for new episode */
   defaultParentId?: string;
+  /** Active custom rows available for assignment */
+  rows: Array<{ id: string; title: string; placement: string }>;
+  /** Row IDs already assigned to this work */
+  assignedRowIds: string[];
 };
 
 const CLIENT_TYPES: WorkType[] = ["COMMERCIAL", "BRANDING", "CAMPAIGN", "CASE_STUDY"];
@@ -61,7 +65,7 @@ const GENRES = [
   "Survival", "Commercial", "Branding", "Campaign",
 ];
 
-export default function WorkForm({ work, workTitle, action, seriesList, error, defaultType, defaultParentId }: Props) {
+export default function WorkForm({ work, workTitle, action, seriesList, error, defaultType, defaultParentId, rows, assignedRowIds }: Props) {
   const [type, setType] = useState<WorkType>(work?.type ?? defaultType ?? "SHORT_FILM");
   const [title, setTitle] = useState(work?.title ?? "");
   const [heroMobileUrl, setHeroMobileUrl] = useState(work?.heroMobileUrl ?? "");
@@ -651,6 +655,31 @@ export default function WorkForm({ work, workTitle, action, seriesList, error, d
                 defaultValue={work?.order ?? 0} min={0} />
             </div>
           </div>
+        )}
+
+        {/* Rows & Collections — custom editorial rows only, not shown for episodes */}
+        {!isEpisode && rows.length > 0 && (
+          <>
+            <div className="form-divider" />
+            <div className="form-section-title">Rows &amp; Collections</div>
+            <input type="hidden" name="hasRowsSection" value="1" />
+            <span className="form-hint" style={{ display: "block", marginBottom: "0.75rem" }}>
+              Choose the custom rows where this project should appear. Rows are created from Admin → Rows.
+            </span>
+            <div className="form-check-grid">
+              {rows.map((row) => (
+                <label key={row.id} className="form-check">
+                  <input
+                    type="checkbox"
+                    name="rowIds"
+                    value={row.id}
+                    defaultChecked={assignedRowIds.includes(row.id)}
+                  />
+                  <span>{row.title} — {row.placement}</span>
+                </label>
+              ))}
+            </div>
+          </>
         )}
 
         <div className="form-actions">
