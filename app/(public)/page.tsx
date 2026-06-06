@@ -6,6 +6,7 @@ import FilmRail from "@/components/film-rail";
 import MobileFeaturedHero from "@/components/mobile-featured-hero";
 import HeroDesktopSection from "@/components/hero-desktop-section";
 import { getWorkCtaState } from "@/lib/work-cta";
+import { getPublicContentRows } from "@/lib/curated-rows";
 import { Play, ChevronRight } from "lucide-react";
 import "./home.css";
 
@@ -108,6 +109,7 @@ export default async function HomePage() {
     continueWatching,
     savedIds,
     { types: availableTypes, hasUpcoming },
+    curatedRowsHome,
   ] = await Promise.all([
     getHomeWorks(),
     userId
@@ -115,6 +117,7 @@ export default async function HomePage() {
       : Promise.resolve([] as Awaited<ReturnType<typeof getContinueWatching>>),
     userId ? getSavedIds(userId) : Promise.resolve<string[]>([]),
     getPublishedTypes(),
+    getPublicContentRows("HOME"),
   ]);
 
   const featuredWithPosters = featured.filter((w) => w.posterUrl != null).slice(0, 5);
@@ -189,18 +192,33 @@ export default async function HomePage() {
         <FilmRail title="Continue Watching" films={continueWatching.map(w => ({ ...w, requiresAuth: false }))} isLoggedIn={!!userId} />
       )}
 
-      {/* ── Featured Works ──────────────────────────── */}
-      <FilmRail
-        title="Featured Works"
-        label="— Now Streaming"
-        href="/works"
-        films={featured}
-        priority
-        isLoggedIn={!!userId}
-      />
+      {/* ── Curated Rows (HOME/BOTH placement) ───────── */}
+      {curatedRowsHome.length > 0 ? (
+        curatedRowsHome.map((row) => (
+          <FilmRail
+            key={row.id}
+            title={row.title}
+            label={row.description ? `— ${row.description}` : undefined}
+            films={row.items.map((item) => item.work)}
+            isLoggedIn={!!userId}
+          />
+        ))
+      ) : (
+        <>
+          {/* ── Featured Works (fallback) ──────────────────────────── */}
+          <FilmRail
+            title="Featured Works"
+            label="— Now Streaming"
+            href="/works"
+            films={featured}
+            priority
+            isLoggedIn={!!userId}
+          />
 
-      {/* ── New Releases ────────────────────────────── */}
-      <FilmRail title="New Releases" label="— Latest Work" href="/works" films={newReleases} isLoggedIn={!!userId} />
+          {/* ── New Releases (fallback) ────────────────────────────── */}
+          <FilmRail title="New Releases" label="— Latest Work" href="/works" films={newReleases} isLoggedIn={!!userId} />
+        </>
+      )}
 
       {/* ── Empty state ─────────────────────────────── */}
       {isEmpty && (
