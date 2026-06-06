@@ -34,6 +34,7 @@ type FilmCardProps = {
   status?: string;
   videoUrl?: string | null;
   trailerUrl?: string | null;
+  previewClipUrl?: string | null;
   priority?: boolean;
   watchHref?: string;
 };
@@ -51,6 +52,7 @@ export default function FilmCard({
   status,
   videoUrl,
   trailerUrl,
+  previewClipUrl,
   priority = false,
   watchHref,
 }: FilmCardProps) {
@@ -65,6 +67,7 @@ export default function FilmCard({
         type,
         videoUrl,
         trailerUrl,
+        previewClipUrl,
         requiresAuth: requiresAuth ?? false,
         requiresLoginToViewTrailer,
         isGuest: !isLoggedIn,
