@@ -9,10 +9,10 @@ const ALLOWED_MIME_TYPES = {
   thumbnailUrl: ['image/jpeg', 'image/png', 'image/webp'],
   heroMobileUrl: ['image/jpeg', 'image/png', 'image/webp'],
   heroDesktopUrl: ['image/jpeg', 'image/png', 'image/webp'],
-  trailerUrl: ['video/mp4', 'video/webm', 'video/quicktime'],
-  previewClipUrl: ['video/mp4', 'video/webm', 'video/quicktime'],
-  videoUrl: ['video/mp4', 'video/webm', 'video/quicktime'],
-  teaserUrl: ['video/mp4', 'video/webm', 'video/quicktime'],
+  trailerUrl: ['video/mp4', 'video/webm', 'video/quicktime', 'application/vnd.apple.mpegurl', 'video/mp2t'],
+  previewClipUrl: ['video/mp4', 'video/webm', 'video/quicktime', 'application/vnd.apple.mpegurl', 'video/mp2t'],
+  videoUrl: ['video/mp4', 'video/webm', 'video/quicktime', 'application/vnd.apple.mpegurl', 'video/mp2t'],
+  teaserUrl: ['video/mp4', 'video/webm', 'video/quicktime', 'application/vnd.apple.mpegurl', 'video/mp2t'],
 };
 
 function slugify(value: string): string {

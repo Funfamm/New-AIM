@@ -4,6 +4,16 @@ import { initMultipartUpload, getPublicUrl } from '@/lib/r2Client';
 import { randomUUID } from 'crypto';
 
 const APPROVED_FIELDS = ['posterUrl', 'thumbnailUrl', 'heroMobileUrl', 'heroDesktopUrl', 'trailerUrl', 'previewClipUrl', 'videoUrl', 'teaserUrl'];
+const ALLOWED_MIME_TYPES: Record<string, string[]> = {
+  posterUrl: ['image/jpeg', 'image/png', 'image/webp'],
+  thumbnailUrl: ['image/jpeg', 'image/png', 'image/webp'],
+  heroMobileUrl: ['image/jpeg', 'image/png', 'image/webp'],
+  heroDesktopUrl: ['image/jpeg', 'image/png', 'image/webp'],
+  trailerUrl: ['video/mp4', 'video/webm', 'video/quicktime', 'application/vnd.apple.mpegurl', 'video/mp2t'],
+  previewClipUrl: ['video/mp4', 'video/webm', 'video/quicktime', 'application/vnd.apple.mpegurl', 'video/mp2t'],
+  videoUrl: ['video/mp4', 'video/webm', 'video/quicktime', 'application/vnd.apple.mpegurl', 'video/mp2t'],
+  teaserUrl: ['video/mp4', 'video/webm', 'video/quicktime', 'application/vnd.apple.mpegurl', 'video/mp2t'],
+};
 
 function slugify(value: string): string {
   return value
@@ -53,6 +63,11 @@ export async function POST(req: NextRequest) {
 
     if (!APPROVED_FIELDS.includes(targetField)) {
       return NextResponse.json({ error: 'Invalid target field' }, { status: 400 });
+    }
+
+    const allowedMimes = ALLOWED_MIME_TYPES[targetField] ?? [];
+    if (allowedMimes.length > 0 && !allowedMimes.includes(contentType)) {
+      return NextResponse.json({ error: `Invalid content type for ${targetField}` }, { status: 400 });
     }
 
     const ext = getExtension(filename);

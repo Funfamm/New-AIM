@@ -366,7 +366,7 @@ export default function WorkForm({ work, workTitle, action, seriesList, error, d
             <label className="form-label">Trailer URL</label>
             <input type="url" name="trailerUrl" className="form-input"
               value={trailerUrl} onChange={(e) => setTrailerUrl(e.target.value)}
-              placeholder="YouTube, Vimeo, or .mp4 URL" />
+              placeholder="YouTube, Vimeo, .mp4, or .m3u8 (HLS) URL" />
             <div style={{ marginTop: "0.5rem" }}>
               <R2FileUpload
                 targetField="trailerUrl"
@@ -385,7 +385,7 @@ export default function WorkForm({ work, workTitle, action, seriesList, error, d
             <label className="form-label">Preview Clip URL (optional)</label>
             <input type="url" name="previewClipUrl" className="form-input"
               value={previewClipUrl} onChange={(e) => setPreviewClipUrl(e.target.value)}
-              placeholder="YouTube, Vimeo, or .mp4 URL" />
+              placeholder="YouTube, Vimeo, .mp4, or .m3u8 (HLS) URL" />
             <div style={{ marginTop: "0.5rem" }}>
               <R2FileUpload
                 targetField="previewClipUrl"
@@ -405,7 +405,7 @@ export default function WorkForm({ work, workTitle, action, seriesList, error, d
             <label className="form-label">{videoLabel}</label>
             <input type="url" name="videoUrl" className="form-input"
               value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)}
-              placeholder="YouTube, Vimeo, or .mp4 URL" />
+              placeholder="YouTube, Vimeo, .mp4, or .m3u8 (HLS) URL" />
             <div style={{ marginTop: "0.5rem" }}>
               <R2FileUpload
                 targetField="videoUrl"
