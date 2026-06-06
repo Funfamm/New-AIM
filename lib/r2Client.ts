@@ -1,7 +1,7 @@
 import { S3Client, PutObjectCommand, CreateMultipartUploadCommand, UploadPartCommand, CompleteMultipartUploadCommand, AbortMultipartUploadCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
-const { R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME, R2_PUBLIC_BASE_URL } = process.env;
+const { R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME } = process.env;
 
 let s3Client: S3Client | null = null;
 
@@ -38,7 +38,7 @@ export async function getPresignedUrl(key: string, contentType: string, expiresI
 }
 
 export function getPublicUrl(key: string): string {
-  const baseUrl = (R2_PUBLIC_BASE_URL || '').replace(/\/$/, '');
+  const baseUrl = (process.env.R2_PUBLIC_BASE_URL || process.env.R2_PUBLIC_URL || '').replace(/\/$/, '');
   if (!baseUrl) {
     throw new Error('[r2Client] R2_PUBLIC_BASE_URL is not set. Cannot construct a public URL.');
   }
