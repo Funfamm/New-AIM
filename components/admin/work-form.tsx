@@ -395,26 +395,6 @@ export default function WorkForm({ work, workTitle, action, seriesList, error, d
           </div>
         )}
 
-        {/* Preview Clip URL */}
-        {showTrailerUrl && (
-          <div className="form-group">
-            <label className="form-label">Preview Clip URL (optional)</label>
-            <input type="url" name="previewClipUrl" className="form-input"
-              value={previewClipUrl} onChange={(e) => setPreviewClipUrl(e.target.value)}
-              placeholder="YouTube, Vimeo, or .mp4 URL" />
-            <div style={{ marginTop: "0.5rem" }}>
-              <R2FileUpload
-                targetField="previewClipUrl"
-                projectTitle={title || "untitled"}
-                projectSlug={work?.slug}
-                onSuccess={setPreviewClipUrl}
-                accept="video/*"
-              />
-            </div>
-            <span className="form-hint">Short preview/sample shown only if trailer is unavailable.</span>
-          </div>
-        )}
-
         {/* Main video URL */}
         {showVideoUrl && (
           <div className="form-group">
