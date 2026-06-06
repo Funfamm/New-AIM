@@ -42,6 +42,16 @@ type WorkData = {
   contentRating: string | null; contentDescriptors: string[];
 };
 
+type VideoJobStatus = "PENDING" | "PROCESSING" | "READY" | "FAILED" | "CANCELLED";
+
+type LatestJob = {
+  id: string;
+  status: VideoJobStatus;
+  progress: number;
+  errorMessage: string | null;
+  createdAt: Date;
+};
+
 type Props = {
   work: WorkData | null;
   workTitle?: string;
@@ -56,6 +66,8 @@ type Props = {
   rows: Array<{ id: string; title: string; placement: string }>;
   /** Row IDs already assigned to this work */
   assignedRowIds: string[];
+  /** Latest VideoProcessingJob for this work, if any */
+  latestJob?: LatestJob | null;
 };
 
 const CLIENT_TYPES: WorkType[] = ["COMMERCIAL", "BRANDING", "CAMPAIGN", "CASE_STUDY"];
@@ -66,7 +78,7 @@ const GENRES = [
   "Survival", "Commercial", "Branding", "Campaign",
 ];
 
-export default function WorkForm({ work, workTitle, action, seriesList, error, defaultType, defaultParentId, rows, assignedRowIds }: Props) {
+export default function WorkForm({ work, workTitle, action, seriesList, error, defaultType, defaultParentId, rows, assignedRowIds, latestJob }: Props) {
   const [type, setType] = useState<WorkType>(work?.type ?? defaultType ?? "SHORT_FILM");
   const [title, setTitle] = useState(work?.title ?? "");
   const [heroMobileUrl, setHeroMobileUrl] = useState(work?.heroMobileUrl ?? "");
@@ -439,6 +451,35 @@ export default function WorkForm({ work, workTitle, action, seriesList, error, d
               accept="video/mp4,video/quicktime,video/webm"
               returnKey
             />
+            {latestJob && (
+              <div style={{ marginTop: "0.5rem", display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.75rem", fontFamily: "var(--font-body)" }}>
+                <span style={{
+                  padding: "0.15rem 0.5rem",
+                  borderRadius: 3,
+                  fontWeight: 600,
+                  background:
+                    latestJob.status === "READY"      ? "rgba(34,197,94,0.15)"  :
+                    latestJob.status === "FAILED"     ? "rgba(239,68,68,0.15)"  :
+                    latestJob.status === "PROCESSING" ? "rgba(234,179,8,0.15)"  :
+                    latestJob.status === "CANCELLED"  ? "rgba(107,114,128,0.15)":
+                    "rgba(99,102,241,0.15)",
+                  color:
+                    latestJob.status === "READY"      ? "#22c55e" :
+                    latestJob.status === "FAILED"     ? "#ef4444" :
+                    latestJob.status === "PROCESSING" ? "#eab308" :
+                    latestJob.status === "CANCELLED"  ? "#9ca3af" :
+                    "#818cf8",
+                }}>
+                  {latestJob.status}
+                </span>
+                {latestJob.status === "PROCESSING" && (
+                  <span style={{ color: "var(--color-brand-muted)" }}>{latestJob.progress}%</span>
+                )}
+                {latestJob.status === "FAILED" && latestJob.errorMessage && (
+                  <span style={{ color: "#ef4444" }}>{latestJob.errorMessage}</span>
+                )}
+              </div>
+            )}
             <span className="form-hint">Private source file for background HLS processing. This file is not shown publicly.</span>
           </div>
         )}

@@ -8,6 +8,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { WorkType, WorkStatus } from "@prisma/client";
 import { updateWorkRowAssignments } from "@/lib/actions/rows";
+import { ensureVideoProcessingJob } from "@/lib/actions/video-processing";
 
 function parseFormData(formData: FormData) {
   const galleryRaw = (formData.get("galleryUrls") as string) ?? "";
@@ -135,7 +136,7 @@ export async function createWork(formData: FormData) {
     );
 
     // Episodes inherit featured/showOnHome/genres/order/access from parent — never stored on episode
-    await prisma.work.create({
+    const newEpisode = await prisma.work.create({
       data: {
         ...data,
         slug,
@@ -147,6 +148,10 @@ export async function createWork(formData: FormData) {
         requiresLoginToViewTrailer: false,
       },
     });
+
+    if (data.masterVideoKey) {
+      await ensureVideoProcessingJob(newEpisode.id, data.masterVideoKey, newEpisode.slug);
+    }
 
     revalidateAll();
     redirect(`/admin/works/${data.parentId}`);
@@ -163,6 +168,10 @@ export async function createWork(formData: FormData) {
 
   const rowIds = (formData.getAll("rowIds") as string[]).filter(Boolean);
   await updateWorkRowAssignments(newWork.id, rowIds);
+
+  if (data.masterVideoKey) {
+    await ensureVideoProcessingJob(newWork.id, data.masterVideoKey, newWork.slug);
+  }
 
   revalidateAll();
   redirect("/admin/works");
@@ -194,9 +203,9 @@ export async function updateWork(id: string, formData: FormData) {
     }
 
     // Regenerate episode slug when parent/season/episode/title changes
+    const current = await prisma.work.findUnique({ where: { id }, select: { slug: true } });
     let newSlug: string | undefined;
     if (data.parentId) {
-      const current = await prisma.work.findUnique({ where: { id }, select: { slug: true } });
       const candidate = await buildEpisodeSlug(
         data.parentId,
         data.seasonNumber,
@@ -223,15 +232,24 @@ export async function updateWork(id: string, formData: FormData) {
       },
     });
 
+    const effectiveSlug = newSlug ?? current?.slug ?? "";
+    if (data.masterVideoKey && effectiveSlug) {
+      await ensureVideoProcessingJob(id, data.masterVideoKey, effectiveSlug);
+    }
+
     revalidateAll();
     redirect(`/admin/works/${id}`);
   }
 
   // ── Non-episode path ──────────────────────────────────────
-  await prisma.work.update({ where: { id }, data });
+  const updated = await prisma.work.update({ where: { id }, data });
 
   const rowIds = (formData.getAll("rowIds") as string[]).filter(Boolean);
   await updateWorkRowAssignments(id, rowIds);
+
+  if (data.masterVideoKey) {
+    await ensureVideoProcessingJob(id, data.masterVideoKey, updated.slug);
+  }
 
   revalidateAll();
   redirect(`/admin/works/${id}`);

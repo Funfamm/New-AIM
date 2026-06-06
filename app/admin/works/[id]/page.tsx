@@ -34,7 +34,7 @@ export default async function AdminWorkFormPage({ params, searchParams }: Props)
   const isNew = id === "new";
 
   // Fetch the work being edited (if any), the full series list, lean CTA id, and custom rows in parallel
-  const [work, seriesList, ctaRow, allRows, assignedItems] = await Promise.all([
+  const [work, seriesList, ctaRow, allRows, assignedItems, latestJob] = await Promise.all([
     isNew
       ? Promise.resolve(null)
       : prisma.work.findUnique({ where: { id } }),
@@ -59,6 +59,13 @@ export default async function AdminWorkFormPage({ params, searchParams }: Props)
       : prisma.contentRowItem.findMany({
           where: { workId: id },
           select: { rowId: true },
+        }),
+    isNew
+      ? Promise.resolve(null)
+      : prisma.videoProcessingJob.findFirst({
+          where: { workId: id },
+          select: { id: true, status: true, progress: true, errorMessage: true, createdAt: true },
+          orderBy: { createdAt: "desc" },
         }),
   ]);
 
@@ -100,6 +107,7 @@ export default async function AdminWorkFormPage({ params, searchParams }: Props)
         defaultParentId={defaultParentId}
         rows={allRows}
         assignedRowIds={assignedRowIds}
+        latestJob={latestJob}
       />
 
       {/* Episodes panel — only rendered when editing a Series */}
