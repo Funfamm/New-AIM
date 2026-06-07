@@ -135,6 +135,14 @@ export function getWorkCtaState(work: WorkCtaInput): WorkCtaState {
       secondaryLabel = "Watch Trailer";
       secondaryHref  = trailerHref;
     }
+  } else if (hasPlayable && hasPreview) {
+    if (isTrailerLocked) {
+      secondaryLabel = "Sign In to Watch Preview";
+      secondaryHref  = previewLoginHref;
+    } else {
+      secondaryLabel = "Watch Preview";
+      secondaryHref  = previewHref;
+    }
   }
 
   return {

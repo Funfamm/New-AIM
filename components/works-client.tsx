@@ -15,8 +15,12 @@ type Work = {
   genre: string | null;
   genres: string[];
   requiresAuth: boolean;
+  requiresLoginToViewTrailer?: boolean | null;
   type: string;
   status: string;
+  videoUrl?: string | null;
+  trailerUrl?: string | null;
+  previewClipUrl?: string | null;
 };
 
 type Tab =
