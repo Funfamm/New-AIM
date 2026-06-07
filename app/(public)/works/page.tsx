@@ -70,7 +70,9 @@ export default async function WorksPage({ searchParams }: Props) {
   const userId     = session?.user?.id ?? null;
   const isLoggedIn = !!userId;
 
-  const heroWithPosters = heroWorks.filter((w) => w.posterUrl != null);
+  const heroWithPosters = heroWorks.filter(
+    (w) => !!(w.posterUrl ?? w.heroMobileUrl ?? w.heroDesktopUrl)
+  );
 
   const heroDesktopItems = heroWithPosters.map((w) => {
     const firstEpSlug = w.episodes?.[0]?.slug ?? null;
@@ -81,7 +83,7 @@ export default async function WorksPage({ searchParams }: Props) {
       isGuest: !userId, firstEpisodeSlug: firstEpSlug,
     });
     return {
-      posterUrl:      w.posterUrl!,
+      posterUrl:      (w.posterUrl ?? w.heroMobileUrl ?? w.heroDesktopUrl)!,
       title:          w.title,
       slug:           w.slug,
       type:           w.type,
@@ -97,7 +99,7 @@ export default async function WorksPage({ searchParams }: Props) {
 
   const mobileHeroItems = heroWithPosters.map((w) => ({
     id: w.id, slug: w.slug, title: w.title,
-    posterUrl: w.posterUrl!,
+    posterUrl: (w.posterUrl ?? w.heroMobileUrl ?? w.heroDesktopUrl)!,
     heroMobileUrl:  w.heroMobileUrl,
     requiresAuth:   w.requiresAuth,
     genres:         w.genres,
