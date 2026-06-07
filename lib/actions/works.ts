@@ -176,6 +176,10 @@ export async function createWork(formData: FormData) {
   if (data.masterPreviewKey) await ensureVideoProcessingJob(newWork.id, data.masterPreviewKey, newWork.slug, "previewClipUrl");
 
   revalidateAll();
+  // If processing jobs were queued, redirect to edit page so admin can watch progress
+  if (data.masterVideoKey || data.masterTrailerKey || data.masterPreviewKey) {
+    redirect(`/admin/works/${newWork.id}`);
+  }
   redirect("/admin/works");
 }
 
