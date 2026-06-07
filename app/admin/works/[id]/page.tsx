@@ -61,10 +61,10 @@ export default async function AdminWorkFormPage({ params, searchParams }: Props)
           select: { rowId: true },
         }),
     isNew
-      ? Promise.resolve([] as { id: string; status: VideoJobStatus; progress: number; errorMessage: string | null; targetField: string }[])
+      ? Promise.resolve([] as { id: string; status: VideoJobStatus; progress: number; hlsUrl: string | null; errorMessage: string | null; targetField: string }[])
       : prisma.videoProcessingJob.findMany({
           where: { workId: id },
-          select: { id: true, status: true, progress: true, errorMessage: true, targetField: true },
+          select: { id: true, status: true, progress: true, hlsUrl: true, errorMessage: true, targetField: true },
           orderBy: { createdAt: "desc" },
         }),
   ]);
@@ -103,6 +103,7 @@ export default async function AdminWorkFormPage({ params, searchParams }: Props)
     <>
       <WorkForm
         work={work}
+        workId={isNew ? null : id}
         workTitle={work?.title}
         action={action}
         seriesList={seriesList}

@@ -4,6 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import R2FileUpload from "@/components/r2-file-upload";
+import ProcessingPanel from "@/components/admin/processing-panel";
+import type { PanelJob } from "@/components/admin/processing-panel";
 import "./work-form.css";
 
 type WorkType =
@@ -48,11 +50,13 @@ type LatestJob = {
   id: string;
   status: VideoJobStatus;
   progress: number;
+  hlsUrl: string | null;
   errorMessage: string | null;
 };
 
 type Props = {
   work: WorkData | null;
+  workId: string | null;
   workTitle?: string;
   action: (formData: FormData) => Promise<void>;
   seriesList: { id: string; title: string }[];
@@ -72,26 +76,6 @@ type Props = {
 
 const CLIENT_TYPES: WorkType[] = ["COMMERCIAL", "BRANDING", "CAMPAIGN", "CASE_STUDY"];
 
-function JobStatusBadge({ job, readyMessage }: { job: LatestJob | null; readyMessage: string }) {
-  if (!job) return null;
-  const bg = job.status === "READY" ? "rgba(34,197,94,0.15)" : job.status === "FAILED" ? "rgba(239,68,68,0.15)" : job.status === "PROCESSING" ? "rgba(234,179,8,0.15)" : job.status === "CANCELLED" ? "rgba(107,114,128,0.15)" : "rgba(99,102,241,0.15)";
-  const color = job.status === "READY" ? "#22c55e" : job.status === "FAILED" ? "#ef4444" : job.status === "PROCESSING" ? "#eab308" : job.status === "CANCELLED" ? "#9ca3af" : "#818cf8";
-  return (
-    <div style={{ marginTop: "0.5rem", fontSize: "0.75rem", fontFamily: "var(--font-body)" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-        <span style={{ padding: "0.15rem 0.5rem", borderRadius: 3, fontWeight: 600, background: bg, color }}>{job.status}</span>
-        {job.status === "PROCESSING" && <span style={{ color: "var(--color-brand-muted)" }}>{job.progress}%</span>}
-      </div>
-      <div style={{ marginTop: "0.25rem", color: "var(--color-brand-muted)", lineHeight: 1.5 }}>
-        {job.status === "PENDING"    && "Waiting for video processor. The video will become playable after HLS is generated."}
-        {job.status === "PROCESSING" && "Video is being converted for streaming. Reload this page to check progress."}
-        {job.status === "READY"      && readyMessage}
-        {job.status === "CANCELLED"  && "Job was cancelled."}
-        {job.status === "FAILED"     && (job.errorMessage ?? "Processing failed. Re-upload master to retry.")}
-      </div>
-    </div>
-  );
-}
 
 const GENRES = [
   "Drama", "Action", "Horror", "Thriller", "Documentary",
@@ -99,7 +83,7 @@ const GENRES = [
   "Survival", "Commercial", "Branding", "Campaign",
 ];
 
-export default function WorkForm({ work, workTitle, action, seriesList, error, defaultType, defaultParentId, rows, assignedRowIds, latestJobVideo, latestJobTrailer, latestJobPreview }: Props) {
+export default function WorkForm({ work, workId, workTitle, action, seriesList, error, defaultType, defaultParentId, rows, assignedRowIds, latestJobVideo, latestJobTrailer, latestJobPreview }: Props) {
   const [type, setType] = useState<WorkType>(work?.type ?? defaultType ?? "SHORT_FILM");
   const [title, setTitle] = useState(work?.title ?? "");
   const [heroMobileUrl, setHeroMobileUrl] = useState(work?.heroMobileUrl ?? "");
@@ -434,7 +418,15 @@ export default function WorkForm({ work, workTitle, action, seriesList, error, d
               accept="video/mp4,video/quicktime,video/webm"
               returnKey
             />
-            <JobStatusBadge job={latestJobTrailer ?? null} readyMessage="Streaming version is ready. Trailer URL has been filled automatically." />
+            <ProcessingPanel
+              workId={workId}
+              targetField="trailerUrl"
+              buttonLabel="Process Trailer"
+              readyMessage="Streaming version is ready. Trailer URL has been filled automatically."
+              masterKey={masterTrailerKey}
+              initialJob={latestJobTrailer ?? null}
+              onUrlReady={setTrailerUrl}
+            />
             <span className="form-hint">Private source for HLS trailer processing. Not shown publicly.</span>
           </div>
         )}
@@ -477,7 +469,15 @@ export default function WorkForm({ work, workTitle, action, seriesList, error, d
               accept="video/mp4,video/quicktime,video/webm"
               returnKey
             />
-            <JobStatusBadge job={latestJobPreview ?? null} readyMessage="Streaming version is ready. Preview Clip URL has been filled automatically." />
+            <ProcessingPanel
+              workId={workId}
+              targetField="previewClipUrl"
+              buttonLabel="Process Preview"
+              readyMessage="Streaming version is ready. Preview Clip URL has been filled automatically."
+              masterKey={masterPreviewKey}
+              initialJob={latestJobPreview ?? null}
+              onUrlReady={setPreviewClipUrl}
+            />
             <span className="form-hint">Private source for HLS preview processing. Not shown publicly.</span>
           </div>
         )}
@@ -520,7 +520,15 @@ export default function WorkForm({ work, workTitle, action, seriesList, error, d
               accept="video/mp4,video/quicktime,video/webm"
               returnKey
             />
-            <JobStatusBadge job={latestJobVideo ?? null} readyMessage="Streaming version is ready. Main Video URL has been filled automatically." />
+            <ProcessingPanel
+              workId={workId}
+              targetField="videoUrl"
+              buttonLabel="Process Video"
+              readyMessage="Streaming version is ready. Main Video URL has been filled automatically."
+              masterKey={masterVideoKey}
+              initialJob={latestJobVideo ?? null}
+              onUrlReady={setVideoUrl}
+            />
             <span className="form-hint">Private source file for background HLS processing. This file is not shown publicly.</span>
           </div>
         )}
