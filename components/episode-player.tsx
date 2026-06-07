@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { saveWatchProgress } from "@/lib/actions/progress";
 import { beacon } from "@/lib/beacon";
 import NotifyMeCtaOverlay, { type CtaData } from "./notify-cta-overlay";
+import { useHlsVideo } from "@/lib/use-hls-video";
 
 type Props = {
   src: string;
@@ -49,6 +50,8 @@ export default function EpisodePlayer({
   const [speed,          setSpeed]          = useState(1);
   const [speedOpen,      setSpeedOpen]      = useState(false);
   const [controlsOn,     setControlsOn]     = useState(false);
+
+  useHlsVideo(videoRef, src);
 
   useEffect(() => {
     if (!cta) return;
@@ -121,7 +124,6 @@ export default function EpisodePlayer({
     >
       <video
         ref={videoRef}
-        src={src}
         className="watch-video"
         preload="metadata"
         controls

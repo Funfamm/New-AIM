@@ -199,6 +199,14 @@ enum RowPlacement {
   BOTH
 }
 
+enum VideoJobStatus {
+  PENDING
+  PROCESSING
+  READY
+  FAILED
+  CANCELLED
+}
+
 // ─────────────────────────────────────────────
 // USER
 // ─────────────────────────────────────────────
@@ -271,8 +279,13 @@ model Work {
   // Video URLs — stored only, files live in R2/S3 later
   trailerUrl     String?   // short film, full film, series
   previewClipUrl String?   // short preview/sample clip when no trailer exists
-  videoUrl       String?   // main video (film, episode, commercial, branding)
+  videoUrl       String?   // main video — public playback URL (HLS master.m3u8 or MP4)
   teaserUrl      String?   // optional second video for commercials
+
+  // Autopilot video processing
+  masterVideoKey    String?  // private R2 key — source for videoUrl HLS
+  masterTrailerKey  String?  // private R2 key — source for trailerUrl HLS
+  masterPreviewKey  String?  // private R2 key — source for previewClipUrl HLS
 
   // Film/series metadata
   year        Int?
@@ -316,15 +329,16 @@ model Work {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  progress        WatchProgress[]
-  savedBy         SavedWork[]
-  likes           WorkLike[]
-  notifications   Notification[]
-  analyticsEvents AnalyticsEvent[]
-  notifyMeCta     NotifyMeCta?
-  comments        Comment[]
-  cast            WorkCast[]
-  rowItems        ContentRowItem[]
+  progress             WatchProgress[]
+  savedBy              SavedWork[]
+  likes                WorkLike[]
+  notifications        Notification[]
+  analyticsEvents      AnalyticsEvent[]
+  notifyMeCta          NotifyMeCta?
+  comments             Comment[]
+  cast                 WorkCast[]
+  rowItems             ContentRowItem[]
+  videoProcessingJobs  VideoProcessingJob[]
 
   @@map("works")
 }
@@ -1173,5 +1187,33 @@ model Subscriber {
   @@index([countryCode])
   @@index([subscribedAt])
   @@map("subscribers")
+}
+
+// ─────────────────────────────────────────────
+// VIDEO PROCESSING
+// ─────────────────────────────────────────────
+
+model VideoProcessingJob {
+  id           String         @id @default(cuid())
+  workId       String
+  sourceKey    String         // private R2 key: private/masters/{slug}/...
+  outputPrefix String         // public R2 prefix: works/{slug}/hls/{jobId}
+  targetField  String         @default("videoUrl") // Work field to update: videoUrl | trailerUrl | previewClipUrl
+  status       VideoJobStatus @default(PENDING)
+  progress     Int            @default(0)
+  errorMessage String?
+  hlsUrl       String?        // set when READY: full public master.m3u8 URL
+  attempts     Int            @default(0)
+
+  startedAt    DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  work         Work           @relation(fields: [workId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([workId])
+  @@map("video_processing_jobs")
 }
 

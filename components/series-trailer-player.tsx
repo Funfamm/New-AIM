@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import type HlsType from "hls.js";
 import Image from "next/image";
 import { Play, X } from "lucide-react";
 import "./series-trailer-player.css";
@@ -14,6 +15,36 @@ type Props = {
 export default function SeriesTrailerPlayer({ posterUrl, trailerUrl, title }: Props) {
   const [playing, setPlaying] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const hlsRef = useRef<HlsType | null>(null);
+
+  // HLS support for Chrome/Edge when trailerUrl is a .m3u8 manifest
+  useEffect(() => {
+    if (!playing || !trailerUrl || !trailerUrl.endsWith(".m3u8")) return;
+    const video = videoRef.current;
+    if (!video) return;
+    // Safari handles HLS natively
+    if (video.canPlayType("application/vnd.apple.mpegurl")) return;
+
+    let cancelled = false;
+    void (async () => {
+      const { default: Hls } = await import("hls.js");
+      if (cancelled || !Hls.isSupported()) return;
+      const hls = new Hls({ enableWorker: true });
+      hlsRef.current = hls;
+      // Clear the src React set from JSX before hls.js takes over
+      video.removeAttribute("src");
+      hls.loadSource(trailerUrl);
+      hls.attachMedia(video);
+    })();
+
+    return () => {
+      cancelled = true;
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
+    };
+  }, [playing, trailerUrl]);
 
   function handlePlay() {
     setPlaying(true);
@@ -22,6 +53,10 @@ export default function SeriesTrailerPlayer({ posterUrl, trailerUrl, title }: Pr
 
   function handleStop() {
     setPlaying(false);
+    if (hlsRef.current) {
+      hlsRef.current.destroy();
+      hlsRef.current = null;
+    }
     if (videoRef.current) {
       videoRef.current.pause();
       videoRef.current.src = ""; // release the resource

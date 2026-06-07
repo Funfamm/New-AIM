@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, CreateMultipartUploadCommand, UploadPartCommand, CompleteMultipartUploadCommand, AbortMultipartUploadCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, GetObjectCommand, CreateMultipartUploadCommand, UploadPartCommand, CompleteMultipartUploadCommand, AbortMultipartUploadCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 const { R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME } = process.env;
@@ -86,6 +86,20 @@ export async function completeMultipartUpload(
   });
 
   await client.send(command);
+}
+
+/**
+ * Server-only. Returns a temporary signed GET URL for a private R2 object.
+ * Used by the background worker to download master video files.
+ * Never expose this URL to public users.
+ */
+export async function getDownloadPresignedUrl(key: string, expiresIn = 3600): Promise<string> {
+  const client = getS3Client();
+  const command = new GetObjectCommand({
+    Bucket: R2_BUCKET_NAME!,
+    Key: key,
+  });
+  return getSignedUrl(client, command, { expiresIn });
 }
 
 export async function abortMultipartUpload(key: string, uploadId: string): Promise<void> {

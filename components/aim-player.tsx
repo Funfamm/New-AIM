@@ -14,6 +14,7 @@ import { saveWatchProgress } from "@/lib/actions/progress";
 import { beacon } from "@/lib/beacon";
 import { likeWork, unlikeWork } from "@/lib/actions/likes";
 import NotifyMeCtaOverlay, { type CtaData } from "@/components/notify-cta-overlay";
+import { useHlsVideo } from "@/lib/use-hls-video";
 import "./aim-player.css";
 
 type EpSibling = {
@@ -137,6 +138,9 @@ export default function AimPlayer({
   // Reactions
   const [liked,     setLiked]     = useState(initialLiked);
   const [likeCount, setLikeCount] = useState(initialLikeCount);
+
+  // ── HLS / video source management ────────────────────────────────────
+  useHlsVideo(videoRef, src);
 
   // ── Mount: detect env, listen for fullscreen ─────────────────────────
   useEffect(() => {
@@ -370,7 +374,6 @@ export default function AimPlayer({
       {/* ── Video ── */}
       <video
         ref={videoRef}
-        src={src}
         className="watch-video aim-player-video"
         preload="metadata"
         playsInline
