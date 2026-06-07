@@ -93,13 +93,22 @@ const RAILS: Rail[] = [
   { key: "CASE_STUDY", title: "Case Studies", eyebrow: "— Strategy & Insight" },
 ];
 
+type FeaturedHeroItem = {
+  posterUrl: string;
+  title: string;
+  slug: string;
+  heroMobileUrl?: string | null;
+  heroDesktopUrl?: string | null;
+};
+
 type Props = {
   works: Work[];
   collection?: string;
   isLoggedIn?: boolean;
+  featuredHeroItems?: FeaturedHeroItem[];
 };
 
-export default function WorksClient({ works, collection, isLoggedIn = false }: Props) {
+export default function WorksClient({ works, collection, isLoggedIn = false, featuredHeroItems }: Props) {
   const [tab, setTab] = useState<Tab>(() => {
     if (collection && COLLECTION_TO_TAB[collection]) return COLLECTION_TO_TAB[collection];
     return "ALL";
@@ -118,21 +127,20 @@ export default function WorksClient({ works, collection, isLoggedIn = false }: P
   // Published works — used for hero, rails, and tab filtering
   const publishedWorks = useMemo(() => works.filter((w) => w.status === "PUBLISHED"), [works]);
 
-  // Up to 5 published works with poster art for the hero backdrop rotation
-  const heroItems = useMemo(
-    () =>
-      publishedWorks
-        .filter((w) => w.posterUrl != null)
-        .slice(0, 5)
-        .map((w) => ({
-          posterUrl: w.posterUrl!,
-          title: w.title,
-          slug: w.slug,
-          heroMobileUrl: w.heroMobileUrl,
-          heroDesktopUrl: w.heroDesktopUrl,
-        })),
-    [publishedWorks]
-  );
+  // Admin-selected works hero items take priority; fall back to auto-select from published works.
+  const heroItems = useMemo(() => {
+    if (featuredHeroItems && featuredHeroItems.length > 0) return featuredHeroItems;
+    return publishedWorks
+      .filter((w) => !!(w.posterUrl ?? w.heroMobileUrl ?? w.heroDesktopUrl))
+      .slice(0, 5)
+      .map((w) => ({
+        posterUrl: (w.posterUrl ?? w.heroMobileUrl ?? w.heroDesktopUrl)!,
+        title: w.title,
+        slug: w.slug,
+        heroMobileUrl: w.heroMobileUrl,
+        heroDesktopUrl: w.heroDesktopUrl,
+      }));
+  }, [featuredHeroItems, publishedWorks]);
 
   const visibleTabs = useMemo<Tab[]>(() => {
     const hasUpcoming = works.some((w) => UPCOMING_STATUSES.has(w.status));
