@@ -49,6 +49,21 @@
   line-height: 1.65; margin: 0 0 2rem;
 }
 
+/* ── Works hero image framing ──
+   Override hero-rotator defaults for the Works page backdrop only.
+   Cinematic/widescreen artwork frames better slightly above center.
+   Mobile defaults to center so portrait crops don't look top-heavy. */
+.wc-hero-bg .hr-img,
+.wc-hero-bg .hr-img-native {
+  object-position: center center;
+}
+@media (min-width: 768px) {
+  .wc-hero-bg .hr-img,
+  .wc-hero-bg .hr-img-native {
+    object-position: center 38%;
+  }
+}
+
 /* ── Search — frosted glass ── */
 .wc-search-wrap { position: relative; max-width: 480px; }
 .wc-search-icon {
