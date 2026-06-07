@@ -3,7 +3,7 @@ import { requireAdmin } from '@/lib/auth-guard';
 import { initMultipartUpload, getPublicUrl } from '@/lib/r2Client';
 import { randomUUID } from 'crypto';
 
-const APPROVED_FIELDS = ['posterUrl', 'thumbnailUrl', 'heroMobileUrl', 'heroDesktopUrl', 'trailerUrl', 'previewClipUrl', 'videoUrl', 'teaserUrl', 'masterVideoKey'];
+const APPROVED_FIELDS = ['posterUrl', 'thumbnailUrl', 'heroMobileUrl', 'heroDesktopUrl', 'trailerUrl', 'previewClipUrl', 'videoUrl', 'teaserUrl', 'masterVideoKey', 'masterTrailerKey', 'masterPreviewKey'];
 const ALLOWED_MIME_TYPES: Record<string, string[]> = {
   posterUrl: ['image/jpeg', 'image/png', 'image/webp'],
   thumbnailUrl: ['image/jpeg', 'image/png', 'image/webp'],
@@ -13,7 +13,9 @@ const ALLOWED_MIME_TYPES: Record<string, string[]> = {
   previewClipUrl: ['video/mp4', 'video/webm', 'video/quicktime', 'application/vnd.apple.mpegurl', 'video/mp2t'],
   videoUrl: ['video/mp4', 'video/webm', 'video/quicktime', 'application/vnd.apple.mpegurl', 'video/mp2t'],
   teaserUrl: ['video/mp4', 'video/webm', 'video/quicktime', 'application/vnd.apple.mpegurl', 'video/mp2t'],
-  masterVideoKey: ['video/mp4', 'video/quicktime', 'video/webm'],
+  masterVideoKey:   ['video/mp4', 'video/quicktime', 'video/webm'],
+  masterTrailerKey: ['video/mp4', 'video/quicktime', 'video/webm'],
+  masterPreviewKey: ['video/mp4', 'video/quicktime', 'video/webm'],
 };
 
 function slugify(value: string): string {
@@ -36,7 +38,9 @@ function getFieldCategory(field: string): string {
     previewClipUrl: 'preview',
     videoUrl: 'full-video',
     teaserUrl: 'teaser',
-    masterVideoKey: 'master',
+    masterVideoKey:   'master',
+    masterTrailerKey: 'trailer',
+    masterPreviewKey: 'preview',
   };
   return categories[field] || field;
 }
@@ -78,10 +82,13 @@ export async function POST(req: NextRequest) {
     const timestamp = Date.now();
     const randomId = randomUUID().slice(0, 8);
 
-    // Master video goes to a private path — never exposed publicly
-    const isMasterUpload = targetField === 'masterVideoKey';
+    // Master uploads go to a private path — never exposed publicly
+    const isMasterUpload = ['masterVideoKey', 'masterTrailerKey', 'masterPreviewKey'].includes(targetField);
+    const masterPrefix = targetField === 'masterTrailerKey' ? 'trailer'
+      : targetField === 'masterPreviewKey' ? 'preview'
+      : 'master';
     const r2Key = isMasterUpload
-      ? `private/masters/${slug}/master-${timestamp}-${randomId}${safeExt}`
+      ? `private/masters/${slug}/${masterPrefix}-${timestamp}-${randomId}${safeExt}`
       : `projects/${slug}/${getFieldCategory(targetField)}/${getFieldCategory(targetField)}-${timestamp}-${randomId}${safeExt}`;
 
     const uploadId = await initMultipartUpload(r2Key, contentType);
