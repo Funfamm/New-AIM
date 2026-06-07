@@ -189,7 +189,7 @@
   gap: 1.25rem;
 }
 .wc-grid-item {
-  flex: 0 0 calc(50% - 0.625rem);
+  flex: 0 0 155px;
 }
 @media (min-width: 640px) { .wc-grid-item { flex: 0 0 155px; } }
 @media (min-width: 768px) { .wc-grid-item { flex: 0 0 185px; } }
