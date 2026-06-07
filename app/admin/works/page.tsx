@@ -6,6 +6,7 @@ import "./admin-works.css";
 import { Plus, Pencil, Eye, EyeOff, Heart, Share2 } from "lucide-react";
 import type { Metadata } from "next";
 import type { WorkType, WorkStatus } from "@prisma/client";
+import WorkerStatus from "@/components/admin/worker-status";
 
 export const metadata: Metadata = { title: "Admin — Works" };
 
@@ -72,9 +73,12 @@ export default async function AdminWorksPage() {
     <div className="admin-page">
       <div className="admin-page-header">
         <h1 className="admin-page-title">Works</h1>
-        <Link href="/admin/works/new" className="admin-add-btn">
-          <Plus size={15} /> Add Work
-        </Link>
+        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+          <WorkerStatus />
+          <Link href="/admin/works/new" className="admin-add-btn">
+            <Plus size={15} /> Add Work
+          </Link>
+        </div>
       </div>
 
       <div className="admin-table-wrap">

@@ -11,6 +11,7 @@ function requireEnv(name: string): string {
 
 export const APP_BASE_URL  = requireEnv("APP_BASE_URL").replace(/\/$/, "");
 export const WORKER_SECRET = requireEnv("WORKER_SECRET");
+export const WORKER_PORT   = parseInt(process.env.WORKER_PORT ?? "4242", 10);
 
 export const R2_ACCOUNT_ID       = requireEnv("R2_ACCOUNT_ID");
 export const R2_ACCESS_KEY_ID    = requireEnv("R2_ACCESS_KEY_ID");
