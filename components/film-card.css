@@ -227,6 +227,28 @@
   color: var(--color-brand-accent);
 }
 
+/* ── Touch devices — no hover effects ── */
+@media (hover: none) {
+  .fc:hover {
+    transform: none;
+    box-shadow: none;
+  }
+  .fc:hover .fc-poster { border-color: rgba(255,255,255,0.04); }
+  .fc:hover .fc-play-overlay { opacity: 0; }
+  .fc:hover .fc-play-circle { transform: none; }
+  .fc:hover .fc-type-badge {
+    border-color: transparent;
+    box-shadow:
+      inset 0 0 0 1px rgba(255,255,255,0.04),
+      0 6px 20px rgba(0,0,0,0.38);
+  }
+  .fc:hover .fc-cta {
+    background: transparent;
+    border-color: rgba(232,201,126,0.2);
+    color: rgba(232, 201, 126, 0.85);
+  }
+}
+
 /* ── Reduced motion ── */
 @media (prefers-reduced-motion: reduce) {
   .fc,
