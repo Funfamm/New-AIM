@@ -120,7 +120,9 @@ export default async function HomePage() {
     getPublicContentRows("HOME"),
   ]);
 
-  const featuredWithPosters = featured.filter((w) => w.posterUrl != null);
+  const featuredWithPosters = featured.filter(
+    (w) => !!(w.posterUrl ?? w.heroMobileUrl ?? w.heroDesktopUrl)
+  );
 
   // Pre-compute CTA states for all featured works so the desktop hero can
   // update its buttons in sync with whichever slide the rotator is showing.
@@ -138,7 +140,7 @@ export default async function HomePage() {
       firstEpisodeSlug: firstEpSlug,
     });
     return {
-      posterUrl:      w.posterUrl!,
+      posterUrl:      (w.posterUrl ?? w.heroMobileUrl ?? w.heroDesktopUrl)!,
       title:          w.title,
       slug:           w.slug,
       type:           w.type,
@@ -157,7 +159,7 @@ export default async function HomePage() {
     id: w.id,
     slug: w.slug,
     title: w.title,
-    posterUrl: w.posterUrl!,
+    posterUrl: (w.posterUrl ?? w.heroMobileUrl ?? w.heroDesktopUrl)!,
     heroMobileUrl: w.heroMobileUrl,
     requiresAuth: w.requiresAuth,
     genres: w.genres,
