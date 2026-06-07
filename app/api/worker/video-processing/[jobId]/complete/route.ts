@@ -20,7 +20,7 @@ export async function POST(
 
   const job = await prisma.videoProcessingJob.findUnique({
     where: { id: jobId },
-    select: { workId: true, status: true },
+    select: { workId: true, status: true, targetField: true },
   });
 
   if (!job) {
@@ -34,6 +34,11 @@ export async function POST(
     );
   }
 
+  const workUpdate =
+    job.targetField === "trailerUrl"    ? { trailerUrl: hlsUrl }
+    : job.targetField === "previewClipUrl" ? { previewClipUrl: hlsUrl }
+    : { videoUrl: hlsUrl };
+
   await prisma.$transaction([
     prisma.videoProcessingJob.update({
       where: { id: jobId },
@@ -41,7 +46,7 @@ export async function POST(
     }),
     prisma.work.update({
       where: { id: job.workId },
-      data: { videoUrl: hlsUrl },
+      data: workUpdate,
     }),
   ]);
 

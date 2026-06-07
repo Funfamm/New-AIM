@@ -283,7 +283,9 @@ model Work {
   teaserUrl      String?   // optional second video for commercials
 
   // Autopilot video processing
-  masterVideoKey String?   // private R2 key of the uploaded master source file
+  masterVideoKey    String?  // private R2 key — source for videoUrl HLS
+  masterTrailerKey  String?  // private R2 key — source for trailerUrl HLS
+  masterPreviewKey  String?  // private R2 key — source for previewClipUrl HLS
 
   // Film/series metadata
   year        Int?
@@ -1194,8 +1196,9 @@ model Subscriber {
 model VideoProcessingJob {
   id           String         @id @default(cuid())
   workId       String
-  sourceKey    String         // private R2 key: private/masters/{slug}/master-{timestamp}.mp4
+  sourceKey    String         // private R2 key: private/masters/{slug}/...
   outputPrefix String         // public R2 prefix: works/{slug}/hls/{jobId}
+  targetField  String         @default("videoUrl") // Work field to update: videoUrl | trailerUrl | previewClipUrl
   status       VideoJobStatus @default(PENDING)
   progress     Int            @default(0)
   errorMessage String?

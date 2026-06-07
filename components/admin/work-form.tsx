@@ -31,7 +31,7 @@ type WorkData = {
   posterUrl: string | null; heroMobileUrl: string | null;
   heroDesktopUrl: string | null; thumbnailUrl: string | null;
   videoUrl: string | null; trailerUrl: string | null; previewClipUrl: string | null; teaserUrl: string | null;
-  masterVideoKey: string | null;
+  masterVideoKey: string | null; masterTrailerKey: string | null; masterPreviewKey: string | null;
   year: number | null; duration: number | null; director: string | null; genres: string[];
   clientName: string | null; industry: string | null; projectGoal: string | null;
   deliverables: string | null; caseStudy: string | null; galleryUrls: string[];
@@ -49,7 +49,6 @@ type LatestJob = {
   status: VideoJobStatus;
   progress: number;
   errorMessage: string | null;
-  createdAt: Date;
 };
 
 type Props = {
@@ -66,11 +65,33 @@ type Props = {
   rows: Array<{ id: string; title: string; placement: string }>;
   /** Row IDs already assigned to this work */
   assignedRowIds: string[];
-  /** Latest VideoProcessingJob for this work, if any */
-  latestJob?: LatestJob | null;
+  latestJobVideo?:   LatestJob | null;
+  latestJobTrailer?: LatestJob | null;
+  latestJobPreview?: LatestJob | null;
 };
 
 const CLIENT_TYPES: WorkType[] = ["COMMERCIAL", "BRANDING", "CAMPAIGN", "CASE_STUDY"];
+
+function JobStatusBadge({ job, readyMessage }: { job: LatestJob | null; readyMessage: string }) {
+  if (!job) return null;
+  const bg = job.status === "READY" ? "rgba(34,197,94,0.15)" : job.status === "FAILED" ? "rgba(239,68,68,0.15)" : job.status === "PROCESSING" ? "rgba(234,179,8,0.15)" : job.status === "CANCELLED" ? "rgba(107,114,128,0.15)" : "rgba(99,102,241,0.15)";
+  const color = job.status === "READY" ? "#22c55e" : job.status === "FAILED" ? "#ef4444" : job.status === "PROCESSING" ? "#eab308" : job.status === "CANCELLED" ? "#9ca3af" : "#818cf8";
+  return (
+    <div style={{ marginTop: "0.5rem", fontSize: "0.75rem", fontFamily: "var(--font-body)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+        <span style={{ padding: "0.15rem 0.5rem", borderRadius: 3, fontWeight: 600, background: bg, color }}>{job.status}</span>
+        {job.status === "PROCESSING" && <span style={{ color: "var(--color-brand-muted)" }}>{job.progress}%</span>}
+      </div>
+      <div style={{ marginTop: "0.25rem", color: "var(--color-brand-muted)", lineHeight: 1.5 }}>
+        {job.status === "PENDING"    && "Waiting for video processor. The video will become playable after HLS is generated."}
+        {job.status === "PROCESSING" && "Video is being converted for streaming. Reload this page to check progress."}
+        {job.status === "READY"      && readyMessage}
+        {job.status === "CANCELLED"  && "Job was cancelled."}
+        {job.status === "FAILED"     && (job.errorMessage ?? "Processing failed. Re-upload master to retry.")}
+      </div>
+    </div>
+  );
+}
 
 const GENRES = [
   "Drama", "Action", "Horror", "Thriller", "Documentary",
@@ -78,7 +99,7 @@ const GENRES = [
   "Survival", "Commercial", "Branding", "Campaign",
 ];
 
-export default function WorkForm({ work, workTitle, action, seriesList, error, defaultType, defaultParentId, rows, assignedRowIds, latestJob }: Props) {
+export default function WorkForm({ work, workTitle, action, seriesList, error, defaultType, defaultParentId, rows, assignedRowIds, latestJobVideo, latestJobTrailer, latestJobPreview }: Props) {
   const [type, setType] = useState<WorkType>(work?.type ?? defaultType ?? "SHORT_FILM");
   const [title, setTitle] = useState(work?.title ?? "");
   const [heroMobileUrl, setHeroMobileUrl] = useState(work?.heroMobileUrl ?? "");
@@ -89,7 +110,9 @@ export default function WorkForm({ work, workTitle, action, seriesList, error, d
   const [previewClipUrl, setPreviewClipUrl] = useState(work?.previewClipUrl ?? "");
   const [videoUrl, setVideoUrl] = useState(work?.videoUrl ?? "");
   const [teaserUrl, setTeaserUrl] = useState(work?.teaserUrl ?? "");
-  const [masterVideoKey, setMasterVideoKey] = useState(work?.masterVideoKey ?? "");
+  const [masterVideoKey,   setMasterVideoKey]   = useState(work?.masterVideoKey   ?? "");
+  const [masterTrailerKey, setMasterTrailerKey] = useState(work?.masterTrailerKey ?? "");
+  const [masterPreviewKey, setMasterPreviewKey] = useState(work?.masterPreviewKey ?? "");
 
   const showFilmMeta      = ["SHORT_FILM", "FULL_FILM", "SERIES", "TRAILER"].includes(type);
   const showDuration      = !["SERIES", ...CLIENT_TYPES].includes(type);
@@ -393,6 +416,29 @@ export default function WorkForm({ work, workTitle, action, seriesList, error, d
           </div>
         )}
 
+        {/* Master Trailer Source */}
+        {showTrailerUrl && (
+          <div className="form-group">
+            <label className="form-label">Master Trailer Source</label>
+            <input type="hidden" name="masterTrailerKey" value={masterTrailerKey} />
+            {masterTrailerKey && (
+              <div style={{ marginBottom: "0.5rem", fontSize: "0.75rem", color: "var(--color-brand-muted)", fontFamily: "var(--font-body)", wordBreak: "break-all" }}>
+                Stored: <code style={{ color: "var(--color-brand-light)" }}>{masterTrailerKey}</code>
+              </div>
+            )}
+            <R2FileUpload
+              targetField="masterTrailerKey"
+              projectTitle={title || "untitled"}
+              projectSlug={work?.slug}
+              onSuccess={setMasterTrailerKey}
+              accept="video/mp4,video/quicktime,video/webm"
+              returnKey
+            />
+            <JobStatusBadge job={latestJobTrailer ?? null} readyMessage="Streaming version is ready. Trailer URL has been filled automatically." />
+            <span className="form-hint">Private source for HLS trailer processing. Not shown publicly.</span>
+          </div>
+        )}
+
         {/* Preview Clip URL */}
         {showTrailerUrl && (
           <div className="form-group">
@@ -410,6 +456,29 @@ export default function WorkForm({ work, workTitle, action, seriesList, error, d
               />
             </div>
             <span className="form-hint">Short preview/sample shown only if trailer is unavailable.</span>
+          </div>
+        )}
+
+        {/* Master Preview Source */}
+        {showTrailerUrl && (
+          <div className="form-group">
+            <label className="form-label">Master Preview Source</label>
+            <input type="hidden" name="masterPreviewKey" value={masterPreviewKey} />
+            {masterPreviewKey && (
+              <div style={{ marginBottom: "0.5rem", fontSize: "0.75rem", color: "var(--color-brand-muted)", fontFamily: "var(--font-body)", wordBreak: "break-all" }}>
+                Stored: <code style={{ color: "var(--color-brand-light)" }}>{masterPreviewKey}</code>
+              </div>
+            )}
+            <R2FileUpload
+              targetField="masterPreviewKey"
+              projectTitle={title || "untitled"}
+              projectSlug={work?.slug}
+              onSuccess={setMasterPreviewKey}
+              accept="video/mp4,video/quicktime,video/webm"
+              returnKey
+            />
+            <JobStatusBadge job={latestJobPreview ?? null} readyMessage="Streaming version is ready. Preview Clip URL has been filled automatically." />
+            <span className="form-hint">Private source for HLS preview processing. Not shown publicly.</span>
           </div>
         )}
 
@@ -433,16 +502,16 @@ export default function WorkForm({ work, workTitle, action, seriesList, error, d
           </div>
         )}
 
-        {/* Master Video Source — private upload for background HLS processing */}
+        {/* Master Video Source */}
         {showVideoUrl && (
           <div className="form-group">
             <label className="form-label">Master Video Source</label>
             <input type="hidden" name="masterVideoKey" value={masterVideoKey} />
-            {masterVideoKey ? (
+            {masterVideoKey && (
               <div style={{ marginBottom: "0.5rem", fontSize: "0.75rem", color: "var(--color-brand-muted)", fontFamily: "var(--font-body)", wordBreak: "break-all" }}>
                 Stored: <code style={{ color: "var(--color-brand-light)" }}>{masterVideoKey}</code>
               </div>
-            ) : null}
+            )}
             <R2FileUpload
               targetField="masterVideoKey"
               projectTitle={title || "untitled"}
@@ -451,41 +520,7 @@ export default function WorkForm({ work, workTitle, action, seriesList, error, d
               accept="video/mp4,video/quicktime,video/webm"
               returnKey
             />
-            {latestJob && (
-              <div style={{ marginTop: "0.5rem", fontSize: "0.75rem", fontFamily: "var(--font-body)" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                  <span style={{
-                    padding: "0.15rem 0.5rem",
-                    borderRadius: 3,
-                    fontWeight: 600,
-                    background:
-                      latestJob.status === "READY"      ? "rgba(34,197,94,0.15)"  :
-                      latestJob.status === "FAILED"     ? "rgba(239,68,68,0.15)"  :
-                      latestJob.status === "PROCESSING" ? "rgba(234,179,8,0.15)"  :
-                      latestJob.status === "CANCELLED"  ? "rgba(107,114,128,0.15)":
-                      "rgba(99,102,241,0.15)",
-                    color:
-                      latestJob.status === "READY"      ? "#22c55e" :
-                      latestJob.status === "FAILED"     ? "#ef4444" :
-                      latestJob.status === "PROCESSING" ? "#eab308" :
-                      latestJob.status === "CANCELLED"  ? "#9ca3af" :
-                      "#818cf8",
-                  }}>
-                    {latestJob.status}
-                  </span>
-                  {latestJob.status === "PROCESSING" && (
-                    <span style={{ color: "var(--color-brand-muted)" }}>{latestJob.progress}%</span>
-                  )}
-                </div>
-                <div style={{ marginTop: "0.25rem", color: "var(--color-brand-muted)", lineHeight: 1.5 }}>
-                  {latestJob.status === "PENDING"    && "Waiting for video processor. The movie will become playable after HLS is generated."}
-                  {latestJob.status === "PROCESSING" && "Video is being converted for streaming. Reload this page to check progress."}
-                  {latestJob.status === "READY"      && "Streaming version is ready. Main Video URL has been filled automatically."}
-                  {latestJob.status === "CANCELLED"  && "Job was cancelled."}
-                  {latestJob.status === "FAILED"     && (latestJob.errorMessage ?? "Processing failed. Re-upload master to retry.")}
-                </div>
-              </div>
-            )}
+            <JobStatusBadge job={latestJobVideo ?? null} readyMessage="Streaming version is ready. Main Video URL has been filled automatically." />
             <span className="form-hint">Private source file for background HLS processing. This file is not shown publicly.</span>
           </div>
         )}

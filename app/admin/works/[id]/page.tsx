@@ -8,7 +8,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { BellRing } from "lucide-react";
 import type { Metadata } from "next";
-import type { WorkType } from "@prisma/client";
+import type { WorkType, VideoJobStatus } from "@prisma/client";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -34,7 +34,7 @@ export default async function AdminWorkFormPage({ params, searchParams }: Props)
   const isNew = id === "new";
 
   // Fetch the work being edited (if any), the full series list, lean CTA id, and custom rows in parallel
-  const [work, seriesList, ctaRow, allRows, assignedItems, latestJob] = await Promise.all([
+  const [work, seriesList, ctaRow, allRows, assignedItems, allJobs] = await Promise.all([
     isNew
       ? Promise.resolve(null)
       : prisma.work.findUnique({ where: { id } }),
@@ -61,13 +61,17 @@ export default async function AdminWorkFormPage({ params, searchParams }: Props)
           select: { rowId: true },
         }),
     isNew
-      ? Promise.resolve(null)
-      : prisma.videoProcessingJob.findFirst({
+      ? Promise.resolve([] as { id: string; status: VideoJobStatus; progress: number; errorMessage: string | null; targetField: string }[])
+      : prisma.videoProcessingJob.findMany({
           where: { workId: id },
-          select: { id: true, status: true, progress: true, errorMessage: true, createdAt: true },
+          select: { id: true, status: true, progress: true, errorMessage: true, targetField: true },
           orderBy: { createdAt: "desc" },
         }),
   ]);
+
+  const latestJobVideo   = allJobs.find((j) => j.targetField === "videoUrl")       ?? null;
+  const latestJobTrailer = allJobs.find((j) => j.targetField === "trailerUrl")      ?? null;
+  const latestJobPreview = allJobs.find((j) => j.targetField === "previewClipUrl")  ?? null;
 
   const assignedRowIds = assignedItems.map((item) => item.rowId);
 
@@ -107,7 +111,9 @@ export default async function AdminWorkFormPage({ params, searchParams }: Props)
         defaultParentId={defaultParentId}
         rows={allRows}
         assignedRowIds={assignedRowIds}
-        latestJob={latestJob}
+        latestJobVideo={latestJobVideo}
+        latestJobTrailer={latestJobTrailer}
+        latestJobPreview={latestJobPreview}
       />
 
       {/* Episodes panel — only rendered when editing a Series */}

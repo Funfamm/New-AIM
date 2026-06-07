@@ -6,24 +6,26 @@ import { requireAdmin } from "@/lib/auth-guard";
 /**
  * Creates a PENDING VideoProcessingJob for a given work + master source key.
  * Safe to call on every save — silently skips if an active or completed job
- * already exists for the same sourceKey.
+ * already exists for the same sourceKey + targetField combination.
  *
- * Call only from admin server actions (createWork / updateWork).
+ * targetField controls which Work field the complete endpoint writes to:
+ *   "videoUrl" (default) | "trailerUrl" | "previewClipUrl"
  */
 export async function ensureVideoProcessingJob(
   workId: string,
   sourceKey: string,
   slug: string,
+  targetField = "videoUrl",
 ): Promise<void> {
   await requireAdmin();
 
   if (!workId || !sourceKey || !slug) return;
 
-  // Skip if a job already exists for this exact source key with an active/done status
   const existing = await prisma.videoProcessingJob.findFirst({
     where: {
       workId,
       sourceKey,
+      targetField,
       status: { in: ["PENDING", "PROCESSING", "READY"] },
     },
     select: { id: true },
@@ -31,12 +33,12 @@ export async function ensureVideoProcessingJob(
 
   if (existing) return;
 
-  // Create job, then immediately set outputPrefix using the generated jobId
   await prisma.$transaction(async (tx) => {
     const job = await tx.videoProcessingJob.create({
       data: {
         workId,
         sourceKey,
+        targetField,
         outputPrefix: "",
       },
     });
