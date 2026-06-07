@@ -26,7 +26,7 @@ async function getHomeWorks() {
   const [featured, newReleases] = await Promise.all([
     // Featured: include first-episode slug so "Watch Series" CTA works on hero
     prisma.work.findMany({
-      where: { status: HOME_STATUSES, showOnHome: true, featured: true, type: { not: "EPISODE" } },
+      where: { status: HOME_STATUSES, featuredOnHome: true, type: { not: "EPISODE" } },
       orderBy: { order: "asc" },
       take: 6,
       select: {

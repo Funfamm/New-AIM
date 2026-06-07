@@ -307,6 +307,8 @@ model Work {
   requiresLoginToViewTrailer Boolean @default(false)
   featured        Boolean  @default(false)
   showOnHome      Boolean  @default(false)
+  featuredOnHome  Boolean  @default(false)
+  featuredOnWorks Boolean  @default(false)
   commentsEnabled Boolean  @default(true)
   order           Int      @default(0)
 
