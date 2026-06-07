@@ -28,7 +28,6 @@ async function getHomeWorks() {
     prisma.work.findMany({
       where: { status: HOME_STATUSES, featuredOnHome: true, type: { not: "EPISODE" } },
       orderBy: { order: "asc" },
-      take: 6,
       select: {
         ...HOME_SELECT,
         episodes: {
@@ -121,7 +120,7 @@ export default async function HomePage() {
     getPublicContentRows("HOME"),
   ]);
 
-  const featuredWithPosters = featured.filter((w) => w.posterUrl != null).slice(0, 5);
+  const featuredWithPosters = featured.filter((w) => w.posterUrl != null);
 
   // Pre-compute CTA states for all featured works so the desktop hero can
   // update its buttons in sync with whichever slide the rotator is showing.

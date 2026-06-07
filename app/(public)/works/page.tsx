@@ -30,7 +30,6 @@ async function getWorksHero() {
   return prisma.work.findMany({
     where: { status: HERO_STATUSES, featuredOnWorks: true, type: { not: "EPISODE" } },
     orderBy: { order: "asc" },
-    take: 5,
     select: {
       ...WORKS_HERO_SELECT,
       episodes: {
@@ -71,7 +70,7 @@ export default async function WorksPage({ searchParams }: Props) {
   const userId     = session?.user?.id ?? null;
   const isLoggedIn = !!userId;
 
-  const heroWithPosters = heroWorks.filter((w) => w.posterUrl != null).slice(0, 5);
+  const heroWithPosters = heroWorks.filter((w) => w.posterUrl != null);
 
   const heroDesktopItems = heroWithPosters.map((w) => {
     const firstEpSlug = w.episodes?.[0]?.slug ?? null;
