@@ -47,6 +47,8 @@ function parseFormData(formData: FormData) {
     requiresLoginToViewTrailer: formData.getAll("requiresLoginToViewTrailer").includes("true"),
     featured:         formData.getAll("featured").includes("true"),
     showOnHome:       formData.getAll("showOnHome").includes("true"),
+    featuredOnHome:   formData.getAll("featuredOnHome").includes("true"),
+    featuredOnWorks:  formData.getAll("featuredOnWorks").includes("true"),
     commentsEnabled:  formData.getAll("commentsEnabled").includes("true"),
     order:            formData.get("order") ? Number(formData.get("order")) : 0,
     parentId:     (formData.get("parentId") as string) || null,

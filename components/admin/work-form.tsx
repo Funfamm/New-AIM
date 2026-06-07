@@ -38,7 +38,9 @@ type WorkData = {
   clientName: string | null; industry: string | null; projectGoal: string | null;
   deliverables: string | null; caseStudy: string | null; galleryUrls: string[];
   requiresAuth: boolean; requiresLoginToViewTrailer: boolean;
-  featured: boolean; showOnHome: boolean; commentsEnabled: boolean; order: number;
+  featured: boolean; showOnHome: boolean;
+  featuredOnHome: boolean; featuredOnWorks: boolean;
+  commentsEnabled: boolean; order: number;
   parentId: string | null; episodeNumber: number | null; seasonNumber: number | null;
   introStart: number | null; introEnd: number | null; creditsStart: number | null;
   contentRating: string | null; contentDescriptors: string[];
@@ -585,18 +587,31 @@ export default function WorkForm({ work, workId, workTitle, action, seriesList, 
         {!isEpisode && (
           <>
             <div className="form-divider" />
+            <div className="form-section-title">Display &amp; Featuring</div>
             <div className="form-row form-row--checks">
               <label className="form-check">
-                <input type="hidden" name="featured" value="false" />
-                <input type="checkbox" name="featured" value="true"
-                  defaultChecked={work?.featured ?? false} />
-                <span>Featured</span>
+                <input type="hidden" name="featuredOnHome" value="false" />
+                <input type="checkbox" name="featuredOnHome" value="true"
+                  defaultChecked={work?.featuredOnHome ?? false} />
+                <span>Feature on Home hero</span>
+              </label>
+              <label className="form-check">
+                <input type="hidden" name="featuredOnWorks" value="false" />
+                <input type="checkbox" name="featuredOnWorks" value="true"
+                  defaultChecked={work?.featuredOnWorks ?? false} />
+                <span>Feature on Works hero</span>
               </label>
               <label className="form-check">
                 <input type="hidden" name="showOnHome" value="false" />
                 <input type="checkbox" name="showOnHome" value="true"
                   defaultChecked={work?.showOnHome ?? false} />
-                <span>Show on Home page</span>
+                <span>Show in Home rails</span>
+              </label>
+              <label className="form-check">
+                <input type="hidden" name="featured" value="false" />
+                <input type="checkbox" name="featured" value="true"
+                  defaultChecked={work?.featured ?? false} />
+                <span>Featured</span>
               </label>
               <label className="form-check">
                 <input type="hidden" name="commentsEnabled" value="false" />
