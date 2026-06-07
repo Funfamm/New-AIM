@@ -83,7 +83,7 @@ async function getWork(slug: string) {
     select: {
       id: true, slug: true, title: true, type: true, status: true, commentsEnabled: true,
       description: true, posterUrl: true, heroMobileUrl: true, heroDesktopUrl: true,
-      trailerUrl: true, videoUrl: true,
+      trailerUrl: true, videoUrl: true, previewClipUrl: true,
       year: true, duration: true, genre: true, genres: true, director: true,
       requiresAuth: true, requiresLoginToViewTrailer: true,
       cast: {
@@ -304,6 +304,7 @@ export default async function WorkDetailPage({ params }: Props) {
                     type: work.type,
                     trailerUrl: work.trailerUrl,
                     videoUrl: work.videoUrl,
+                    previewClipUrl: work.previewClipUrl ?? undefined,
                     requiresAuth: work.requiresAuth,
                     requiresLoginToViewTrailer: work.requiresLoginToViewTrailer ?? undefined,
                     isGuest: isGuest,

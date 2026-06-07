@@ -15,6 +15,7 @@ const HOME_SELECT = {
   heroMobileUrl: true, heroDesktopUrl: true,
   genre: true, genres: true, requiresAuth: true, type: true,
   trailerUrl: true, requiresLoginToViewTrailer: true, videoUrl: true,
+  previewClipUrl: true,
 } as const;
 
 import type { WorkStatus } from "@prisma/client";
@@ -131,6 +132,7 @@ export default async function HomePage() {
       type: w.type,
       trailerUrl: w.trailerUrl,
       videoUrl: w.videoUrl,
+      previewClipUrl: w.previewClipUrl ?? null,
       requiresAuth: w.requiresAuth,
       requiresLoginToViewTrailer: w.requiresLoginToViewTrailer,
       isGuest: !userId,
@@ -164,6 +166,7 @@ export default async function HomePage() {
     trailerUrl: w.trailerUrl ?? null,
     requiresLoginToViewTrailer: w.requiresLoginToViewTrailer,
     videoUrl: w.videoUrl ?? null,
+    previewClipUrl: w.previewClipUrl ?? null,
   }));
 
   const isEmpty = featured.length === 0 && newReleases.length === 0;

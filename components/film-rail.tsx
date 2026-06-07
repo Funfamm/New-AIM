@@ -18,6 +18,7 @@ export type RailFilm = {
   status?: string;
   videoUrl?: string | null;
   trailerUrl?: string | null;
+  previewClipUrl?: string | null;
   watchHref?: string;
 };
 
