@@ -452,32 +452,38 @@ export default function WorkForm({ work, workTitle, action, seriesList, error, d
               returnKey
             />
             {latestJob && (
-              <div style={{ marginTop: "0.5rem", display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.75rem", fontFamily: "var(--font-body)" }}>
-                <span style={{
-                  padding: "0.15rem 0.5rem",
-                  borderRadius: 3,
-                  fontWeight: 600,
-                  background:
-                    latestJob.status === "READY"      ? "rgba(34,197,94,0.15)"  :
-                    latestJob.status === "FAILED"     ? "rgba(239,68,68,0.15)"  :
-                    latestJob.status === "PROCESSING" ? "rgba(234,179,8,0.15)"  :
-                    latestJob.status === "CANCELLED"  ? "rgba(107,114,128,0.15)":
-                    "rgba(99,102,241,0.15)",
-                  color:
-                    latestJob.status === "READY"      ? "#22c55e" :
-                    latestJob.status === "FAILED"     ? "#ef4444" :
-                    latestJob.status === "PROCESSING" ? "#eab308" :
-                    latestJob.status === "CANCELLED"  ? "#9ca3af" :
-                    "#818cf8",
-                }}>
-                  {latestJob.status}
-                </span>
-                {latestJob.status === "PROCESSING" && (
-                  <span style={{ color: "var(--color-brand-muted)" }}>{latestJob.progress}%</span>
-                )}
-                {latestJob.status === "FAILED" && latestJob.errorMessage && (
-                  <span style={{ color: "#ef4444" }}>{latestJob.errorMessage}</span>
-                )}
+              <div style={{ marginTop: "0.5rem", fontSize: "0.75rem", fontFamily: "var(--font-body)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  <span style={{
+                    padding: "0.15rem 0.5rem",
+                    borderRadius: 3,
+                    fontWeight: 600,
+                    background:
+                      latestJob.status === "READY"      ? "rgba(34,197,94,0.15)"  :
+                      latestJob.status === "FAILED"     ? "rgba(239,68,68,0.15)"  :
+                      latestJob.status === "PROCESSING" ? "rgba(234,179,8,0.15)"  :
+                      latestJob.status === "CANCELLED"  ? "rgba(107,114,128,0.15)":
+                      "rgba(99,102,241,0.15)",
+                    color:
+                      latestJob.status === "READY"      ? "#22c55e" :
+                      latestJob.status === "FAILED"     ? "#ef4444" :
+                      latestJob.status === "PROCESSING" ? "#eab308" :
+                      latestJob.status === "CANCELLED"  ? "#9ca3af" :
+                      "#818cf8",
+                  }}>
+                    {latestJob.status}
+                  </span>
+                  {latestJob.status === "PROCESSING" && (
+                    <span style={{ color: "var(--color-brand-muted)" }}>{latestJob.progress}%</span>
+                  )}
+                </div>
+                <div style={{ marginTop: "0.25rem", color: "var(--color-brand-muted)", lineHeight: 1.5 }}>
+                  {latestJob.status === "PENDING"    && "Waiting for video processor. The movie will become playable after HLS is generated."}
+                  {latestJob.status === "PROCESSING" && "Video is being converted for streaming. Reload this page to check progress."}
+                  {latestJob.status === "READY"      && "Streaming version is ready. Main Video URL has been filled automatically."}
+                  {latestJob.status === "CANCELLED"  && "Job was cancelled."}
+                  {latestJob.status === "FAILED"     && (latestJob.errorMessage ?? "Processing failed. Re-upload master to retry.")}
+                </div>
               </div>
             )}
             <span className="form-hint">Private source file for background HLS processing. This file is not shown publicly.</span>
