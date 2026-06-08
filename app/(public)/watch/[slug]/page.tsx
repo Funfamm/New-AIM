@@ -202,19 +202,10 @@ export default async function WatchPage({ params, searchParams }: Props) {
     ? await getWatchProgress(work.id)
     : 0;
 
-  // Determine media type for mask lookup
-  const maskMediaType = isPreviewVisit ? "preview" : wantFull ? "full" : "trailer";
-
-  const [isSaved, { isLiked, likeCount }, publishedSubs, maskSetting] = await Promise.all([
+  const [isSaved, { isLiked, likeCount }, publishedSubs] = await Promise.all([
     session?.user ? isWorkSaved(work.id) : Promise.resolve(false),
     getWorkLikeState(work.id),
     !isEmbed ? listPublishedSubtitles(work.id) : Promise.resolve([]),
-    !isEmbed
-      ? prisma.workVideoDisplaySetting.findUnique({
-          where: { workId_mediaType: { workId: work.id, mediaType: maskMediaType } },
-          select: { filmstripMaskEnabled: true, filmstripMaskHeight: true, filmstripMaskOpacity: true },
-        })
-      : Promise.resolve(null),
   ]);
 
   // Build subtitle track list for the player (<track> elements)
@@ -379,11 +370,6 @@ export default async function WatchPage({ params, searchParams }: Props) {
                   clipEndParam={clipEndParam}
                   isClipMode={isClipMode}
                   subtitleTracks={subtitleTracks.length > 0 ? subtitleTracks : undefined}
-                  filmstripMask={maskSetting?.filmstripMaskEnabled ? {
-                    enabled: maskSetting.filmstripMaskEnabled,
-                    height: maskSetting.filmstripMaskHeight,
-                    opacity: maskSetting.filmstripMaskOpacity,
-                  } : undefined}
                 />
               ) : isEmbed && embedUrl ? (
                 <iframe
