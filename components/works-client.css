@@ -34,7 +34,7 @@
   padding: 0.25rem 0.65rem;
   background: rgba(232,201,126,0.06);
   border: 1px solid rgba(232,201,126,0.15);
-  border-radius: var(--radius-pill);
+  border-radius: 999px;
 }
 .wc-title {
   font-family: var(--font-display);
@@ -167,12 +167,14 @@
   display: inline-block;
   font-family: var(--font-body); font-size: 0.5625rem; font-weight: 700;
   letter-spacing: 0.14em; text-transform: uppercase;
-  color: var(--color-brand-accent);
+  color: rgba(245, 213, 137, 0.8);
   margin-bottom: 0.5rem;
-  padding: 0.2rem 0.5rem;
-  background: rgba(232,201,126,0.06);
+  padding: 0.2rem 0.55rem;
+  background: rgba(232,201,126,0.05);
   border: 1px solid rgba(232,201,126,0.12);
-  border-radius: var(--radius-pill);
+  border-radius: 999px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
 .wc-rail-title {
   font-family: var(--font-display);
