@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { createPortal } from "react-dom";
-import { X, RefreshCw } from "lucide-react";
-import { SUBTITLE_TARGET_LANGS, LANGUAGE_NAMES } from "@/lib/subtitles/subtitle-languages";
+import { X, RefreshCw, Eye, EyeOff } from "lucide-react";
+import { getTargetLangs, getLangName, LANGUAGE_NAMES } from "@/lib/subtitles/subtitle-languages";
 import type { SubtitleCue } from "./subtitle-editor";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -110,25 +110,65 @@ function getJobError(lang: string, subtitle: SubtitleRow): string | null {
   return relevant[0].error ?? "Unknown error";
 }
 
+function fmtTime(sec: number): string {
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = sec % 60;
+  const ms = Math.round((s % 1) * 1000);
+  const base = `${String(m).padStart(2, "0")}:${String(Math.floor(s)).padStart(2, "0")}.${String(ms).padStart(3, "0")}`;
+  return h > 0 ? `${h}:${base}` : base;
+}
+
+// ── CueViewer ─────────────────────────────────────────────────────────────────
+
+function CueViewer({ cues, langName }: { cues: SubtitleCue[]; langName: string }) {
+  if (cues.length === 0) {
+    return <div className="srm-cue-empty">No cues available for {langName}.</div>;
+  }
+  return (
+    <div className="srm-cue-list">
+      {cues.map((c, i) => (
+        <div key={i} className="srm-cue-row">
+          <span className="srm-cue-num">{i + 1}</span>
+          <span className="srm-cue-time">{fmtTime(c.start)} → {fmtTime(c.end)}</span>
+          <span className="srm-cue-text">{c.text}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function SubtitleReviewModal({ subtitle, onClose, onTranslate }: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [retrying, setRetrying] = useState<Set<string>>(new Set());
   const [globalRetrying, setGlobalRetrying] = useState(false);
+  const [viewingLang, setViewingLang] = useState<string | null>(null);
 
   const sourceSegments = subtitle.segmentsJson ?? [];
   const isApproved = subtitle.status === "approved_source";
 
+  // Dynamic target languages based on actual source language
+  const targetLangs = getTargetLangs(subtitle.sourceLanguage);
+
   // Per-language statuses
   const langStatuses = Object.fromEntries(
-    SUBTITLE_TARGET_LANGS.map((l) => [l, getLangStatus(l, subtitle)])
+    targetLangs.map((l) => [l, getLangStatus(l, subtitle)])
   ) as Record<string, LangStatus>;
 
   const availableCount = Object.values(langStatuses).filter((s) => s === "available").length;
-  const failedLangs = SUBTITLE_TARGET_LANGS.filter((l) => langStatuses[l] === "failed");
-  const missingLangs = SUBTITLE_TARGET_LANGS.filter((l) => langStatuses[l] === "missing");
-  const pendingLangs = SUBTITLE_TARGET_LANGS.filter((l) => langStatuses[l] === "pending" || langStatuses[l] === "processing");
+  const failedLangs = targetLangs.filter((l) => langStatuses[l] === "failed");
+  const missingLangs = targetLangs.filter((l) => langStatuses[l] === "missing");
+  const pendingLangs = targetLangs.filter((l) => langStatuses[l] === "pending" || langStatuses[l] === "processing");
+
+  // Source language display
+  const sourceLangName =
+    subtitle.sourceLanguage === "mixed"
+      ? "Original / Mixed"
+      : subtitle.sourceLanguage === "auto" || !subtitle.sourceLanguage
+        ? (subtitle.label || "Source")
+        : (LANGUAGE_NAMES[subtitle.sourceLanguage] ?? subtitle.sourceLanguage.toUpperCase());
 
   function toggleLang(lang: string) {
     setSelected((prev) => {
@@ -140,7 +180,7 @@ export default function SubtitleReviewModal({ subtitle, onClose, onTranslate }: 
   }
 
   function selectAll() {
-    setSelected(new Set(SUBTITLE_TARGET_LANGS));
+    setSelected(new Set(targetLangs));
   }
 
   function selectMissing() {
@@ -149,6 +189,16 @@ export default function SubtitleReviewModal({ subtitle, onClose, onTranslate }: 
 
   function clearAll() {
     setSelected(new Set());
+  }
+
+  function toggleView(lang: string) {
+    setViewingLang((prev) => (prev === lang ? null : lang));
+  }
+
+  function getCuesForLang(lang: string): SubtitleCue[] {
+    if (lang === "__source__") return sourceSegments;
+    const translations = subtitle.translationsJson ?? {};
+    return translations[lang] ?? [];
   }
 
   async function retryLang(lang: string) {
@@ -202,7 +252,7 @@ export default function SubtitleReviewModal({ subtitle, onClose, onTranslate }: 
           <div className="srm-source-grid">
             <div className="srm-source-cell">
               <div className="srm-cell-label">Source Language</div>
-              <div className="srm-cell-val">{LANGUAGE_NAMES[subtitle.sourceLanguage] ?? subtitle.sourceLanguage}</div>
+              <div className="srm-cell-val">{sourceLangName}</div>
             </div>
             <div className="srm-source-cell">
               <div className="srm-cell-label">Segments</div>
@@ -210,7 +260,7 @@ export default function SubtitleReviewModal({ subtitle, onClose, onTranslate }: 
             </div>
             <div className="srm-source-cell">
               <div className="srm-cell-label">Translations</div>
-              <div className="srm-cell-val">{availableCount} / {SUBTITLE_TARGET_LANGS.length}</div>
+              <div className="srm-cell-val">{availableCount} / {targetLangs.length}</div>
             </div>
             <div className="srm-source-cell">
               <div className="srm-cell-label">Media</div>
@@ -239,76 +289,110 @@ export default function SubtitleReviewModal({ subtitle, onClose, onTranslate }: 
           </div>
 
           <div className="srm-lang-grid">
-            {/* English source row */}
+            {/* Source row — dynamic language */}
             <div className="srm-lang-row srm-lang-row--source">
               <div className="srm-lang-name">
-                <span className="srm-lang-flag">🇬🇧</span>
-                English (source)
+                <span className="srm-lang-code">{(subtitle.sourceLanguage === "mixed" || subtitle.sourceLanguage === "auto") ? "—" : (subtitle.sourceLanguage ?? "—").toUpperCase()}</span>
+                <span className="srm-lang-label">{sourceLangName} <span className="srm-source-tag">(source)</span></span>
               </div>
               <div className="srm-lang-status srm-lang--available">
                 <span className="srm-status-icon">✓</span>
                 <span className="srm-status-label">{sourceSegments.length} segs</span>
               </div>
-              <div className="srm-lang-actions" />
+              <div className="srm-lang-actions">
+                <button
+                  className="srm-view-btn"
+                  onClick={() => toggleView("__source__")}
+                  title={viewingLang === "__source__" ? "Hide source cues" : "View source cues"}
+                >
+                  {viewingLang === "__source__" ? <EyeOff size={10} /> : <Eye size={10} />}
+                  {viewingLang === "__source__" ? "Hide" : "View"}
+                </button>
+              </div>
             </div>
 
-            {SUBTITLE_TARGET_LANGS.map((lang) => {
+            {/* Source cue viewer */}
+            {viewingLang === "__source__" && (
+              <div className="srm-cue-panel">
+                <CueViewer cues={sourceSegments} langName={sourceLangName} />
+              </div>
+            )}
+
+            {/* Translation rows */}
+            {targetLangs.map((lang) => {
               const st = langStatuses[lang];
               const progress = getJobProgress(lang, subtitle);
               const err = getJobError(lang, subtitle);
               const isRetrying = retrying.has(lang);
               const isSelected = selected.has(lang);
+              const hasTranslation = st === "available";
 
               return (
-                <div
-                  key={lang}
-                  className={`srm-lang-row ${isSelected ? "srm-lang-row--selected" : ""}`}
-                  onClick={() => isApproved && toggleLang(lang)}
-                  style={{ cursor: isApproved ? "pointer" : "default" }}
-                >
-                  <div className="srm-lang-name">
-                    <input
-                      type="checkbox"
-                      className="srm-lang-check"
-                      checked={isSelected}
-                      disabled={!isApproved}
-                      onChange={() => toggleLang(lang)}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                    <span className="srm-lang-code">{lang.toUpperCase()}</span>
-                    <span className="srm-lang-label">{LANGUAGE_NAMES[lang]}</span>
-                  </div>
+                <>
+                  <div
+                    key={lang}
+                    className={`srm-lang-row ${isSelected ? "srm-lang-row--selected" : ""}`}
+                    onClick={() => isApproved && toggleLang(lang)}
+                    style={{ cursor: isApproved ? "pointer" : "default" }}
+                  >
+                    <div className="srm-lang-name">
+                      <input
+                        type="checkbox"
+                        className="srm-lang-check"
+                        checked={isSelected}
+                        disabled={!isApproved}
+                        onChange={() => toggleLang(lang)}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <span className="srm-lang-code">{lang.toUpperCase()}</span>
+                      <span className="srm-lang-label">{getLangName(lang)}</span>
+                    </div>
 
-                  <div className={`srm-lang-status ${getStatusClass(st)}`}>
-                    <span className="srm-status-icon">{getStatusIcon(st)}</span>
-                    <span className="srm-status-label">
-                      {st === "processing" && progress !== null ? `${progress}%` : st}
-                    </span>
-                    {st === "processing" && progress !== null && (
-                      <div className="srm-progress-bar">
-                        <div className="srm-progress-fill" style={{ width: `${progress}%` }} />
-                      </div>
-                    )}
-                  </div>
+                    <div className={`srm-lang-status ${getStatusClass(st)}`}>
+                      <span className="srm-status-icon">{getStatusIcon(st)}</span>
+                      <span className="srm-status-label">
+                        {st === "processing" && progress !== null ? `${progress}%` : st}
+                      </span>
+                      {st === "processing" && progress !== null && (
+                        <div className="srm-progress-bar">
+                          <div className="srm-progress-fill" style={{ width: `${progress}%` }} />
+                        </div>
+                      )}
+                    </div>
 
-                  <div className="srm-lang-actions">
-                    {st === "failed" && (
-                      <>
-                        {err && <span className="srm-err-msg" title={err}>!</span>}
+                    <div className="srm-lang-actions">
+                      {st === "failed" && (
+                        <>
+                          {err && <span className="srm-err-msg" title={err}>!</span>}
+                          <button
+                            className="srm-retry-btn"
+                            disabled={isRetrying}
+                            onClick={(e) => { e.stopPropagation(); retryLang(lang); }}
+                          >
+                            <RefreshCw size={10} /> {isRetrying ? "…" : "Retry"}
+                          </button>
+                        </>
+                      )}
+                      {hasTranslation && (
                         <button
-                          className="srm-retry-btn"
-                          disabled={isRetrying}
-                          onClick={(e) => { e.stopPropagation(); retryLang(lang); }}
+                          className="srm-view-btn"
+                          onClick={(e) => { e.stopPropagation(); toggleView(lang); }}
+                          title={viewingLang === lang ? "Hide cues" : "View translated cues"}
                         >
-                          <RefreshCw size={10} /> {isRetrying ? "…" : "Retry"}
+                          {viewingLang === lang ? <EyeOff size={10} /> : <Eye size={10} />}
+                          {viewingLang === lang ? "Hide" : "View"}
                         </button>
-                      </>
-                    )}
-                    {st === "available" && (
-                      <span className="srm-vtt-link">VTT ✓</span>
-                    )}
+                      )}
+                    </div>
                   </div>
-                </div>
+
+                  {/* Translation cue viewer */}
+                  {viewingLang === lang && hasTranslation && (
+                    <div key={`${lang}-viewer`} className="srm-cue-panel">
+                      <CueViewer cues={getCuesForLang(lang)} langName={getLangName(lang)} />
+                    </div>
+                  )}
+                </>
               );
             })}
           </div>
@@ -357,7 +441,7 @@ export default function SubtitleReviewModal({ subtitle, onClose, onTranslate }: 
         }
         .srm-modal {
           background: #111; border: 1px solid #222; border-radius: 12px;
-          width: 560px; max-width: 95vw; max-height: 88vh;
+          width: 580px; max-width: 95vw; max-height: 88vh;
           display: flex; flex-direction: column;
           box-shadow: 0 24px 80px rgba(0,0,0,0.7);
           font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -446,19 +530,19 @@ export default function SubtitleReviewModal({ subtitle, onClose, onTranslate }: 
         .srm-lang-row--source {
           background: rgba(0,200,100,0.04);
           border-color: rgba(0,200,100,0.1);
-          margin-bottom: 8px;
+          margin-bottom: 4px;
         }
         .srm-lang-name {
           display: flex; align-items: center; gap: 6px;
           min-width: 0;
         }
         .srm-lang-check { accent-color: #3b82f6; flex-shrink: 0; }
-        .srm-lang-flag { font-size: 14px; }
         .srm-lang-code {
           font-size: 11px; font-weight: 700; color: #888;
           font-family: monospace;
         }
         .srm-lang-label { font-size: 12px; color: #bbb; }
+        .srm-source-tag { font-size: 10px; color: #555; font-style: italic; }
         .srm-lang-status {
           display: flex; align-items: center; gap: 5px;
           font-size: 11px; white-space: nowrap;
@@ -480,7 +564,7 @@ export default function SubtitleReviewModal({ subtitle, onClose, onTranslate }: 
         }
         .srm-lang-actions {
           display: flex; align-items: center; gap: 4px;
-          min-width: 70px; justify-content: flex-end;
+          min-width: 80px; justify-content: flex-end;
         }
         .srm-err-msg {
           font-size: 11px; color: #ef4444; font-weight: 700; cursor: help;
@@ -494,7 +578,44 @@ export default function SubtitleReviewModal({ subtitle, onClose, onTranslate }: 
         }
         .srm-retry-btn:hover:not(:disabled) { background: rgba(245,158,11,0.22); }
         .srm-retry-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-        .srm-vtt-link { font-size: 9px; color: #444; }
+        .srm-view-btn {
+          display: inline-flex; align-items: center; gap: 3px;
+          background: rgba(255,255,255,0.05);
+          border: 1px solid rgba(255,255,255,0.1);
+          color: #888; font-size: 10px; font-weight: 600;
+          padding: 3px 7px; border-radius: 4px; cursor: pointer;
+          white-space: nowrap;
+        }
+        .srm-view-btn:hover { background: rgba(255,255,255,0.09); color: #ccc; }
+        /* Cue viewer */
+        .srm-cue-panel {
+          margin: 2px 0 8px 0;
+          border: 1px solid rgba(255,255,255,0.07);
+          border-radius: 6px;
+          background: rgba(0,0,0,0.25);
+          overflow: hidden;
+        }
+        .srm-cue-list {
+          max-height: 220px; overflow-y: auto;
+          padding: 6px 0;
+        }
+        .srm-cue-list::-webkit-scrollbar { width: 4px; }
+        .srm-cue-list::-webkit-scrollbar-thumb { background: #333; border-radius: 99px; }
+        .srm-cue-row {
+          display: grid;
+          grid-template-columns: 28px 130px 1fr;
+          gap: 6px;
+          align-items: baseline;
+          padding: 3px 10px;
+          font-size: 11px;
+          border-bottom: 1px solid rgba(255,255,255,0.03);
+        }
+        .srm-cue-row:last-child { border-bottom: none; }
+        .srm-cue-num { color: #444; font-variant-numeric: tabular-nums; text-align: right; }
+        .srm-cue-time { color: #555; font-family: monospace; font-size: 10px; white-space: nowrap; }
+        .srm-cue-text { color: #ccc; white-space: pre-wrap; word-break: break-word; }
+        .srm-cue-empty { padding: 12px 16px; font-size: 12px; color: #555; font-style: italic; }
+        /* Footer */
         .srm-action-btn {
           background: rgba(255,255,255,0.06);
           border: 1px solid #222; color: #999;

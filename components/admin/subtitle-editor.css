@@ -1026,3 +1026,65 @@
 .se-right::-webkit-scrollbar-track { background: transparent; }
 .se-left::-webkit-scrollbar-thumb,
 .se-right::-webkit-scrollbar-thumb { background: #1a1a1a; border-radius: 99px; }
+
+/* ─── Language bar ────────────────────────────────────────────────────── */
+
+.se-lang-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 12px;
+  background: #0c0c0c;
+  border-bottom: 1px solid #1c1c1c;
+  flex-shrink: 0;
+  overflow-x: auto;
+}
+
+.se-lang-bar::-webkit-scrollbar { height: 3px; }
+.se-lang-bar::-webkit-scrollbar-thumb { background: #222; border-radius: 99px; }
+
+.se-lang-bar-label {
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #444;
+  flex-shrink: 0;
+  margin-right: 2px;
+}
+
+.se-lang-tab {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid transparent;
+  color: #666;
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.1s, color 0.1s, border-color 0.1s;
+}
+
+.se-lang-tab:hover { background: rgba(255,255,255,0.07); color: #aaa; }
+
+.se-lang-tab--active {
+  background: rgba(59,130,246,0.12);
+  border-color: rgba(59,130,246,0.3);
+  color: #93c5fd;
+}
+
+/* ─── Header language indicator ───────────────────────────────────────── */
+
+.se-header-lang {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: #555;
+  padding: 2px 6px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 3px;
+  white-space: nowrap;
+}
+

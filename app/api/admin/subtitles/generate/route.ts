@@ -11,8 +11,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
 
-  const body = await req.json() as { workId?: string; mediaType?: string };
-  const { workId, mediaType = "full" } = body;
+  const body = await req.json() as { workId?: string; mediaType?: string; sourceLanguage?: string };
+  const { workId, mediaType = "full", sourceLanguage = "auto" } = body;
   if (!workId) return NextResponse.json({ error: "workId required" }, { status: 400 });
 
   const work = await prisma.work.findUnique({
@@ -29,8 +29,8 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Find or create the subtitle record
-  const subtitle = await findOrCreateSubtitle(workId, mediaType);
+  // Find or create the subtitle record with the chosen source language
+  const subtitle = await findOrCreateSubtitle(workId, mediaType, sourceLanguage);
 
   // Cancel any existing pending/processing job for this subtitle
   await prisma.subtitleJob.updateMany({
