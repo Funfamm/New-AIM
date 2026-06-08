@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth-guard";
+import { prisma } from "@/lib/prisma";
 import {
   findSubtitle,
   updateSubtitleById,
@@ -22,7 +23,7 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
   return NextResponse.json({ subtitle });
 }
 
-// PATCH: update metadata, segments (save draft), or status (approve)
+// PATCH: update metadata, segments (save draft), status (approve), or cancelJob
 export async function PATCH(req: NextRequest, { params }: Ctx) {
   try { await requireAdmin(); } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
@@ -39,7 +40,17 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     reason?: string;
     // approval
     status?: string;
+    // cancel active job
+    cancelJob?: boolean;
   };
+
+  if (body.cancelJob) {
+    await prisma.subtitleJob.updateMany({
+      where: { subtitleId: id, status: { in: ["PENDING", "PROCESSING"] } },
+      data: { status: "FAILED", error: "Cancelled by admin", updatedAt: new Date() },
+    });
+    return NextResponse.json({ ok: true });
+  }
 
   let subtitle;
 

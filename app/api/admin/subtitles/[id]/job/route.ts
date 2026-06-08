@@ -14,7 +14,7 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
   const job = await prisma.subtitleJob.findFirst({
     where: { subtitleId: id },
     orderBy: { createdAt: "desc" },
-    select: { id: true, status: true, progress: true, error: true, languagesJson: true, updatedAt: true },
+    select: { id: true, type: true, status: true, progress: true, error: true, languagesJson: true, createdAt: true, updatedAt: true },
   });
 
   if (!job) return NextResponse.json({ job: null });

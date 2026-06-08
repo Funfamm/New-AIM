@@ -41,7 +41,7 @@ export async function listSubtitlesByWork(workId: string): Promise<SubtitleRow[]
       jobs: {
         orderBy: { createdAt: "desc" },
         take: 1,
-        select: { id: true, status: true, progress: true, error: true, languagesJson: true, type: true },
+        select: { id: true, type: true, status: true, progress: true, error: true, languagesJson: true, createdAt: true, updatedAt: true },
       },
     },
   });

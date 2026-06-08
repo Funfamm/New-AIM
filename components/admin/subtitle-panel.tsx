@@ -103,6 +103,9 @@ export default function SubtitlePanel({ workId, videoUrl, trailerUrl }: Props) {
   // Approving
   const [approvingId, setApprovingId] = useState<string | null>(null);
 
+  // Cancelling
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
+
   // ── Data loading ──────────────────────────────────────────────────────────
   const load = useCallback(async () => {
     setLoading(true);
@@ -265,12 +268,46 @@ export default function SubtitlePanel({ workId, videoUrl, trailerUrl }: Props) {
     );
   }
 
+  async function handleCancelJob(subtitleId: string) {
+    setCancellingId(subtitleId);
+    try {
+      await fetch(`/api/admin/subtitles/${subtitleId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cancelJob: true }),
+      });
+      clearInterval(pollRef.current[subtitleId]);
+      delete pollRef.current[subtitleId];
+      await load();
+    } finally {
+      setCancellingId(null);
+    }
+  }
+
+  async function handleRetryJob(sub: SubtitleRow, jobType: string) {
+    if (jobType === "transcribe") {
+      await handleGenerate(sub.mediaType as MediaTab);
+    } else {
+      const langs = (currentJob?.languagesJson ?? [...SUBTITLE_TARGET_LANGS]) as string[];
+      await handleTranslate(sub.id, langs);
+    }
+  }
+
+  // ── Stale detection ───────────────────────────────────────────────────────
+  const STALE_MS = 3 * 60 * 1000; // 3 minutes
+
+  function isJobStale(job: SubtitleJob): boolean {
+    if (job.status !== "PENDING" && job.status !== "PROCESSING") return false;
+    const lastUpdate = new Date(job.updatedAt ?? job.createdAt).getTime();
+    return Date.now() - lastUpdate > STALE_MS;
+  }
+
   // ── Job bar text ──────────────────────────────────────────────────────────
   function jobBarText(job: SubtitleJob): string {
-    const type = job.type === "transcribe" ? "Transcribing" : "Translating";
-    if (job.status === "PENDING") return `${type}… (queued)`;
+    const type = job.type === "transcribe" ? "Generating subtitles" : "Translating";
+    if (job.status === "PENDING") return `${type}… queued`;
     if (job.status === "PROCESSING") return `${type}… ${job.progress}%`;
-    if (job.status === "READY") return `${type} complete`;
+    if (job.status === "READY") return `${type} — complete`;
     if (job.status === "FAILED") return `${type} failed`;
     return job.status;
   }
@@ -502,7 +539,7 @@ export default function SubtitlePanel({ workId, videoUrl, trailerUrl }: Props) {
 
                 {/* Job progress bar */}
                 {currentJob && (currentJob.status === "PENDING" || currentJob.status === "PROCESSING" || currentJob.status === "FAILED" || currentJob.status === "READY") && (
-                  <div className={`sp-job ${currentJob.status === "FAILED" ? "sp-job--failed" : ""}`}>
+                  <div className={`sp-job ${currentJob.status === "FAILED" ? "sp-job--failed" : ""} ${isJobStale(currentJob) ? "sp-job--stale" : ""}`}>
                     <div className="sp-job-label">
                       <span>
                         {hasJobActive && <RefreshCw size={11} className="sp-spin" style={{ display: "inline", marginRight: 4, verticalAlign: "middle" }} />}
@@ -518,6 +555,38 @@ export default function SubtitlePanel({ workId, videoUrl, trailerUrl }: Props) {
                       </div>
                     )}
                     {currentJob.error && <div className="sp-job-error">{currentJob.error}</div>}
+
+                    {/* Stale warning — job stuck queued for > 3 minutes */}
+                    {isJobStale(currentJob) && (
+                      <div className="sp-stale-warning">
+                        <span className="sp-stale-icon">⚠</span>
+                        <span className="sp-stale-text">
+                          Still queued. The subtitle worker may not be running or cannot reach the server.
+                          Check that the worker is online and <code>APP_BASE_URL</code> points to production.
+                        </span>
+                        <div className="sp-stale-actions">
+                          <button className="sp-btn sp-btn--ghost sp-btn--sm" onClick={load} title="Refresh job status">
+                            <RefreshCw size={11} /> Refresh
+                          </button>
+                          <button
+                            className="sp-btn sp-btn--ghost sp-btn--sm"
+                            onClick={() => currentSub && handleRetryJob(currentSub, currentJob.type)}
+                            disabled={generating[activeTab]}
+                            title="Cancel and retry"
+                          >
+                            ↺ Retry
+                          </button>
+                          <button
+                            className="sp-btn sp-btn--danger sp-btn--sm"
+                            onClick={() => currentSub && handleCancelJob(currentSub.id)}
+                            disabled={cancellingId === currentSub?.id}
+                            title="Cancel this job"
+                          >
+                            {cancellingId === currentSub?.id ? "Cancelling…" : "✕ Cancel"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
