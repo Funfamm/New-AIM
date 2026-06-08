@@ -25,3 +25,10 @@ export const R2_PUBLIC_BASE_URL  = requireEnv("R2_PUBLIC_BASE_URL").replace(/\/$
 
 // Gemini model — override via GEMINI_MODEL env var if a newer model is available
 export const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+
+// Transcription provider: "gemini" (default) or "whisper" (external endpoint)
+export const TRANSCRIPTION_PROVIDER = process.env.TRANSCRIPTION_PROVIDER || "gemini";
+// Required when TRANSCRIPTION_PROVIDER=whisper — URL of the transcription service (ngrok or deployed)
+export const TRANSCRIPTION_ENDPOINT = (process.env.TRANSCRIPTION_ENDPOINT || "").replace(/\/$/, "");
+// Optional auth token sent as Bearer header to the transcription endpoint
+export const TRANSCRIPTION_SECRET = process.env.TRANSCRIPTION_SECRET || "";

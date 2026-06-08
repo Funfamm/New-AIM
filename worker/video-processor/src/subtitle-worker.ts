@@ -7,10 +7,11 @@
 
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleAIFileManager, FileState } from "@google/generative-ai/server";
 import * as os from "node:os";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { APP_BASE_URL, WORKER_SECRET, R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME, R2_PUBLIC_BASE_URL, GEMINI_MODEL } from "./config";
+import { APP_BASE_URL, WORKER_SECRET, R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME, R2_PUBLIC_BASE_URL, GEMINI_MODEL, TRANSCRIPTION_PROVIDER, TRANSCRIPTION_ENDPOINT, TRANSCRIPTION_SECRET } from "./config";
 
 void R2_PUBLIC_BASE_URL; // referenced in config, used by other parts of worker
 
@@ -175,64 +176,68 @@ async function downloadToTemp(url: string): Promise<string> {
 }
 
 async function uploadFileToGemini(apiKey: string, filePath: string, mimeType: string): Promise<string> {
-  const fileContent = fs.readFileSync(filePath);
-  const fileSize = fileContent.length;
+  const fileManager = new GoogleAIFileManager(apiKey);
+  const stat = fs.statSync(filePath);
+  console.log(`[subtitle-worker] Uploading ${path.basename(filePath)} (${(stat.size / 1024 / 1024).toFixed(1)} MB) to Gemini Files API, model=${GEMINI_MODEL}`);
 
-  // Initiate resumable upload
-  const initRes = await fetch(
-    `https://generativelanguage.googleapis.com/upload/v1beta/files?key=${apiKey}`,
-    {
-      method: "POST",
-      headers: {
-        "X-Goog-Upload-Protocol": "resumable",
-        "X-Goog-Upload-Command": "start",
-        "X-Goog-Upload-Header-Content-Length": fileSize.toString(),
-        "X-Goog-Upload-Header-Content-Type": mimeType,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ file: { display_name: "subtitle_transcription" } }),
-    }
-  );
-
-  const uploadUrl = initRes.headers.get("X-Goog-Upload-URL");
-  if (!uploadUrl) throw new Error("Failed to initiate Gemini file upload");
-
-  // Upload file content
-  const uploadRes = await fetch(uploadUrl, {
-    method: "POST",
-    headers: {
-      "Content-Length": fileSize.toString(),
-      "Content-Type": mimeType,
-      "X-Goog-Upload-Offset": "0",
-      "X-Goog-Upload-Command": "upload, finalize",
-    },
-    body: fileContent,
-  });
-
-  if (!uploadRes.ok) {
-    const txt = await uploadRes.text().catch(() => "");
-    throw new Error(`Gemini file upload failed: ${uploadRes.status} ${txt}`);
+  try {
+    const result = await fileManager.uploadFile(filePath, { mimeType, displayName: "subtitle_transcription" });
+    console.log(`[subtitle-worker] Gemini upload complete: ${result.file.name}, state=${result.file.state}`);
+    return result.file.uri;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[subtitle-worker] Gemini file upload error: ${msg}`);
+    throw new Error("Gemini file upload failed during transcription setup. Check worker logs for provider response.");
   }
-
-  const fileData = await uploadRes.json() as { file?: { uri?: string; name?: string }; uri?: string };
-  const uri = fileData.file?.uri ?? (fileData as Record<string, unknown>).uri as string | undefined;
-  if (!uri) throw new Error("Gemini file upload returned no URI");
-  return uri;
 }
 
-async function waitForFileActive(apiKey: string, fileUri: string, maxWaitMs = 60000): Promise<void> {
+async function waitForFileActive(apiKey: string, fileUri: string, maxWaitMs = 120_000): Promise<void> {
+  const fileManager = new GoogleAIFileManager(apiKey);
+  const match = fileUri.match(/files\/[^/?]+/);
+  if (!match) throw new Error(`Cannot parse file name from Gemini URI: ${fileUri}`);
+  const fileName = match[0];
+
   const start = Date.now();
-  // Extract file name from URI: e.g. "files/abc123"
-  const fileName = fileUri.split("/").slice(-2).join("/");
   while (Date.now() - start < maxWaitMs) {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/${fileName}?key=${apiKey}`
-    );
-    if (!res.ok) break;
-    const data = await res.json() as { state?: string };
-    if (data.state === "ACTIVE") return;
-    await new Promise((r) => setTimeout(r, 3000));
+    const file = await fileManager.getFile(fileName);
+    if (file.state === FileState.ACTIVE) return;
+    if (file.state === FileState.FAILED) throw new Error(`Gemini file processing failed: ${fileName}`);
+    await new Promise((r) => setTimeout(r, 5_000));
   }
+  throw new Error("Gemini file took too long to become ACTIVE — transcription timed out after 2 minutes");
+}
+
+async function transcribeViaWhisper(
+  videoUrl: string,
+  sourceLanguage: string,
+  onProgress: (pct: number) => void
+): Promise<SubtitleSegment[]> {
+  if (!TRANSCRIPTION_ENDPOINT) throw new Error("TRANSCRIPTION_PROVIDER=whisper but TRANSCRIPTION_ENDPOINT is not set in worker .env");
+
+  console.log(`[subtitle-worker] Sending transcription request to whisper endpoint: ${TRANSCRIPTION_ENDPOINT}`);
+  onProgress(10);
+
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (TRANSCRIPTION_SECRET) headers["Authorization"] = `Bearer ${TRANSCRIPTION_SECRET}`;
+
+  const res = await fetch(`${TRANSCRIPTION_ENDPOINT}/transcribe`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ url: videoUrl, language: sourceLanguage }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`Whisper endpoint returned ${res.status}: ${body.slice(0, 300)}`);
+  }
+
+  const data = await res.json() as { segments?: SubtitleSegment[] };
+  if (!Array.isArray(data.segments)) {
+    throw new Error("Whisper endpoint returned invalid response — expected { segments: [{start, end, text}] }");
+  }
+
+  onProgress(90);
+  return data.segments;
 }
 
 async function transcribeVideo(
@@ -241,6 +246,11 @@ async function transcribeVideo(
   sourceLanguage: string,
   onProgress: (pct: number) => void
 ): Promise<SubtitleSegment[]> {
+  if (TRANSCRIPTION_PROVIDER === "whisper") {
+    return transcribeViaWhisper(videoUrl, sourceLanguage, onProgress);
+  }
+
+  // Gemini path (default)
   onProgress(5);
   const tmpPath = await downloadToTemp(videoUrl);
   onProgress(30);
