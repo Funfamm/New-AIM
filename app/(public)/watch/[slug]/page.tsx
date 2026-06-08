@@ -11,6 +11,7 @@ import { ChevronLeft, ChevronRight, Lock, Check, Play, Clock } from "lucide-reac
 import Image from "next/image";
 import type { Metadata } from "next";
 import AimPlayer from "@/components/aim-player";
+import SynopsisToggle from "@/components/synopsis-toggle";
 import { getWatchProgress, getEpisodeProgressMap } from "@/lib/actions/progress";
 import SaveButton from "@/components/save-button";
 import CommentSection from "@/components/comment-section";
@@ -169,6 +170,8 @@ export default async function WatchPage({ params, searchParams }: Props) {
     isEpisode ? (work.parent?.requiresAuth ?? false) : work.requiresAuth;
   const trailerRequiresAuth = work.requiresLoginToViewTrailer;
   const isPreviewVisit = preview === "1";
+  // isPreview: visitor explicitly requested the preview clip and it exists
+  const isPreview      = isPreviewVisit && !!work.previewClipUrl;
   const isTrailerVisit = work.type === "TRAILER" || (!isEpisode && !wantFull && !isPreviewVisit);
   const requiresAuth   = (isTrailerVisit || isPreviewVisit) ? trailerRequiresAuth : mainRequiresAuth;
 
@@ -190,7 +193,7 @@ export default async function WatchPage({ params, searchParams }: Props) {
     : wantFull && work.videoUrl
     ? work.videoUrl
     : work.trailerUrl;
-  const isTrailer = work.type === "TRAILER" || (!isEpisode && (!wantFull || !work.videoUrl)) || isPreviewVisit;
+  const isTrailer = work.type === "TRAILER" || (!isEpisode && !isPreview && (!wantFull || !work.videoUrl));
 
   const isYouTube = videoUrl?.includes("youtube.com") || videoUrl?.includes("youtu.be");
   const isVimeo   = videoUrl?.includes("vimeo.com");
@@ -348,7 +351,7 @@ export default async function WatchPage({ params, searchParams }: Props) {
         </Link>
 
         <p className="watch-label">
-          {isEpisode ? (epLabel ?? "Episode") : isTrailer ? "Trailer" : "Full Film"}
+          {isEpisode ? (epLabel ?? "Episode") : isPreview ? "Preview" : isTrailer ? "Trailer" : "Full Film"}
         </p>
 
         <div className="watch-layout">
@@ -363,7 +366,7 @@ export default async function WatchPage({ params, searchParams }: Props) {
                   workId={work.id}
                   isTrailer={isTrailer}
                   workTitle={work.title}
-                  workTypeLabel={isTrailer && work.type !== "TRAILER" ? "Trailer" : (WORK_TYPE_LABEL[work.type] ?? work.type)}
+                  workTypeLabel={isPreview ? "Preview" : isTrailer && work.type !== "TRAILER" ? "Trailer" : (WORK_TYPE_LABEL[work.type] ?? work.type)}
                   epLabel={epLabel}
                   backHref={backHref}
                   currentSlug={slug}
@@ -405,7 +408,9 @@ export default async function WatchPage({ params, searchParams }: Props) {
 
             <div className="watch-info">
               <h1 className="watch-title">{work.title}</h1>
-              {work.description && <p className="watch-desc">{work.description}</p>}
+              {work.description && (
+                <SynopsisToggle text={work.description} className="watch-desc" />
+              )}
 
               <div className="watch-engagement">
                 {session?.user && (
