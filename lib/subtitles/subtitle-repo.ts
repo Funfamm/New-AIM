@@ -51,7 +51,7 @@ export async function listSubtitlesByWork(workId: string): Promise<SubtitleRow[]
 export async function findOrCreateSubtitle(
   workId: string,
   mediaType: string,
-  sourceLanguage: string = "en"
+  sourceLanguage: string = "auto"
 ): Promise<SubtitleRow> {
   const existing = await prisma.subtitle.findUnique({
     where: { workId_mediaType_sourceLanguage: { workId, mediaType, sourceLanguage } },
@@ -80,7 +80,7 @@ export type UpsertSubtitleInput = {
 };
 
 export async function upsertSubtitle(input: UpsertSubtitleInput): Promise<SubtitleRow> {
-  const { workId, mediaType = "full", sourceLanguage = "en", label, segments } = input;
+  const { workId, mediaType = "full", sourceLanguage = "auto", label, segments } = input;
   const displayLabel = label ?? getLangLabel(sourceLanguage);
 
   const existing = await prisma.subtitle.findUnique({
@@ -211,6 +211,7 @@ export async function restoreSubtitleRevision(
 
 function getLangLabel(code: string): string {
   const map: Record<string, string> = {
+    auto: "Auto Detect", mixed: "Original / Mixed",
     en: "English", es: "Spanish", fr: "French", de: "German",
     pt: "Portuguese", ru: "Russian", zh: "Chinese", ar: "Arabic",
     ja: "Japanese", ko: "Korean", hi: "Hindi",

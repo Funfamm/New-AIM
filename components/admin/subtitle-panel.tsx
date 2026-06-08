@@ -5,7 +5,7 @@ import {
   Subtitles, Plus, Trash2, Globe, Eye, EyeOff, RefreshCw,
   Video, Edit3, CheckCircle, Film,
 } from "lucide-react";
-import { SUBTITLE_TARGET_LANGS, getLangName } from "@/lib/subtitles/subtitle-languages";
+import { getLangName, getTargetLangs, SOURCE_LANG_OPTIONS } from "@/lib/subtitles/subtitle-languages";
 import dynamic from "next/dynamic";
 import "./subtitle-panel.css";
 
@@ -45,21 +45,6 @@ type SubtitleRow = {
 
 type MediaTab = "full" | "trailer";
 
-// ── Constants ─────────────────────────────────────────────────────────────────
-
-const LANG_OPTIONS = [
-  { value: "en", label: "English" },
-  { value: "es", label: "Spanish" },
-  { value: "fr", label: "French" },
-  { value: "de", label: "German" },
-  { value: "pt", label: "Portuguese" },
-  { value: "ru", label: "Russian" },
-  { value: "zh", label: "Chinese" },
-  { value: "ar", label: "Arabic" },
-  { value: "ja", label: "Japanese" },
-  { value: "ko", label: "Korean" },
-  { value: "hi", label: "Hindi" },
-];
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
@@ -85,8 +70,11 @@ export default function SubtitlePanel({ workId, videoUrl, trailerUrl }: Props) {
   const [showUpload, setShowUpload] = useState<MediaTab | null>(null);
   const [uploading, setUploading] = useState(false);
   const [file, setFile] = useState<File | null>(null);
-  const [sourceLang, setSourceLang] = useState("en");
+  const [sourceLang, setSourceLang] = useState("auto");
   const [customLabel, setCustomLabel] = useState("");
+
+  // Generate source language
+  const [genSourceLang, setGenSourceLang] = useState("auto");
 
   // Generating (transcription)
   const [generating, setGenerating] = useState<Record<MediaTab, boolean>>({ full: false, trailer: false });
@@ -170,7 +158,7 @@ export default function SubtitlePanel({ workId, videoUrl, trailerUrl }: Props) {
       const res = await fetch("/api/admin/subtitles/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ workId, mediaType: mt }),
+        body: JSON.stringify({ workId, mediaType: mt, sourceLanguage: genSourceLang }),
       });
       if (!res.ok) {
         const body = await res.json() as { error?: string };
@@ -288,7 +276,7 @@ export default function SubtitlePanel({ workId, videoUrl, trailerUrl }: Props) {
     if (jobType === "transcribe") {
       await handleGenerate(sub.mediaType as MediaTab);
     } else {
-      const langs = (currentJob?.languagesJson ?? [...SUBTITLE_TARGET_LANGS]) as string[];
+      const langs = (currentJob?.languagesJson ?? getTargetLangs(sub.sourceLanguage ?? "auto")) as string[];
       await handleTranslate(sub.id, langs);
     }
   }
@@ -370,6 +358,17 @@ export default function SubtitlePanel({ workId, videoUrl, trailerUrl }: Props) {
             {/* ── Action buttons row ─────────────────────────────────── */}
             <div className="sp-actions-row">
               {/* Generate via AI transcription */}
+              <select
+                className="sp-select sp-select--inline"
+                value={genSourceLang}
+                onChange={(e) => setGenSourceLang(e.target.value)}
+                disabled={hasJobActive || generating[activeTab]}
+                title="Source language for AI transcription"
+              >
+                {SOURCE_LANG_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
               <button
                 className="sp-btn sp-btn--generate"
                 onClick={() => handleGenerate(activeTab)}
@@ -465,7 +464,7 @@ export default function SubtitlePanel({ workId, videoUrl, trailerUrl }: Props) {
                   <div className="sp-field">
                     <label className="sp-label">Source Language</label>
                     <select className="sp-select" value={sourceLang} onChange={(e) => setSourceLang(e.target.value)}>
-                      {LANG_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                      {SOURCE_LANG_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
                   </div>
                   <div className="sp-field">
@@ -529,11 +528,13 @@ export default function SubtitlePanel({ workId, videoUrl, trailerUrl }: Props) {
                         {getLangName(lang)}
                       </span>
                     ))}
-                    {SUBTITLE_TARGET_LANGS.filter((l) => !translatedLangs.includes(l)).length > 0 && (
-                      <span className="sp-trans-chip sp-trans-chip--missing">
-                        +{SUBTITLE_TARGET_LANGS.filter((l) => !translatedLangs.includes(l)).length} pending
-                      </span>
-                    )}
+                    {(() => {
+                      const targets = getTargetLangs(currentSub?.sourceLanguage ?? "auto");
+                      const pending = targets.filter((l) => !translatedLangs.includes(l)).length;
+                      return pending > 0 ? (
+                        <span className="sp-trans-chip sp-trans-chip--missing">+{pending} pending</span>
+                      ) : null;
+                    })()}
                   </div>
                 )}
 
@@ -623,6 +624,8 @@ export default function SubtitlePanel({ workId, videoUrl, trailerUrl }: Props) {
           videoUrl={currentVideoUrl}
           mediaType={editorSubtitle.mediaType}
           initialSegments={editorSubtitle.segmentsJson}
+          translationsJson={editorSubtitle.translationsJson ?? undefined}
+          sourceLanguage={editorSubtitle.sourceLanguage}
           currentStatus={editorSubtitle.status}
           onClose={() => { setEditorSubtitle(null); load(); }}
           onSaved={(newStatus, newSegments) => handleEditorSaved(newStatus, newSegments)}

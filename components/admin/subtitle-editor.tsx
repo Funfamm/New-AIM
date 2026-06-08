@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
-import { X, Undo2, Redo2, Save, CheckCircle, Download, Upload, RotateCcw } from "lucide-react";
+import { X, Undo2, Redo2, Save, CheckCircle, Download, Upload, RotateCcw, Languages } from "lucide-react";
+import { getLangName } from "@/lib/subtitles/subtitle-languages";
 import "./subtitle-editor.css";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -83,6 +84,8 @@ interface Props {
   mediaType: string;
   initialSegments: SubtitleCue[];
   currentStatus: string;
+  sourceLanguage?: string;
+  translationsJson?: Record<string, SubtitleCue[]> | null;
   onClose: () => void;
   onSaved: (newStatus: string, newSegments: SubtitleCue[]) => void;
 }
@@ -212,6 +215,8 @@ export default function SubtitleEditor({
   videoUrl,
   initialSegments,
   currentStatus,
+  sourceLanguage = "auto",
+  translationsJson,
   onClose,
   onSaved,
 }: Props) {
@@ -247,6 +252,11 @@ export default function SubtitleEditor({
   const [videoTime, setVideoTime] = useState(0);
   const [videoDuration, setVideoDuration] = useState(0);
   const [videoRect, setVideoRect] = useState({ x: 0, y: 0, w: 0, h: 0 });
+
+  // ── Language selector ─────────────────────────────────────────────────────
+  // null = editing source; a string like "es" = editing that translation
+  const [editingLang, setEditingLang] = useState<string | null>(null);
+  const [isModified, setIsModified] = useState(false);
 
   // ── UI state ───────────────────────────────────────────────────────────────
   const [saving, setSaving] = useState(false);
@@ -352,6 +362,7 @@ export default function SubtitleEditor({
   function snapshot(prev: SubtitleCue[]) {
     setUndoStack((s) => [...s.slice(-49), prev]);
     setRedoStack([]);
+    setIsModified(true);
   }
 
   function undo() {
@@ -513,18 +524,37 @@ export default function SubtitleEditor({
   async function saveDraft(reason = "manual_edit") {
     setSaving(true);
     try {
-      const res = await fetch(`/api/admin/subtitles/${subtitleId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ segments: cues, reason }),
-      });
+      let res: Response;
+      if (editingLang) {
+        res = await fetch(`/api/admin/subtitles/${subtitleId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ translationLang: editingLang, translationSegments: cues }),
+        });
+      } else {
+        res = await fetch(`/api/admin/subtitles/${subtitleId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ segments: cues, reason }),
+        });
+      }
       if (!res.ok) throw new Error("Save failed");
-      setMsg("✓ Draft saved"); setTimeout(() => setMsg(""), 2500);
+      setIsModified(false);
+      setMsg("✓ Saved"); setTimeout(() => setMsg(""), 2500);
     } catch (e) {
       setMsg(`✕ ${(e as Error).message}`);
     } finally {
       setSaving(false);
     }
+  }
+
+  function switchLang(lang: string | null) {
+    if (isModified && !confirm("You have unsaved changes. Switch language without saving?")) return;
+    setEditingLang(lang);
+    setIsModified(false);
+    setUndoStack([]);
+    setRedoStack([]);
+    setCues(lang === null ? initialSegments : ((translationsJson ?? {})[lang] ?? []));
   }
 
   async function handleApprove() {
@@ -576,6 +606,7 @@ export default function SubtitleEditor({
       if (!parsed.length) { setMsg("✕ No subtitle cues found in file"); return; }
       snapshot(cues);
       setCues(parsed);
+      setIsModified(true);
       setMsg(`✓ Imported ${parsed.length} cues`); setTimeout(() => setMsg(""), 2500);
     };
     reader.readAsText(file);
@@ -676,9 +707,17 @@ export default function SubtitleEditor({
         <div className="se-header">
           <div className="se-header-left">
             <span className="se-header-title">Subtitle Editor</span>
-            <span className={`se-status-badge ${isApproved ? "se-status-badge--approved" : "se-status-badge--draft"}`}>
-              {isApproved ? "✓ Approved" : "Draft"}
+            <span className="se-header-lang">
+              <Languages size={11} />
+              {editingLang
+                ? `${getLangName(editingLang)} (translation)`
+                : `${getLangName(sourceLanguage)} (source)`}
             </span>
+            {!editingLang && (
+              <span className={`se-status-badge ${isApproved ? "se-status-badge--approved" : "se-status-badge--draft"}`}>
+                {isApproved ? "✓ Approved" : "Draft"}
+              </span>
+            )}
             <span className="se-header-meta">{cues.length} cues</span>
             {warningCount > 0 && <span className="se-warn-count">⚠ {warningCount} warning{warningCount !== 1 ? "s" : ""}</span>}
             {hardErrors > 0 && <span className="se-err-count">✕ {hardErrors} error{hardErrors !== 1 ? "s" : ""}</span>}
@@ -713,7 +752,7 @@ export default function SubtitleEditor({
               <Save size={13} /> {saving ? "Saving…" : "Save Draft"}
             </button>
 
-            {!isApproved && (
+            {!isApproved && !editingLang && (
               <button
                 className="se-hbtn se-hbtn--approve"
                 onClick={handleApprove}
@@ -729,6 +768,28 @@ export default function SubtitleEditor({
             </button>
           </div>
         </div>
+
+        {/* ══ LANGUAGE BAR ═════════════════════════════════════════════════════ */}
+        {translationsJson && Object.keys(translationsJson).length > 0 && (
+          <div className="se-lang-bar">
+            <span className="se-lang-bar-label">Lang:</span>
+            <button
+              className={`se-lang-tab ${editingLang === null ? "se-lang-tab--active" : ""}`}
+              onClick={() => switchLang(null)}
+            >
+              {getLangName(sourceLanguage)} (src)
+            </button>
+            {Object.entries(translationsJson).map(([lang, segs]) => (
+              <button
+                key={lang}
+                className={`se-lang-tab ${editingLang === lang ? "se-lang-tab--active" : ""}`}
+                onClick={() => switchLang(lang)}
+              >
+                {getLangName(lang)} ({(segs as SubtitleCue[]).length})
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* ══ BODY ═════════════════════════════════════════════════════════════ */}
         <div className="se-body">

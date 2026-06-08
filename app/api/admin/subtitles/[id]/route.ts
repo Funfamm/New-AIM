@@ -35,9 +35,12 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     label?: string;
     sortOrder?: number;
     isDefault?: boolean;
-    // save draft — cue edit
+    // save draft — cue edit (source language)
     segments?: SubtitleSegment[];
     reason?: string;
+    // save a single translated language without overwriting others
+    translationLang?: string;
+    translationSegments?: SubtitleSegment[];
     // approval
     status?: string;
     // cancel active job
@@ -54,8 +57,16 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
 
   let subtitle;
 
-  if (body.segments !== undefined) {
-    // Save draft: update segment content and save revision
+  if (body.translationLang && body.translationSegments !== undefined) {
+    // Save a single translated language — merge into translationsJson without touching others
+    const sub = await findSubtitle(id);
+    if (!sub) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    const existing = (sub.translationsJson ?? {}) as Record<string, SubtitleSegment[]>;
+    subtitle = await updateSubtitleById(id, {
+      translationsJson: { ...existing, [body.translationLang]: body.translationSegments },
+    });
+  } else if (body.segments !== undefined) {
+    // Save draft: update source segment content and save revision
     subtitle = await saveSubtitleSegments(id, body.segments, body.reason ?? "manual_edit");
   } else if (body.status !== undefined) {
     // Approval state change

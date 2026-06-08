@@ -140,6 +140,14 @@
 }
 .sp-input:focus, .sp-select:focus { border-color: rgba(232,201,126,0.45); }
 .sp-select option { background: #1a1a1a; }
+.sp-select--inline {
+  height: 32px;
+  padding: 0 0.5rem;
+  font-size: 0.75rem;
+  border-radius: 4px;
+  cursor: pointer;
+  max-width: 160px;
+}
 
 .sp-file-label {
   display: flex;

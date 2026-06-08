@@ -55,6 +55,7 @@ type ClaimedJob =
 // ── Gemini ────────────────────────────────────────────────────────────────────
 
 const LANG_NAMES: Record<string, string> = {
+  auto: "Auto Detect", mixed: "Original / Mixed",
   en: "English", es: "Spanish", fr: "French", de: "German",
   pt: "Portuguese", ru: "Russian", zh: "Chinese", ar: "Arabic",
   ja: "Japanese", ko: "Korean", hi: "Hindi",
@@ -85,13 +86,19 @@ async function translateChunk(
   sourceLang: string
 ): Promise<string[]> {
   const targetName = getLangName(targetLang);
-  const sourceName = getLangName(sourceLang);
+  const isMixedOrAuto = sourceLang === "mixed" || sourceLang === "auto" || !sourceLang;
   const numbered = texts.map((t, i) => `${i + 1}. ${t}`).join("\n");
+
+  const sourceDesc = isMixedOrAuto
+    ? "The source subtitles may contain multiple languages."
+    : `Translate the following ${getLangName(sourceLang)} subtitle lines to ${targetName}.`;
+
   const prompt = `You are a professional subtitle translator.
-Translate the following ${sourceName} subtitle lines to ${targetName}.
+${sourceDesc}
 Rules:
+- Translate every cue into ${targetName}, preserving timing and meaning
 - Keep the same line count and numbering
-- Preserve timing cues and character names
+- Preserve character names and formatting
 - Use natural spoken language appropriate for film subtitles
 - Return ONLY the translated lines, numbered exactly as given
 - Do not add explanations or extra text
@@ -234,12 +241,18 @@ async function transcribeViaWhisper(
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (TRANSCRIPTION_SECRET) headers["Authorization"] = `Bearer ${TRANSCRIPTION_SECRET}`;
 
+  // For auto/mixed source, let Whisper detect the language automatically
+  const whisperLang =
+    !sourceLanguage || sourceLanguage === "auto" || sourceLanguage === "mixed"
+      ? null
+      : sourceLanguage;
+
   let res: Response;
   try {
     res = await fetch(`${TRANSCRIPTION_ENDPOINT}/transcribe`, {
       method: "POST",
       headers,
-      body: JSON.stringify({ url: videoUrl, language: sourceLanguage, mediaType, workId }),
+      body: JSON.stringify({ url: videoUrl, language: whisperLang, mediaType, workId }),
     });
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
@@ -308,8 +321,13 @@ async function transcribeViaGemini(
     fs.unlink(tmpPath, () => {});
   }
 
-  const langName = getLangName(sourceLanguage);
-  const prompt = `Transcribe all spoken ${langName} dialogue in this video into SRT subtitle format.
+  const isMixedOrAuto = !sourceLanguage || sourceLanguage === "auto" || sourceLanguage === "mixed";
+  const langName = isMixedOrAuto ? null : getLangName(sourceLanguage);
+  const langInstruction = langName
+    ? `Transcribe all spoken ${langName} dialogue in this video into SRT subtitle format.\n- Keep the original ${langName} language (do not translate)`
+    : `Transcribe all spoken dialogue in this video into SRT subtitle format, regardless of which language is spoken.\n- Preserve the original spoken language(s) — do not translate`;
+
+  const prompt = `${langInstruction}
 
 Requirements:
 - Use standard SRT format: cue number, then timestamp line (HH:MM:SS,mmm --> HH:MM:SS,mmm), then text
@@ -317,7 +335,6 @@ Requirements:
 - Break long lines at natural pauses, max ~42 characters per line
 - Each cue should be max 2 lines
 - Be precise with timestamps — sync to when words are actually spoken
-- Keep the original ${langName} language (do not translate)
 - If there is no dialogue, return an empty response
 
 Return ONLY the SRT content, nothing else.`;
