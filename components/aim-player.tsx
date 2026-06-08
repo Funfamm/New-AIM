@@ -53,6 +53,11 @@ type Props = {
   clipEndParam?: number | null;
   isClipMode?: boolean;
   subtitleTracks?: { lang: string; label: string; src: string; isDefault?: boolean }[];
+  filmstripMask?: {
+    enabled: boolean;
+    height: number;  // percent: 5–25
+    opacity: number; // percent: 60–100
+  };
 };
 
 const SAVE_MS    = 10_000;
@@ -90,6 +95,7 @@ export default function AimPlayer({
   cta, ctaUser,
   clipStartParam, clipEndParam, isClipMode,
   subtitleTracks = [],
+  filmstripMask,
 }: Props) {
   const router      = useRouter();
   const wrapRef     = useRef<HTMLDivElement>(null);
@@ -396,10 +402,16 @@ export default function AimPlayer({
   const seekPct = duration > 0 ? (curTime / duration) * 100 : 0;
   const volPct  = muted ? 0 : volume * 100;
 
+  const maskActive = filmstripMask?.enabled === true;
+
   return (
     <div
       ref={wrapRef}
-      className="watch-player-inner aim-player"
+      className={maskActive ? "watch-player-inner aim-player aim-player--filmstrip" : "watch-player-inner aim-player"}
+      style={maskActive ? {
+        "--filmstrip-mask-height": `${filmstripMask!.height}%`,
+        "--filmstrip-mask-opacity": `${filmstripMask!.opacity / 100}`,
+      } as React.CSSProperties : undefined}
       onMouseMove={ctaVisible ? undefined : reveal}
       onTouchStart={ctaVisible ? undefined : reveal}
     >
