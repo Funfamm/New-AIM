@@ -2,8 +2,21 @@
 
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth-guard";
+import { HeadObjectCommand } from "@aws-sdk/client-s3";
+import { getS3Client } from "@/lib/r2Client";
 
 const ALLOWED_TARGETS = new Set(["videoUrl", "trailerUrl", "previewClipUrl"]);
+const BUCKET = process.env.R2_BUCKET_NAME!;
+
+async function r2ObjectExists(key: string): Promise<boolean> {
+  try {
+    const client = getS3Client();
+    await client.send(new HeadObjectCommand({ Bucket: BUCKET, Key: key }));
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Creates a PENDING VideoProcessingJob for a given work + master source key.
@@ -23,6 +36,9 @@ export async function ensureVideoProcessingJob(
 
   if (!workId || !sourceKey || !slug) return;
 
+  // Skip silently if the source file was deleted from R2 (prevents queuing a job that will 404)
+  if (!(await r2ObjectExists(sourceKey))) return;
+
   const existing = await prisma.videoProcessingJob.findFirst({
     where: {
       workId,
@@ -34,6 +50,12 @@ export async function ensureVideoProcessingJob(
   });
 
   if (existing) return;
+
+  // Cancel stale FAILED jobs for old source keys so the latest-job query stays clean
+  await prisma.videoProcessingJob.updateMany({
+    where: { workId, targetField, status: "FAILED", sourceKey: { not: sourceKey } },
+    data: { status: "CANCELLED" },
+  });
 
   await prisma.$transaction(async (tx) => {
     const job = await tx.videoProcessingJob.create({
@@ -79,6 +101,17 @@ export async function startVideoProcessingJob(
     select: { id: true, status: true },
   });
   if (existing) return { jobId: existing.id, status: existing.status };
+
+  // Verify the master file still exists in R2 before queuing
+  if (!(await r2ObjectExists(sourceKey))) {
+    return { error: "Master file not found in storage. Please upload the master video again." };
+  }
+
+  // Cancel stale FAILED jobs for old source keys so the panel shows the new job
+  await prisma.videoProcessingJob.updateMany({
+    where: { workId, targetField, status: "FAILED", sourceKey: { not: sourceKey } },
+    data: { status: "CANCELLED" },
+  });
 
   const job = await prisma.videoProcessingJob.create({
     data: { workId, sourceKey, targetField, outputPrefix: "" },

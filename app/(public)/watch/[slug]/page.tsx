@@ -212,16 +212,33 @@ export default async function WatchPage({ params, searchParams }: Props) {
   const subtitleTracks: { lang: string; label: string; src: string; isDefault?: boolean }[] = [];
   for (const sub of publishedSubs) {
     const vttKeys = (sub.vttKeysJson ?? {}) as Record<string, string>;
-    const allLangs = Object.keys(vttKeys);
-    for (const lang of allLangs) {
-      try {
-        const src = getVttUrl(lang, vttKeys);
-        if (src) subtitleTracks.push({
-          lang, src,
-          label: lang === sub.sourceLanguage ? sub.label : getLangName(lang),
-          isDefault: sub.isDefault && lang === sub.sourceLanguage && subtitleTracks.length === 0,
-        });
-      } catch {}
+    const srcLang = sub.sourceLanguage;
+    const addedLangs = new Set<string>();
+
+    // Source language — prefer R2 CDN key, fall back to on-demand VTT route
+    const srcSrc =
+      getVttUrl(srcLang, vttKeys) ??
+      (sub.segmentsJson.length > 0
+        ? `/api/subtitles/${work.id}/vtt?subtitleId=${sub.id}&lang=${encodeURIComponent(srcLang)}`
+        : null);
+    if (srcSrc) {
+      subtitleTracks.push({
+        lang: srcLang,
+        src: srcSrc,
+        label: sub.label,
+        isDefault: sub.isDefault && subtitleTracks.length === 0,
+      });
+      addedLangs.add(srcLang);
+    }
+
+    // Translated languages from R2 keys
+    for (const lang of Object.keys(vttKeys)) {
+      if (addedLangs.has(lang)) continue;
+      const src = getVttUrl(lang, vttKeys);
+      if (src) {
+        subtitleTracks.push({ lang, src, label: getLangName(lang), isDefault: false });
+        addedLangs.add(lang);
+      }
     }
   }
 

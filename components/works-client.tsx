@@ -64,6 +64,9 @@ const TAB_TYPES: Record<Tab, string[] | null> = {
   CASE_STUDY:["CASE_STUDY"],
 };
 
+const INITIAL_VISIBLE = 12;
+const LOAD_MORE_STEP = 12;
+
 // Maps ?collection= URL param → Tab key
 const COLLECTION_TO_TAB: Record<string, Tab> = {
   all:           "ALL",
@@ -114,6 +117,7 @@ export default function WorksClient({ works, collection, isLoggedIn = false, fea
     return "ALL";
   });
   const [query, setQuery] = useState("");
+  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE);
 
   // Sync URL collection param → tab on navigation
   useEffect(() => {
@@ -123,6 +127,11 @@ export default function WorksClient({ works, collection, isLoggedIn = false, fea
         : "ALL";
     setTab(next);
   }, [collection]);
+
+  // Reset visible count whenever the active filter or search changes
+  useEffect(() => {
+    setVisibleCount(INITIAL_VISIBLE);
+  }, [tab, query]);
 
   // Published works — used for hero, rails, and tab filtering
   const publishedWorks = useMemo(() => works.filter((w) => w.status === "PUBLISHED"), [works]);
@@ -184,6 +193,9 @@ export default function WorksClient({ works, collection, isLoggedIn = false, fea
   }, [works, publishedWorks, tab, query]);
 
   const showRails = tab === "ALL" && query.trim() === "";
+
+  const visibleWorks = filtered.slice(0, visibleCount);
+  const hasMore = visibleCount < filtered.length;
 
   // First rail that has content — used to prioritise image loading
   const firstRailKey = useMemo(
@@ -287,13 +299,26 @@ export default function WorksClient({ works, collection, isLoggedIn = false, fea
               <p>Nothing matches that search. Try a different title or genre.</p>
             </div>
           ) : (
-            <div className="wc-grid">
-              {filtered.map((w, i) => (
-                <div key={w.id} className="wc-grid-item">
-                  <FilmCard {...w} priority={i < 4} isLoggedIn={isLoggedIn} />
+            <>
+              <div className="wc-grid">
+                {visibleWorks.map((w, i) => (
+                  <div key={w.id} className="wc-grid-item">
+                    <FilmCard {...w} priority={i < 4} isLoggedIn={isLoggedIn} />
+                  </div>
+                ))}
+              </div>
+              {hasMore && (
+                <div className="wc-load-more-wrap">
+                  <p className="wc-count-text">Showing {visibleCount} of {filtered.length} works</p>
+                  <button
+                    className="wc-load-more"
+                    onClick={() => setVisibleCount((c) => c + LOAD_MORE_STEP)}
+                  >
+                    Load More Works
+                  </button>
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           )}
         </div>
       )}

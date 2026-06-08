@@ -58,6 +58,18 @@ export default function ProcessingPanel({
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const jobIdRef = useRef<string | null>(initialJob?.id ?? null);
   const calledReadyRef = useRef(false);
+  const prevMasterKeyRef = useRef(masterKey);
+
+  // When admin uploads a new master file, clear stale job state so the panel resets
+  useEffect(() => {
+    if (masterKey === prevMasterKeyRef.current) return;
+    prevMasterKeyRef.current = masterKey;
+    stopPoll();
+    setJob(null);
+    setStartError(null);
+    calledReadyRef.current = false;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [masterKey]);
 
   // Keep jobIdRef current so the interval always polls the right job
   useEffect(() => { jobIdRef.current = job?.id ?? null; }, [job?.id]);
