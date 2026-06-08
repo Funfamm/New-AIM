@@ -31,6 +31,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       failureCount: 0,
       cooldownUntil: null,
       errorMessage: null,
+      usedInWindow: 0,
+      windowResetAt: null,
       updatedAt: new Date(),
     };
   } else {

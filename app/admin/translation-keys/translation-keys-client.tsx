@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import {
   Plus, Trash2, RotateCcw, Power, CheckCircle, AlertTriangle,
-  Clock, XCircle, Key, Search, Zap,
+  Clock, XCircle, Key, Search, Zap, TrendingDown,
 } from "lucide-react";
 
 type ApiKey = {
@@ -20,12 +20,16 @@ type ApiKey = {
   lastFailureAt: string | null;
   cooldownUntil: string | null;
   errorMessage: string | null;
+  windowMaxCalls: number;
+  usedInWindow: number;
+  windowResetAt: string | null;
   createdAt: string;
 };
 
-type FilterStatus = "all" | "healthy" | "cooldown" | "invalid" | "disabled";
+type FilterStatus = "all" | "healthy" | "near-limit" | "cooldown" | "invalid" | "disabled";
 type FilterHealth = "all" | "attention" | "working";
 type SortBy       = "newest" | "recently-used" | "most-failures" | "most-successes";
+type QuotaStatus  = "ok" | "near" | "full";
 
 type Props = { initialKeys: ApiKey[] };
 
@@ -34,21 +38,46 @@ function fmtDate(d: string | null | undefined): string {
   return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
+function fmtTimeRemaining(d: string): string {
+  const diff = new Date(d).getTime() - Date.now();
+  if (diff <= 0) return "soon";
+  const h = Math.floor(diff / 3_600_000);
+  const m = Math.floor((diff % 3_600_000) / 60_000);
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
+}
+
+function computeQuotaStatus(k: ApiKey, now: Date): QuotaStatus {
+  if (!k.windowResetAt || new Date(k.windowResetAt) <= now) return "ok"; // window expired = full quota
+  if (k.windowMaxCalls <= 0) return "ok";
+  const pct = k.usedInWindow / k.windowMaxCalls;
+  if (pct >= 1)   return "full";
+  if (pct >= 0.8) return "near";
+  return "ok";
+}
+
 function matchesStatus(k: ApiKey, f: FilterStatus, now: Date): boolean {
-  if (f === "all")      return true;
-  if (f === "disabled") return !k.isEnabled;
-  if (!k.isEnabled)     return false;
-  if (f === "healthy")  return k.status === "HEALTHY" && !(k.cooldownUntil && new Date(k.cooldownUntil) > now);
-  if (f === "cooldown") return k.status === "COOLDOWN" || !!(k.cooldownUntil && new Date(k.cooldownUntil) > now);
-  if (f === "invalid")  return k.status === "INVALID";
+  if (f === "all")        return true;
+  if (f === "disabled")   return !k.isEnabled;
+  if (!k.isEnabled)       return false;
+  if (f === "invalid")    return k.status === "INVALID";
+  if (f === "cooldown")   return k.status === "COOLDOWN" || !!(k.cooldownUntil && new Date(k.cooldownUntil) > now);
+  if (f === "near-limit") return computeQuotaStatus(k, now) !== "ok";
+  if (f === "healthy")    return (
+    k.status === "HEALTHY" &&
+    !(k.cooldownUntil && new Date(k.cooldownUntil) > now) &&
+    computeQuotaStatus(k, now) === "ok"
+  );
   return true;
 }
 
 function matchesHealth(k: ApiKey, f: FilterHealth): boolean {
-  if (f === "all")       return true;
-  const needsAttention   = k.failureCount > 0 || k.status !== "HEALTHY" || !k.isEnabled;
+  if (f === "all") return true;
+  const now           = new Date();
+  const quotaStatus   = computeQuotaStatus(k, now);
+  const needsAttention = k.failureCount > 0 || k.status !== "HEALTHY" || !k.isEnabled || quotaStatus !== "ok";
   if (f === "attention") return needsAttention;
-  if (f === "working")   return k.isEnabled && k.status === "HEALTHY";
+  if (f === "working")   return k.isEnabled && k.status === "HEALTHY" && quotaStatus === "ok";
   return true;
 }
 
@@ -61,11 +90,15 @@ function sortKeys(list: ApiKey[], sort: SortBy): ApiKey[] {
   return copy;
 }
 
-function StatusBadge({ status, isEnabled }: { status: string; isEnabled: boolean }) {
-  if (!isEnabled)            return <span className="tk-badge tk-badge--disabled">Disabled</span>;
-  if (status === "HEALTHY")  return <span className="tk-badge tk-badge--healthy"><CheckCircle size={9} /> Healthy</span>;
-  if (status === "COOLDOWN") return <span className="tk-badge tk-badge--cooldown"><Clock size={9} /> Cooldown</span>;
-  if (status === "INVALID")  return <span className="tk-badge tk-badge--invalid"><XCircle size={9} /> Invalid</span>;
+function StatusBadge({
+  status, isEnabled, quotaStatus,
+}: { status: string; isEnabled: boolean; quotaStatus: QuotaStatus }) {
+  if (!isEnabled)             return <span className="tk-badge tk-badge--disabled">Disabled</span>;
+  if (status === "INVALID")   return <span className="tk-badge tk-badge--invalid"><XCircle size={9} /> Invalid</span>;
+  if (status === "COOLDOWN")  return <span className="tk-badge tk-badge--cooldown"><Clock size={9} /> Cooldown</span>;
+  if (quotaStatus === "full") return <span className="tk-badge tk-badge--over-quota"><TrendingDown size={9} /> Quota Full</span>;
+  if (quotaStatus === "near") return <span className="tk-badge tk-badge--near-limit"><TrendingDown size={9} /> Near Limit</span>;
+  if (status === "HEALTHY")   return <span className="tk-badge tk-badge--healthy"><CheckCircle size={9} /> Healthy</span>;
   return <span className="tk-badge tk-badge--disabled">{status}</span>;
 }
 
@@ -98,14 +131,27 @@ export default function TranslationKeysClient({ initialKeys }: Props) {
     const now = new Date();
     return {
       total:     keys.length,
-      healthy:   keys.filter((k) => k.isEnabled && k.status === "HEALTHY" && !(k.cooldownUntil && new Date(k.cooldownUntil) > now)).length,
-      attention: keys.filter((k) => k.failureCount > 0 || k.status !== "HEALTHY" || !k.isEnabled).length,
+      healthy:   keys.filter((k) =>
+        k.isEnabled &&
+        k.status === "HEALTHY" &&
+        !(k.cooldownUntil && new Date(k.cooldownUntil) > now) &&
+        computeQuotaStatus(k, now) === "ok"
+      ).length,
+      nearLimit: keys.filter((k) => k.isEnabled && computeQuotaStatus(k, now) !== "ok").length,
       cooldown:  keys.filter((k) => k.isEnabled && (k.status === "COOLDOWN" || !!(k.cooldownUntil && new Date(k.cooldownUntil) > now))).length,
       disabled:  keys.filter((k) => !k.isEnabled).length,
     };
   }, [keys]);
 
-  const needsAttentionCount = stats.attention;
+  const needsAttentionCount = useMemo(
+    () => {
+      const now = new Date();
+      return keys.filter((k) =>
+        k.failureCount > 0 || k.status !== "HEALTHY" || !k.isEnabled || computeQuotaStatus(k, now) !== "ok"
+      ).length;
+    },
+    [keys],
+  );
 
   const filteredKeys = useMemo(() => {
     const now = new Date();
@@ -251,9 +297,9 @@ export default function TranslationKeysClient({ initialKeys }: Props) {
             <div className="tk-stat-value tk-stat-value--healthy">{stats.healthy}</div>
             <div className="tk-stat-label">Healthy</div>
           </div>
-          <div className="tk-stat tk-stat--attention">
-            <div className="tk-stat-value tk-stat-value--attention">{stats.attention}</div>
-            <div className="tk-stat-label">Attention</div>
+          <div className="tk-stat tk-stat--near-limit">
+            <div className="tk-stat-value tk-stat-value--near-limit">{stats.nearLimit}</div>
+            <div className="tk-stat-label">Near Limit</div>
           </div>
           <div className="tk-stat tk-stat--cooldown">
             <div className="tk-stat-value tk-stat-value--cooldown">{stats.cooldown}</div>
@@ -269,7 +315,7 @@ export default function TranslationKeysClient({ initialKeys }: Props) {
       {/* Env fallback notice */}
       <div className="tk-notice">
         <AlertTriangle size={13} style={{ display: "inline", marginRight: 6, verticalAlign: "middle" }} />
-        When no DB keys are available, the worker falls back to <strong>GEMINI_API_KEY</strong> from the app environment. Add DB keys here to enable key rotation and self-healing.
+        When no DB keys are available, the worker falls back to <strong>GEMINI_API_KEY</strong> from the app environment. Add DB keys here to enable quota-aware rotation and self-healing.
       </div>
 
       {pageError && <div className="tk-error">{pageError}</div>}
@@ -340,6 +386,7 @@ export default function TranslationKeysClient({ initialKeys }: Props) {
           <select className="tk-filter-select" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as FilterStatus)}>
             <option value="all">All Status</option>
             <option value="healthy">Healthy</option>
+            <option value="near-limit">Near Limit</option>
             <option value="cooldown">Cooldown</option>
             <option value="invalid">Invalid</option>
             <option value="disabled">Disabled</option>
@@ -391,23 +438,33 @@ export default function TranslationKeysClient({ initialKeys }: Props) {
 
       {/* Key list */}
       {keys.length === 0 ? (
-        <div className="tk-empty">No API keys added yet. Add a key above to enable DB-backed rotation.</div>
+        <div className="tk-empty">No API keys added yet. Add a key above to enable quota-aware rotation.</div>
       ) : filteredKeys.length === 0 ? (
         <div className="tk-empty">No keys match your filters.</div>
       ) : (
         <div className="tk-list">
           {filteredKeys.map((k) => {
-            const isBusy   = (suf: string) => busy === k.id + suf;
-            const cardMod  = !k.isEnabled ? "tk-card--disabled"
-              : k.status === "COOLDOWN"   ? "tk-card--cooldown"
-              : k.status === "INVALID"    ? "tk-card--invalid"
+            const now         = new Date();
+            const quotaStatus = computeQuotaStatus(k, now);
+            const isBusy      = (suf: string) => busy === k.id + suf;
+            const cardMod     = !k.isEnabled         ? "tk-card--disabled"
+              : k.status === "COOLDOWN"              ? "tk-card--cooldown"
+              : k.status === "INVALID"               ? "tk-card--invalid"
+              : quotaStatus === "full"               ? "tk-card--over-quota"
+              : quotaStatus === "near"               ? "tk-card--near-limit"
               : "tk-card--healthy";
+
+            const windowActive      = k.windowResetAt && new Date(k.windowResetAt) > now;
+            const effectiveUsed     = windowActive ? k.usedInWindow : 0;
+            const quotaPct          = k.windowMaxCalls > 0 ? Math.round((effectiveUsed / k.windowMaxCalls) * 100) : 0;
+            const quotaRemaining    = k.windowMaxCalls - effectiveUsed;
+
             return (
               <div key={k.id} className={`tk-card ${cardMod}`}>
                 <div className="tk-card-head">
                   <div className="tk-card-meta">
                     <span className="tk-card-name">{k.name}</span>
-                    <StatusBadge status={k.status} isEnabled={k.isEnabled} />
+                    <StatusBadge status={k.status} isEnabled={k.isEnabled} quotaStatus={quotaStatus} />
                     <span className="tk-badge tk-badge--provider">{k.provider}</span>
                   </div>
                   <div className="tk-card-actions">
@@ -425,7 +482,7 @@ export default function TranslationKeysClient({ initialKeys }: Props) {
                         className="tk-btn tk-btn--ghost tk-btn--sm"
                         disabled={!!busy}
                         onClick={() => handleAction(k.id, "reset")}
-                        title="Reset failure count and cooldown"
+                        title="Reset failure count, cooldown, and quota window"
                       >
                         <RotateCcw size={12} />
                         {isBusy("reset") ? "…" : "Reset"}
@@ -449,12 +506,29 @@ export default function TranslationKeysClient({ initialKeys }: Props) {
 
                 {k.keyPreview && <div className="tk-preview">{k.keyPreview}</div>}
 
+                {/* Quota bar */}
+                {windowActive && (
+                  <div className="tk-quota-wrap">
+                    <div className="tk-quota-bar">
+                      <div
+                        className={`tk-quota-fill tk-quota-fill--${quotaStatus}`}
+                        style={{ width: `${Math.min(quotaPct, 100)}%` }}
+                      />
+                    </div>
+                    <span className="tk-quota-text">
+                      {effectiveUsed} / {k.windowMaxCalls} used
+                      &nbsp;·&nbsp;{quotaRemaining} left
+                      &nbsp;·&nbsp;resets in {fmtTimeRemaining(k.windowResetAt!)}
+                    </span>
+                  </div>
+                )}
+
                 <div className="tk-card-detail">
                   <span><CheckCircle size={10} /> {k.successCount} success{k.successCount !== 1 ? "es" : ""}</span>
                   {k.failureCount > 0 && <span className="tk-detail--warn"><AlertTriangle size={10} /> {k.failureCount} failure{k.failureCount !== 1 ? "s" : ""}</span>}
                   {k.lastUsedAt && <span>Last used {fmtDate(k.lastUsedAt)}</span>}
                   <span className="tk-detail--muted">Added {fmtDate(k.createdAt)}</span>
-                  {k.cooldownUntil && new Date(k.cooldownUntil) > new Date() && (
+                  {k.cooldownUntil && new Date(k.cooldownUntil) > now && (
                     <span className="tk-detail--cooldown"><Clock size={10} /> Cooldown until {new Date(k.cooldownUntil).toLocaleTimeString()}</span>
                   )}
                 </div>

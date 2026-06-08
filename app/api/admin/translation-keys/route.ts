@@ -7,7 +7,9 @@ function safeKey(k: {
   id: string; provider: string; name: string; keyPreview: string | null;
   isEnabled: boolean; status: string; failureCount: number; successCount: number;
   lastUsedAt: Date | null; lastSuccessAt: Date | null; lastFailureAt: Date | null;
-  cooldownUntil: Date | null; errorMessage: string | null; createdAt: Date; updatedAt: Date;
+  cooldownUntil: Date | null; errorMessage: string | null;
+  windowMaxCalls: number; usedInWindow: number; windowResetAt: Date | null;
+  createdAt: Date; updatedAt: Date;
 }) {
   return {
     id: k.id,
@@ -23,6 +25,9 @@ function safeKey(k: {
     lastFailureAt: k.lastFailureAt,
     cooldownUntil: k.cooldownUntil,
     errorMessage: k.errorMessage,
+    windowMaxCalls: k.windowMaxCalls,
+    usedInWindow: k.usedInWindow,
+    windowResetAt: k.windowResetAt,
     createdAt: k.createdAt,
     updatedAt: k.updatedAt,
   };
