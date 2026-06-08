@@ -36,11 +36,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ job: null });
   }
 
-  // Select a Gemini API key (DB pool → env fallback).
-  // Transcription jobs may not need it (whisper provider), so we resolve it
-  // without failing here — the worker checks its own TRANSCRIPTION_PROVIDER.
-  const selectedKey = await selectGeminiKey();
-
+  // Transcribe jobs use Whisper — Gemini keys are never needed here.
+  // Resolve the video URL and return without touching the key pool.
   if (claimed.type === "transcribe") {
     const work = await prisma.work.findUnique({
       where: { id: subtitle.workId },
@@ -66,15 +63,16 @@ export async function POST(req: NextRequest) {
         mediaType: subtitle.mediaType,
         sourceLanguage: subtitle.sourceLanguage,
         videoUrl,
-        // apiKey may be null when whisper is the active provider (worker handles it)
-        apiKey: selectedKey?.decryptedKey ?? null,
-        apiKeyId: selectedKey?.apiKeyId ?? null,
-        apiKeyName: selectedKey?.apiKeyName ?? null,
+        apiKey: null,
+        apiKeyId: null,
+        apiKeyName: null,
       },
     });
   }
 
-  // Default: translate job — always requires Gemini key
+  // Translate job — select a Gemini key from the pool (pre-increments quota).
+  const selectedKey = await selectGeminiKey();
+
   if (!selectedKey) {
     await prisma.subtitleJob.update({
       where: { id: claimed.id },
