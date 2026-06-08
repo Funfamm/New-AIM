@@ -22,3 +22,6 @@ export const R2_ACCESS_KEY_ID    = requireEnv("R2_ACCESS_KEY_ID");
 export const R2_SECRET_ACCESS_KEY = requireEnv("R2_SECRET_ACCESS_KEY");
 export const R2_BUCKET_NAME      = requireEnv("R2_BUCKET_NAME");
 export const R2_PUBLIC_BASE_URL  = requireEnv("R2_PUBLIC_BASE_URL").replace(/\/$/, "");
+
+// Gemini model — override via GEMINI_MODEL env var if a newer model is available
+export const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";

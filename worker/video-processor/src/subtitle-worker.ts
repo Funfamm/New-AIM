@@ -10,7 +10,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import * as os from "node:os";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { APP_BASE_URL, WORKER_SECRET, R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME, R2_PUBLIC_BASE_URL } from "./config";
+import { APP_BASE_URL, WORKER_SECRET, R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME, R2_PUBLIC_BASE_URL, GEMINI_MODEL } from "./config";
 
 void R2_PUBLIC_BASE_URL; // referenced in config, used by other parts of worker
 
@@ -56,8 +56,16 @@ function getLangName(code: string): string { return LANG_NAMES[code] ?? code.toU
 
 function callGemini(apiKey: string, prompt: string): Promise<string> {
   const client = new GoogleGenerativeAI(apiKey);
-  const model = client.getGenerativeModel({ model: "gemini-2.0-flash" });
+  const model = client.getGenerativeModel({ model: GEMINI_MODEL });
   return model.generateContent(prompt).then((r) => r.response.text());
+}
+
+function normalizeGeminiError(err: unknown): string {
+  const msg = err instanceof Error ? err.message : String(err);
+  if (msg.includes("404") || msg.includes("is not found") || msg.toLowerCase().includes("model not found")) {
+    return `Gemini model "${GEMINI_MODEL}" is not available. Update GEMINI_MODEL in worker .env to a supported model (e.g. gemini-2.5-flash).`;
+  }
+  return msg;
 }
 
 // ── Translation ───────────────────────────────────────────────────────────────
@@ -262,7 +270,7 @@ Requirements:
 Return ONLY the SRT content, nothing else.`;
 
   const client = new GoogleGenerativeAI(apiKey);
-  const model = client.getGenerativeModel({ model: "gemini-1.5-flash" });
+  const model = client.getGenerativeModel({ model: GEMINI_MODEL });
 
   const result = await model.generateContent([
     { fileData: { mimeType: "video/mp4", fileUri } },
@@ -419,7 +427,7 @@ export async function processSubtitleJob(): Promise<boolean> {
       console.log(`[subtitle-worker] Transcription job ${jobId} complete: ${segments.length} cues`);
       return true;
     } catch (err) {
-      const msg = (err as Error).message;
+      const msg = normalizeGeminiError(err);
       console.error(`[subtitle-worker] Transcription job ${jobId} failed: ${msg}`);
       await reportFailed(jobId, apiKeyId, msg);
       return false;
@@ -450,7 +458,7 @@ export async function processSubtitleJob(): Promise<boolean> {
     console.log(`[subtitle-worker] Translation job ${jobId} complete.`);
     return true;
   } catch (err) {
-    const msg = (err as Error).message;
+    const msg = normalizeGeminiError(err);
     console.error(`[subtitle-worker] Translation job ${jobId} failed: ${msg}`);
     await reportFailed(jobId, apiKeyId, msg);
     return false;
