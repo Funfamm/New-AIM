@@ -26,9 +26,20 @@ export const R2_PUBLIC_BASE_URL  = requireEnv("R2_PUBLIC_BASE_URL").replace(/\/$
 // Gemini model — override via GEMINI_MODEL env var if a newer model is available
 export const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
-// Transcription provider: "gemini" (default) or "whisper" (external endpoint)
-export const TRANSCRIPTION_PROVIDER = process.env.TRANSCRIPTION_PROVIDER || "gemini";
-// Required when TRANSCRIPTION_PROVIDER=whisper — URL of the transcription service (ngrok or deployed)
+// Transcription endpoint (ngrok URL for local dev, stable URL in production)
 export const TRANSCRIPTION_ENDPOINT = (process.env.TRANSCRIPTION_ENDPOINT || "").replace(/\/$/, "");
-// Optional auth token sent as Bearer header to the transcription endpoint
+// Optional Bearer token sent to the transcription endpoint
 export const TRANSCRIPTION_SECRET = process.env.TRANSCRIPTION_SECRET || "";
+
+// Active transcription provider resolution:
+//   1. TRANSCRIPTION_PROVIDER env var if explicitly set
+//   2. "whisper" if TRANSCRIPTION_ENDPOINT is configured (auto-detect)
+//   3. "gemini" fallback
+export const TRANSCRIPTION_PROVIDER: "whisper" | "gemini" =
+  (process.env.TRANSCRIPTION_PROVIDER as "whisper" | "gemini") ||
+  (TRANSCRIPTION_ENDPOINT ? "whisper" : "gemini");
+
+// Optional fallback provider when primary fails. Set to "gemini" to auto-retry with Gemini
+// when the whisper endpoint is unreachable or returns an error.
+export const TRANSCRIPTION_FALLBACK_PROVIDER: "gemini" | "" =
+  (process.env.TRANSCRIPTION_FALLBACK_PROVIDER as "gemini" | "") || "";

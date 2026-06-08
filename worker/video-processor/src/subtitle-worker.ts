@@ -1,8 +1,8 @@
 /**
  * Subtitle worker.
  * Handles two job types:
- *   "translate"  — translates existing source segments into target languages
- *   "transcribe" — transcribes video audio into source subtitle segments via Gemini
+ *   "transcribe" — transcribes video audio using faster-whisper (primary) or Gemini (fallback)
+ *   "translate"  — translates source segments into target languages using Gemini
  */
 
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
@@ -11,7 +11,12 @@ import { GoogleAIFileManager, FileState } from "@google/generative-ai/server";
 import * as os from "node:os";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { APP_BASE_URL, WORKER_SECRET, R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME, R2_PUBLIC_BASE_URL, GEMINI_MODEL, TRANSCRIPTION_PROVIDER, TRANSCRIPTION_ENDPOINT, TRANSCRIPTION_SECRET } from "./config";
+import {
+  APP_BASE_URL, WORKER_SECRET,
+  R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME, R2_PUBLIC_BASE_URL,
+  GEMINI_MODEL,
+  TRANSCRIPTION_PROVIDER, TRANSCRIPTION_ENDPOINT, TRANSCRIPTION_SECRET, TRANSCRIPTION_FALLBACK_PROVIDER,
+} from "./config";
 
 void R2_PUBLIC_BASE_URL; // referenced in config, used by other parts of worker
 
@@ -38,6 +43,8 @@ type ClaimedJob =
       id: string;
       type: "transcribe";
       subtitleId: string;
+      workId: string;
+      mediaType: string;
       sourceLanguage: string;
       videoUrl: string;
       apiKey: string | null;
@@ -210,47 +217,70 @@ async function waitForFileActive(apiKey: string, fileUri: string, maxWaitMs = 12
 async function transcribeViaWhisper(
   videoUrl: string,
   sourceLanguage: string,
+  mediaType: string,
+  workId: string,
   onProgress: (pct: number) => void
 ): Promise<SubtitleSegment[]> {
-  if (!TRANSCRIPTION_ENDPOINT) throw new Error("TRANSCRIPTION_PROVIDER=whisper but TRANSCRIPTION_ENDPOINT is not set in worker .env");
+  if (!TRANSCRIPTION_ENDPOINT) {
+    throw new Error(
+      "Whisper transcription endpoint is not configured. " +
+      "Set TRANSCRIPTION_ENDPOINT in worker .env, or change TRANSCRIPTION_PROVIDER to gemini."
+    );
+  }
 
-  console.log(`[subtitle-worker] Sending transcription request to whisper endpoint: ${TRANSCRIPTION_ENDPOINT}`);
+  console.log(`[subtitle-worker] Whisper transcription → ${TRANSCRIPTION_ENDPOINT} | mediaType=${mediaType}`);
   onProgress(10);
 
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (TRANSCRIPTION_SECRET) headers["Authorization"] = `Bearer ${TRANSCRIPTION_SECRET}`;
 
-  const res = await fetch(`${TRANSCRIPTION_ENDPOINT}/transcribe`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({ url: videoUrl, language: sourceLanguage }),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${TRANSCRIPTION_ENDPOINT}/transcribe`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ url: videoUrl, language: sourceLanguage, mediaType, workId }),
+    });
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      `Whisper transcription service is unreachable. ` +
+      `Check that TRANSCRIPTION_ENDPOINT (${TRANSCRIPTION_ENDPOINT}) is running and accessible. ` +
+      `Detail: ${detail}`
+    );
+  }
 
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    throw new Error(`Whisper endpoint returned ${res.status}: ${body.slice(0, 300)}`);
+    throw new Error(`Whisper transcription failed: endpoint returned ${res.status}. ${body.slice(0, 300)}`);
   }
 
-  const data = await res.json() as { segments?: SubtitleSegment[] };
-  if (!Array.isArray(data.segments)) {
-    throw new Error("Whisper endpoint returned invalid response — expected { segments: [{start, end, text}] }");
+  let payload: unknown;
+  try {
+    payload = await res.json();
+  } catch {
+    throw new Error("Whisper transcription failed: endpoint returned non-JSON response.");
   }
 
+  const data = payload as { segments?: unknown };
+  if (!Array.isArray(data.segments) || (data.segments as unknown[]).length === 0) {
+    throw new Error(
+      "Whisper transcription failed: invalid segment response. " +
+      "Expected { segments: [{start, end, text}] } but got an unexpected format."
+    );
+  }
+
+  console.log(`[subtitle-worker] Whisper returned ${(data.segments as unknown[]).length} segments`);
   onProgress(90);
-  return data.segments;
+  return data.segments as SubtitleSegment[];
 }
 
-async function transcribeVideo(
+async function transcribeViaGemini(
   apiKey: string,
   videoUrl: string,
   sourceLanguage: string,
   onProgress: (pct: number) => void
 ): Promise<SubtitleSegment[]> {
-  if (TRANSCRIPTION_PROVIDER === "whisper") {
-    return transcribeViaWhisper(videoUrl, sourceLanguage, onProgress);
-  }
-
-  // Gemini path (default)
   onProgress(5);
   const tmpPath = await downloadToTemp(videoUrl);
   onProgress(30);
@@ -292,6 +322,34 @@ Return ONLY the SRT content, nothing else.`;
   if (!srtText) return [];
 
   return parseSrtToSegments(srtText);
+}
+
+async function transcribeVideo(
+  apiKey: string,
+  videoUrl: string,
+  sourceLanguage: string,
+  mediaType: string,
+  workId: string,
+  onProgress: (pct: number) => void
+): Promise<SubtitleSegment[]> {
+  console.log(`[subtitle-worker] Transcription provider: ${TRANSCRIPTION_PROVIDER}`);
+
+  if (TRANSCRIPTION_PROVIDER === "whisper") {
+    try {
+      return await transcribeViaWhisper(videoUrl, sourceLanguage, mediaType, workId, onProgress);
+    } catch (whisperErr) {
+      const whisperMsg = whisperErr instanceof Error ? whisperErr.message : String(whisperErr);
+      if (TRANSCRIPTION_FALLBACK_PROVIDER === "gemini" && apiKey) {
+        console.warn(`[subtitle-worker] Whisper failed — falling back to Gemini. Whisper error: ${whisperMsg}`);
+        onProgress(5);
+        return transcribeViaGemini(apiKey, videoUrl, sourceLanguage, onProgress);
+      }
+      throw whisperErr;
+    }
+  }
+
+  // Gemini primary path
+  return transcribeViaGemini(apiKey, videoUrl, sourceLanguage, onProgress);
 }
 
 // ── VTT ───────────────────────────────────────────────────────────────────────
@@ -411,21 +469,26 @@ export async function processSubtitleJob(): Promise<boolean> {
 
   const { id: jobId, apiKey, apiKeyId, apiKeyName } = data.job;
   const resolvedKey = apiKey ?? process.env.GEMINI_API_KEY ?? "";
-  if (!resolvedKey) {
-    console.error(`[subtitle-worker] Job ${jobId} — no Gemini API key available`);
-    await reportFailed(jobId, apiKeyId, "No Gemini API key available");
-    return false;
-  }
-
-  const keyLabel = apiKeyName ? `DB key "${apiKeyName}"` : "env GEMINI_API_KEY";
+  const keyLabel = apiKeyName ? `DB key "${apiKeyName}"` : (resolvedKey ? "env GEMINI_API_KEY" : "none");
 
   // ── Transcription job ──────────────────────────────────────────────────────
   if (data.job.type === "transcribe") {
-    const { subtitleId, videoUrl, sourceLanguage } = data.job;
-    console.log(`[subtitle-worker] Claimed transcription job ${jobId} for ${videoUrl} using ${keyLabel}`);
+    const { subtitleId, workId, mediaType, videoUrl, sourceLanguage } = data.job;
+
+    // Gemini key is required only when transcribing via Gemini (primary or fallback)
+    const needsKeyForTranscription =
+      TRANSCRIPTION_PROVIDER === "gemini" ||
+      (TRANSCRIPTION_PROVIDER === "whisper" && TRANSCRIPTION_FALLBACK_PROVIDER === "gemini");
+    if (needsKeyForTranscription && !resolvedKey) {
+      console.error(`[subtitle-worker] Job ${jobId} — Gemini key required for transcription provider="${TRANSCRIPTION_PROVIDER}" but none available`);
+      await reportFailed(jobId, apiKeyId, "No Gemini API key available. Add a key in Settings or set GEMINI_API_KEY in worker .env.");
+      return false;
+    }
+
+    console.log(`[subtitle-worker] Claimed transcription job ${jobId} | provider=${TRANSCRIPTION_PROVIDER} | mediaType=${mediaType} | key=${keyLabel}`);
 
     try {
-      const segments = await transcribeVideo(resolvedKey, videoUrl, sourceLanguage, async (pct) => {
+      const segments = await transcribeVideo(resolvedKey, videoUrl, sourceLanguage, mediaType, workId, async (pct) => {
         await reportProgress(jobId, apiKeyId, pct);
       });
 
@@ -445,8 +508,14 @@ export async function processSubtitleJob(): Promise<boolean> {
   }
 
   // ── Translation job ───────────────────────────────────────────────────────
+  if (!resolvedKey) {
+    console.error(`[subtitle-worker] Translation job ${jobId} — no Gemini API key available`);
+    await reportFailed(jobId, apiKeyId, "No Gemini API key available for translation. Add a key in Settings.");
+    return false;
+  }
+
   const { subtitleId, languages, sourceLanguage, segments } = data.job;
-  console.log(`[subtitle-worker] Claimed translation job ${jobId} — translating to: ${languages.join(", ")} using ${keyLabel}`);
+  console.log(`[subtitle-worker] Claimed translation job ${jobId} — langs: ${languages.join(", ")} | key=${keyLabel}`);
 
   const translations: Record<string, SubtitleSegment[]> = {};
   const vttKeys: Record<string, string> = {};
