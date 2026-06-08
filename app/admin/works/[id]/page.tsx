@@ -4,6 +4,7 @@ import WorkForm from "@/components/admin/work-form";
 import SeriesEpisodesPanel from "@/components/admin/series-episodes-panel";
 import WorkCastPanel from "@/components/admin/work-cast-panel";
 import SubtitlePanel from "@/components/admin/subtitle-panel";
+import VideoMaskPanel from "@/components/admin/video-mask-panel";
 import ReleaseEmailButton from "./release-email-button";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -34,8 +35,8 @@ export default async function AdminWorkFormPage({ params, searchParams }: Props)
   const defaultType = defaultTypeRaw as WorkType | undefined;
   const isNew = id === "new";
 
-  // Fetch the work being edited (if any), the full series list, lean CTA id, and custom rows in parallel
-  const [work, seriesList, ctaRow, allRows, assignedItems, allJobs] = await Promise.all([
+  // Fetch the work being edited (if any), the full series list, lean CTA id, custom rows, and video mask settings in parallel
+  const [work, seriesList, ctaRow, allRows, assignedItems, allJobs, maskSettings] = await Promise.all([
     isNew
       ? Promise.resolve(null)
       : prisma.work.findUnique({ where: { id } }),
@@ -67,6 +68,12 @@ export default async function AdminWorkFormPage({ params, searchParams }: Props)
           where: { workId: id },
           select: { id: true, status: true, progress: true, hlsUrl: true, errorMessage: true, targetField: true },
           orderBy: { createdAt: "desc" },
+        }),
+    isNew
+      ? Promise.resolve([] as { mediaType: string; filmstripMaskEnabled: boolean; filmstripMaskHeight: number; filmstripMaskOpacity: number }[])
+      : prisma.workVideoDisplaySetting.findMany({
+          where: { workId: id },
+          select: { mediaType: true, filmstripMaskEnabled: true, filmstripMaskHeight: true, filmstripMaskOpacity: true },
         }),
   ]);
 
@@ -134,6 +141,17 @@ export default async function AdminWorkFormPage({ params, searchParams }: Props)
           workId={id}
           videoUrl={work.videoUrl ?? null}
           trailerUrl={work.trailerUrl ?? null}
+        />
+      )}
+
+      {/* Video Mask panel — only for existing non-series works */}
+      {!isNew && work && work.type !== "SERIES" && (
+        <VideoMaskPanel
+          workId={id}
+          initialSettings={maskSettings as { mediaType: "full" | "trailer" | "preview"; filmstripMaskEnabled: boolean; filmstripMaskHeight: number; filmstripMaskOpacity: number }[]}
+          hasVideo={!!(work.videoUrl || work.masterVideoKey)}
+          hasTrailer={!!(work.trailerUrl || work.masterTrailerKey)}
+          hasPreview={!!(work.previewClipUrl || work.masterPreviewKey)}
         />
       )}
 

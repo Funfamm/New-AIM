@@ -342,6 +342,7 @@ model Work {
   rowItems             ContentRowItem[]
   videoProcessingJobs  VideoProcessingJob[]
   subtitles            Subtitle[]
+  videoDisplaySettings WorkVideoDisplaySetting[]
 
   @@map("works")
 }
@@ -1314,3 +1315,27 @@ model TranslationApiKey {
   @@map("translation_api_keys")
 }
 
+
+// ─────────────────────────────────────────────
+// VIDEO DISPLAY SETTINGS (per-video mask config)
+// ─────────────────────────────────────────────
+
+model WorkVideoDisplaySetting {
+  id       String @id @default(cuid())
+  workId   String
+  mediaType String // full | trailer | preview
+
+  filmstripMaskEnabled  Boolean @default(false)
+  filmstripMaskHeight   Int     @default(12) // percent: 5–25
+  filmstripMaskOpacity  Int     @default(96) // percent: 60–100
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  work Work @relation(fields: [workId], references: [id], onDelete: Cascade)
+
+  @@unique([workId, mediaType])
+  @@index([workId])
+  @@index([mediaType])
+  @@map("work_video_display_settings")
+}

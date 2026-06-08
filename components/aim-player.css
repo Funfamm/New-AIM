@@ -458,3 +458,32 @@
 :-webkit-full-screen .aim-player {
   position: fixed; inset: 0; width: 100vw; height: 100vh;
 }
+
+/* ── Filmstrip Mask ──────────────────────────── */
+.aim-player--filmstrip::before,
+.aim-player--filmstrip::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0;
+  height: var(--filmstrip-mask-height, 12%);
+  opacity: var(--filmstrip-mask-opacity, 0.96);
+  pointer-events: none;
+  z-index: 4; /* above video (0), below controls (10) */
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0.96) 0 34px,
+      rgba(255, 255, 255, 0.08) 34px 42px,
+      rgba(0, 0, 0, 0.96) 42px 76px
+    );
+}
+
+.aim-player--filmstrip::before { top: 0; }
+.aim-player--filmstrip::after  { bottom: 0; }
+
+@media (max-width: 640px) {
+  .aim-player--filmstrip::before,
+  .aim-player--filmstrip::after {
+    height: min(var(--filmstrip-mask-height, 12%), 14%);
+  }
+}
