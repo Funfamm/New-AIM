@@ -159,7 +159,7 @@ export default function AimPlayer({
     const video = videoRef.current;
     if (video) setCastAvail("remote" in video);
 
-    const onFs = () => setIsFs(!!document.fullscreenElement);
+    const onFs = () => setIsFs(!!(document.fullscreenElement || (document as any).webkitFullscreenElement));
     document.addEventListener("fullscreenchange", onFs);
     document.addEventListener("webkitfullscreenchange", onFs);
     return () => {
@@ -252,6 +252,18 @@ export default function AimPlayer({
     reveal();
   }
 
+  // Toggle overlay visibility only — never affects playback.
+  // First tap on empty player area shows controls; second tap hides them.
+  function toggleControls() {
+    if (locked) return;
+    if (ctrlOn) {
+      if (hideRef.current) clearTimeout(hideRef.current);
+      setCtrlOn(false);
+    } else {
+      reveal();
+    }
+  }
+
   function seekBy(delta: number) {
     const v = videoRef.current;
     if (!v) return;
@@ -282,8 +294,8 @@ export default function AimPlayer({
   function toggleFs() {
     const el = wrapRef.current;
     if (!el) return;
-    if (document.fullscreenElement) {
-      document.exitFullscreen().catch(() => {});
+    if (document.fullscreenElement || (document as any).webkitFullscreenElement) {
+      (document.exitFullscreen?.() ?? (document as any).webkitExitFullscreen?.())?.catch?.(() => {});
     } else {
       (el.requestFullscreen?.() ?? (el as any).webkitRequestFullscreen?.())?.catch?.(() => {});
     }
@@ -401,7 +413,6 @@ export default function AimPlayer({
       ref={wrapRef}
       className="watch-player-inner aim-player"
       onMouseMove={ctaVisible ? undefined : reveal}
-      onTouchStart={ctaVisible ? undefined : reveal}
     >
       {/* ── Video ── */}
       <video
@@ -412,7 +423,7 @@ export default function AimPlayer({
         controlsList="nodownload"
         poster={poster}
         style={brightness !== 100 ? { filter: `brightness(${brightness}%)` } : undefined}
-        onClick={togglePlay}
+        onClick={ctaVisible ? undefined : toggleControls}
         onPlay={() => {
           setPlaying(true);
           if (!hasStarted.current) {
@@ -679,7 +690,7 @@ export default function AimPlayer({
               <span className="aim-skip10-num">10</span>
             </button>
 
-            <button className="aim-icon-btn aim-player-play-btn" onClick={togglePlay} aria-label={playing ? "Pause" : "Play"}>
+            <button className="aim-icon-btn aim-player-play-btn" onClick={(e) => { e.stopPropagation(); togglePlay(); }} aria-label={playing ? "Pause" : "Play"}>
               {playing
                 ? <Pause size={26} fill="currentColor" />
                 : <Play  size={26} fill="currentColor" style={{ marginLeft: 2 }} />}
@@ -817,7 +828,7 @@ export default function AimPlayer({
               </button>
 
               {/* Fullscreen */}
-              <button className="aim-icon-btn" onClick={toggleFs} aria-label={isFs ? "Exit fullscreen" : "Fullscreen"}>
+              <button type="button" className="aim-icon-btn" onClick={(e) => { e.stopPropagation(); toggleFs(); }} aria-label={isFs ? "Exit fullscreen" : "Fullscreen"}>
                 {isFs ? <Minimize size={18} /> : <Maximize size={18} />}
               </button>
             </div>
