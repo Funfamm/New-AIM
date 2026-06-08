@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useEffect, useCallback, Fragment } from "react";
+import { useRef, useState, useEffect, useCallback, Fragment, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -8,7 +8,7 @@ import {
   Volume2, VolumeX, Volume1,
   ChevronLeft, Maximize, Minimize,
   Lock, Unlock, ListVideo, Scissors,
-  Sun, Cast, Heart, X, Check,
+  Sun, Cast, Heart, X, Check, Subtitles,
 } from "lucide-react";
 import { saveWatchProgress } from "@/lib/actions/progress";
 import { beacon } from "@/lib/beacon";
@@ -52,6 +52,7 @@ type Props = {
   clipStartParam?: number | null;
   clipEndParam?: number | null;
   isClipMode?: boolean;
+  subtitleTracks?: { lang: string; label: string; src: string; isDefault?: boolean }[];
 };
 
 const SAVE_MS    = 10_000;
@@ -88,6 +89,7 @@ export default function AimPlayer({
   isGuest, initialLiked, initialLikeCount,
   cta, ctaUser,
   clipStartParam, clipEndParam, isClipMode,
+  subtitleTracks = [],
 }: Props) {
   const router      = useRouter();
   const wrapRef     = useRef<HTMLDivElement>(null);
@@ -121,6 +123,15 @@ export default function AimPlayer({
   const [speedOpen,   setSpeedOpen]   = useState(false);
   const [epOpen,      setEpOpen]      = useState(false);
   const [clipOpen,    setClipOpen]    = useState(false);
+  const [subOpen,     setSubOpen]     = useState(false);
+
+  // Subtitles
+  const defaultSubLang = useMemo(
+    () => subtitleTracks.find((t) => t.isDefault)?.lang ?? null,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+  const [subLang, setSubLang] = useState<string | null>(defaultSubLang);
 
   // Content
   const [skipIntro,   setSkipIntro]   = useState(false);
@@ -210,6 +221,27 @@ export default function AimPlayer({
     document.addEventListener("click", h);
     return () => document.removeEventListener("click", h);
   }, [speedOpen]);
+
+  // ── Subtitle menu outside click ───────────────────────────────────────
+  useEffect(() => {
+    if (!subOpen) return;
+    const h = (e: MouseEvent) => {
+      if (!(e.target as Element)?.closest?.(".aim-sub-wrap")) setSubOpen(false);
+    };
+    document.addEventListener("click", h);
+    return () => document.removeEventListener("click", h);
+  }, [subOpen]);
+
+  // ── Sync subtitle track selection with TextTrack API ─────────────────
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    const tracks = v.textTracks;
+    for (let i = 0; i < tracks.length; i++) {
+      const t = tracks[i];
+      t.mode = t.language === subLang ? "showing" : "hidden";
+    }
+  }, [subLang]);
 
   // ── Helpers ───────────────────────────────────────────────────────────
   function togglePlay() {
@@ -450,7 +482,18 @@ export default function AimPlayer({
           if (v) { save(Math.floor(v.duration)); beacon(isTrailer ? "TRAILER_CLICK" : "WATCH_COMPLETE", { workId }); }
           if (nextSlug) startUpNext();
         }}
-      />
+      >
+        {subtitleTracks.map((track) => (
+          <track
+            key={track.lang}
+            kind="subtitles"
+            src={track.src}
+            srcLang={track.lang}
+            label={track.label}
+            default={track.lang === defaultSubLang}
+          />
+        ))}
+      </video>
 
       {/* ── Clip mode badge ── */}
       {isClipMode && <div className="aim-clip-badge">Shared Clip</div>}
@@ -726,6 +769,39 @@ export default function AimPlayer({
               >
                 <Scissors size={16} />
               </button>
+
+              {/* Subtitles */}
+              {subtitleTracks.length > 0 && (
+                <div className="aim-sub-wrap">
+                  <button
+                    className={`aim-icon-btn${subLang ? " aim-icon-btn--on" : ""}${subOpen ? " aim-icon-btn--on" : ""}`}
+                    onClick={(e) => { e.stopPropagation(); setSubOpen((o) => !o); }}
+                    aria-label="Subtitles"
+                    title="Subtitles"
+                  >
+                    <Subtitles size={17} />
+                  </button>
+                  {subOpen && (
+                    <div className="aim-sub-menu">
+                      <button
+                        className={`aim-sub-opt${subLang === null ? " aim-sub-opt--on" : ""}`}
+                        onClick={() => { setSubLang(null); setSubOpen(false); }}
+                      >
+                        Off
+                      </button>
+                      {subtitleTracks.map((t) => (
+                        <button
+                          key={t.lang}
+                          className={`aim-sub-opt${subLang === t.lang ? " aim-sub-opt--on" : ""}`}
+                          onClick={() => { setSubLang(t.lang); setSubOpen(false); }}
+                        >
+                          {t.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Right side */}

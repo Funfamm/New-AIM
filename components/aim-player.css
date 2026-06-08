@@ -218,6 +218,24 @@
 .aim-speed-opt:hover { background: rgba(255,255,255,0.08); color: #fff; }
 .aim-speed-opt--on { color: var(--color-brand-accent); font-weight: 700; }
 
+/* Subtitles */
+.aim-sub-wrap { position: relative; }
+.aim-sub-menu {
+  position: absolute; bottom: calc(100% + 8px); left: 50%;
+  transform: translateX(-50%);
+  background: rgba(8,8,8,0.95); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px; min-width: 130px;
+  backdrop-filter: blur(20px); z-index: 30; overflow: hidden;
+}
+.aim-sub-opt {
+  display: block; width: 100%; padding: 0.5rem 1rem;
+  font-family: var(--font-body); font-size: 0.8125rem;
+  color: rgba(255,255,255,0.8); background: none; border: none;
+  cursor: pointer; text-align: center; transition: background 0.1s;
+}
+.aim-sub-opt:hover { background: rgba(255,255,255,0.08); color: #fff; }
+.aim-sub-opt--on { color: var(--color-brand-accent); font-weight: 700; }
+
 /* ── Skip Intro pill (always rendered with pointer-events) ── */
 .aim-skip-pill {
   position: absolute; bottom: 5.25rem; right: 1rem; z-index: 15;

@@ -9,8 +9,12 @@ function requireEnv(name: string): string {
   return val;
 }
 
-export const APP_BASE_URL  = requireEnv("APP_BASE_URL").replace(/\/$/, "");
-export const WORKER_SECRET = requireEnv("WORKER_SECRET");
+export const APP_BASE_URL = requireEnv("APP_BASE_URL").replace(/\/$/, "");
+
+// Support both WORKER_SHARED_SECRET (preferred) and legacy WORKER_SECRET
+const _workerSecret = process.env.WORKER_SHARED_SECRET ?? process.env.WORKER_SECRET;
+if (!_workerSecret) throw new Error("Missing WORKER_SHARED_SECRET or WORKER_SECRET in .env");
+export const WORKER_SECRET = _workerSecret;
 export const WORKER_PORT   = parseInt(process.env.WORKER_PORT ?? "4242", 10);
 
 export const R2_ACCOUNT_ID       = requireEnv("R2_ACCOUNT_ID");

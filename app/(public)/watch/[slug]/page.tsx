@@ -18,6 +18,9 @@ import ShareButton from "@/components/share-button";
 import { isWorkSaved } from "@/lib/actions/watchlist";
 import { getWorkLikeState } from "@/lib/actions/likes";
 import { getOrCreateSession, trackEvent } from "@/lib/analytics";
+import { listPublishedSubtitles } from "@/lib/subtitles/subtitle-repo";
+import { getVttUrl } from "@/lib/subtitles/vtt-storage";
+import { getLangName } from "@/lib/subtitles/subtitle-languages";
 
 const WORK_TYPE_LABEL: Record<string, string> = {
   FULL_FILM: "Film", SHORT_FILM: "Short Film", SERIES: "Series",
@@ -199,10 +202,28 @@ export default async function WatchPage({ params, searchParams }: Props) {
     ? await getWatchProgress(work.id)
     : 0;
 
-  const [isSaved, { isLiked, likeCount }] = await Promise.all([
+  const [isSaved, { isLiked, likeCount }, publishedSubs] = await Promise.all([
     session?.user ? isWorkSaved(work.id) : Promise.resolve(false),
     getWorkLikeState(work.id),
+    !isEmbed ? listPublishedSubtitles(work.id) : Promise.resolve([]),
   ]);
+
+  // Build subtitle track list for the player (<track> elements)
+  const subtitleTracks: { lang: string; label: string; src: string; isDefault?: boolean }[] = [];
+  for (const sub of publishedSubs) {
+    const vttKeys = (sub.vttKeysJson ?? {}) as Record<string, string>;
+    const allLangs = Object.keys(vttKeys);
+    for (const lang of allLangs) {
+      try {
+        const src = getVttUrl(lang, vttKeys);
+        if (src) subtitleTracks.push({
+          lang, src,
+          label: lang === sub.sourceLanguage ? sub.label : getLangName(lang),
+          isDefault: sub.isDefault && lang === sub.sourceLanguage && subtitleTracks.length === 0,
+        });
+      } catch {}
+    }
+  }
 
   // Episode nav (for episode pages — siblings from parent series)
   const siblings    = work.parent?.episodes ?? [];
@@ -348,6 +369,7 @@ export default async function WatchPage({ params, searchParams }: Props) {
                   clipStartParam={clipStartParam}
                   clipEndParam={clipEndParam}
                   isClipMode={isClipMode}
+                  subtitleTracks={subtitleTracks.length > 0 ? subtitleTracks : undefined}
                 />
               ) : isEmbed && embedUrl ? (
                 <iframe

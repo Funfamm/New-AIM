@@ -341,6 +341,7 @@ model Work {
   cast                 WorkCast[]
   rowItems             ContentRowItem[]
   videoProcessingJobs  VideoProcessingJob[]
+  subtitles            Subtitle[]
 
   @@map("works")
 }
@@ -1217,5 +1218,96 @@ model VideoProcessingJob {
   @@index([status, createdAt])
   @@index([workId])
   @@map("video_processing_jobs")
+}
+
+// ─────────────────────────────────────────────
+// SUBTITLES
+// ─────────────────────────────────────────────
+
+model Subtitle {
+  id               String   @id @default(cuid())
+  workId           String
+  mediaType        String   @default("full")   // full | trailer | preview
+  sourceLanguage   String   @default("en")
+  label            String   @default("English")
+  status           String   @default("draft")  // draft | approved_source
+  segmentsJson     Json
+  translationsJson Json?    // Record<lang, Segment[]>
+  vttKeysJson      Json?    // Record<lang, r2Key>
+  isPublished      Boolean  @default(false)
+  isDefault        Boolean  @default(false)
+  sortOrder        Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  work      Work               @relation(fields: [workId], references: [id], onDelete: Cascade)
+  revisions SubtitleRevision[]
+  jobs      SubtitleJob[]
+
+  @@unique([workId, mediaType, sourceLanguage])
+  @@index([workId])
+  @@index([mediaType])
+  @@index([sourceLanguage])
+  @@map("subtitles")
+}
+
+model SubtitleRevision {
+  id           String   @id @default(cuid())
+  subtitleId   String
+  snapshotJson Json
+  reason       String?
+  createdAt    DateTime @default(now())
+
+  subtitle Subtitle @relation(fields: [subtitleId], references: [id], onDelete: Cascade)
+
+  @@index([subtitleId])
+  @@map("subtitle_revisions")
+}
+
+model SubtitleJob {
+  id            String   @id @default(cuid())
+  subtitleId    String
+  type          String   @default("translate")
+  status        String   @default("PENDING")   // PENDING | PROCESSING | READY | FAILED
+  languagesJson Json?    // string[] — target language codes
+  progress      Int      @default(0)
+  error         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  subtitle Subtitle @relation(fields: [subtitleId], references: [id], onDelete: Cascade)
+
+  @@index([subtitleId])
+  @@index([status])
+  @@map("subtitle_jobs")
+}
+
+// ─────────────────────────────────────────────
+// TRANSLATION API KEYS
+// Encrypted pool of Gemini API keys for subtitle translation.
+// Rotated via LRU; self-healing via cooldown timestamps.
+// encryptedKey is AES-256-GCM — raw key is never stored or exposed to clients.
+// ─────────────────────────────────────────────
+
+model TranslationApiKey {
+  id            String    @id @default(cuid())
+  provider      String    @default("gemini")
+  name          String
+  encryptedKey  String
+  keyPreview    String?   // last-8-chars mask shown in admin UI
+  isEnabled     Boolean   @default(true)
+  status        String    @default("HEALTHY")  // HEALTHY | COOLDOWN | DISABLED | INVALID
+  failureCount  Int       @default(0)
+  successCount  Int       @default(0)
+  lastUsedAt    DateTime?
+  lastSuccessAt DateTime?
+  lastFailureAt DateTime?
+  cooldownUntil DateTime?
+  errorMessage  String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([provider, isEnabled, status])
+  @@map("translation_api_keys")
 }
 
