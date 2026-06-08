@@ -17,14 +17,22 @@ export async function POST(req: NextRequest) {
 
   const work = await prisma.work.findUnique({
     where: { id: workId },
-    select: { videoUrl: true, trailerUrl: true },
+    select: { masterVideoKey: true, masterTrailerKey: true, masterPreviewKey: true },
   });
   if (!work) return NextResponse.json({ error: "Work not found" }, { status: 404 });
 
-  const videoUrl = mediaType === "trailer" ? work.trailerUrl : work.videoUrl;
-  if (!videoUrl) {
+  const masterKey =
+    mediaType === "trailer" ? work.masterTrailerKey :
+    mediaType === "preview" ? work.masterPreviewKey :
+    work.masterVideoKey;
+
+  if (!masterKey) {
+    const fieldLabel =
+      mediaType === "trailer" ? "master trailer" :
+      mediaType === "preview" ? "master preview" :
+      "master video";
     return NextResponse.json(
-      { error: `No ${mediaType === "trailer" ? "trailer" : "video"} URL set on this work. Upload a video first.` },
+      { error: `No ${fieldLabel} source file uploaded for this work. Upload the master MP4 before generating subtitles.` },
       { status: 422 }
     );
   }

@@ -235,6 +235,14 @@ async function transcribeViaWhisper(
     );
   }
 
+  // Block HLS URLs — FFmpeg cannot transcribe .m3u8 playlists
+  if (videoUrl.includes(".m3u8")) {
+    throw new Error(
+      "Subtitle transcription requires the original master MP4. The current source is an HLS playback URL. " +
+      "Upload the master source file before generating subtitles."
+    );
+  }
+
   console.log(`[subtitle-worker] Whisper transcription → ${TRANSCRIPTION_ENDPOINT} | mediaType=${mediaType}`);
   onProgress(10);
 
