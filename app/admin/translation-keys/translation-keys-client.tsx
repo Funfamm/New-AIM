@@ -289,7 +289,7 @@ export default function TranslationKeysClient({ initialKeys }: Props) {
       {/* Stats row */}
       {keys.length > 0 && (
         <div className="tk-stats">
-          <div className="tk-stat">
+          <div className="tk-stat tk-stat--total">
             <div className="tk-stat-value">{stats.total}</div>
             <div className="tk-stat-label">Total</div>
           </div>
