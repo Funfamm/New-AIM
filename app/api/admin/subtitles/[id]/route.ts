@@ -8,6 +8,7 @@ import {
   saveSubtitleSegments,
   setSubtitleStatus,
 } from "@/lib/subtitles/subtitle-repo";
+import { cacheVttToR2 } from "@/lib/subtitles/vtt-storage";
 import type { SubtitleSegment } from "@/lib/subtitles/subtitle-file-parser";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -63,6 +64,20 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
       return NextResponse.json({ error: "Invalid status" }, { status: 400 });
     }
     subtitle = await setSubtitleStatus(id, body.status);
+
+    // Cache source VTT to R2 on approval so the CDN URL is available for the player
+    if (body.status === "approved_source" && subtitle.segmentsJson.length > 0) {
+      try {
+        const srcLang = subtitle.sourceLanguage;
+        const existingKeys = (subtitle.vttKeysJson ?? {}) as Record<string, string>;
+        if (!existingKeys[srcLang]) {
+          const key = await cacheVttToR2(subtitle.id, srcLang, subtitle.segmentsJson);
+          subtitle = await updateSubtitleById(id, { vttKeysJson: { ...existingKeys, [srcLang]: key } });
+        }
+      } catch {
+        // Non-fatal — public VTT route serves from segmentsJson as fallback
+      }
+    }
   } else {
     // Metadata update
     subtitle = await updateSubtitleById(id, {
