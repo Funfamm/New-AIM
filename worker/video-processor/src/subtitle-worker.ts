@@ -332,7 +332,14 @@ async function transcribeVideo(
   workId: string,
   onProgress: (pct: number) => void
 ): Promise<SubtitleSegment[]> {
-  console.log(`[subtitle-worker] Transcription provider: ${TRANSCRIPTION_PROVIDER}`);
+  console.log(`[subtitle-worker] Transcription provider: ${TRANSCRIPTION_PROVIDER || "(not configured)"}`);
+
+  if (!TRANSCRIPTION_PROVIDER) {
+    throw new Error(
+      "Whisper transcription is not configured. " +
+      "Set TRANSCRIPTION_PROVIDER=whisper and TRANSCRIPTION_ENDPOINT in worker .env."
+    );
+  }
 
   if (TRANSCRIPTION_PROVIDER === "whisper") {
     try {
@@ -500,7 +507,8 @@ export async function processSubtitleJob(): Promise<boolean> {
       console.log(`[subtitle-worker] Transcription job ${jobId} complete: ${segments.length} cues`);
       return true;
     } catch (err) {
-      const msg = normalizeGeminiError(err);
+      // Use plain message — transcription errors are Whisper/config errors, not Gemini errors
+      const msg = err instanceof Error ? err.message : String(err);
       console.error(`[subtitle-worker] Transcription job ${jobId} failed: ${msg}`);
       await reportFailed(jobId, apiKeyId, msg);
       return false;

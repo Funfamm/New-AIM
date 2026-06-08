@@ -31,13 +31,15 @@ export const TRANSCRIPTION_ENDPOINT = (process.env.TRANSCRIPTION_ENDPOINT || "")
 // Optional Bearer token sent to the transcription endpoint
 export const TRANSCRIPTION_SECRET = process.env.TRANSCRIPTION_SECRET || "";
 
-// Active transcription provider resolution:
-//   1. TRANSCRIPTION_PROVIDER env var if explicitly set
+// Active transcription provider:
+//   1. TRANSCRIPTION_PROVIDER env var if explicitly set to "whisper" or "gemini"
 //   2. "whisper" if TRANSCRIPTION_ENDPOINT is configured (auto-detect)
-//   3. "gemini" fallback
-export const TRANSCRIPTION_PROVIDER: "whisper" | "gemini" =
-  (process.env.TRANSCRIPTION_PROVIDER as "whisper" | "gemini") ||
-  (TRANSCRIPTION_ENDPOINT ? "whisper" : "gemini");
+//   3. "" — not configured; worker will fail with a descriptive error at job time
+//   Note: never defaults to "gemini" silently — Gemini is for translation only.
+export const TRANSCRIPTION_PROVIDER: "whisper" | "gemini" | "" =
+  process.env.TRANSCRIPTION_PROVIDER === "whisper" ? "whisper" :
+  process.env.TRANSCRIPTION_PROVIDER === "gemini"  ? "gemini"  :
+  TRANSCRIPTION_ENDPOINT                           ? "whisper" : "";
 
 // Optional fallback provider when primary fails. Set to "gemini" to auto-retry with Gemini
 // when the whisper endpoint is unreachable or returns an error.
