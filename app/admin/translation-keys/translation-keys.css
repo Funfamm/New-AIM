@@ -1,0 +1,283 @@
+/* ── Translation Keys — admin page ──────────────────────────── */
+.tk-page {
+  padding: 2rem;
+  max-width: 860px;
+}
+
+.tk-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+}
+
+.tk-title {
+  font-family: var(--font-body);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-brand-white);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+.tk-title-sub {
+  font-size: 0.8125rem;
+  font-weight: 400;
+  color: rgba(255,255,255,0.35);
+  margin-top: 0.25rem;
+}
+
+.tk-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1rem;
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.tk-btn--primary {
+  background: var(--color-brand-accent);
+  color: var(--color-brand-black);
+  border-color: var(--color-brand-accent);
+}
+.tk-btn--primary:hover { background: #f0d07a; }
+
+.tk-btn--ghost {
+  background: transparent;
+  color: rgba(255,255,255,0.45);
+  border-color: rgba(255,255,255,0.12);
+}
+.tk-btn--ghost:hover { color: var(--color-brand-white); border-color: rgba(255,255,255,0.25); }
+
+.tk-btn--danger {
+  background: transparent;
+  color: #f87171;
+  border-color: rgba(248,113,113,0.3);
+}
+.tk-btn--danger:hover { background: rgba(248,113,113,0.08); border-color: rgba(248,113,113,0.6); }
+
+.tk-btn--sm {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.6875rem;
+}
+
+.tk-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Add form */
+.tk-add-form {
+  background: rgba(255,255,255,0.025);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 6px;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.tk-add-title {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--color-brand-white);
+  margin: 0 0 1rem;
+}
+
+.tk-form-row {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  margin-bottom: 0.875rem;
+}
+
+.tk-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex: 1;
+  min-width: 160px;
+}
+
+.tk-field--wide { flex: 2; }
+
+.tk-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.tk-input {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 4px;
+  color: var(--color-brand-white);
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  padding: 0.5rem 0.75rem;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.tk-input:focus { border-color: rgba(232,201,126,0.45); }
+
+.tk-form-actions { display: flex; gap: 0.5rem; }
+
+/* Error / notice */
+.tk-error {
+  padding: 0.75rem 1rem;
+  background: rgba(248,113,113,0.08);
+  border: 1px solid rgba(248,113,113,0.25);
+  border-radius: 4px;
+  font-size: 0.8125rem;
+  color: #f87171;
+  margin-bottom: 1rem;
+}
+
+.tk-notice {
+  padding: 0.75rem 1rem;
+  background: rgba(232,201,126,0.06);
+  border: 1px solid rgba(232,201,126,0.18);
+  border-radius: 4px;
+  font-size: 0.8125rem;
+  color: rgba(232,201,126,0.8);
+  margin-bottom: 1.25rem;
+  line-height: 1.5;
+}
+
+/* Key list */
+.tk-empty {
+  padding: 2rem;
+  text-align: center;
+  font-size: 0.875rem;
+  color: rgba(255,255,255,0.25);
+  border: 1px dashed rgba(255,255,255,0.08);
+  border-radius: 6px;
+}
+
+.tk-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.tk-card {
+  background: rgba(255,255,255,0.025);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 6px;
+  padding: 1rem 1.25rem;
+}
+
+.tk-card--disabled {
+  opacity: 0.55;
+}
+
+.tk-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.625rem;
+  margin-bottom: 0.5rem;
+}
+
+.tk-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  flex-wrap: wrap;
+}
+
+.tk-card-name {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--color-brand-white);
+}
+
+.tk-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.tk-badge--healthy {
+  background: rgba(74,222,128,0.1);
+  color: #4ade80;
+  border: 1px solid rgba(74,222,128,0.25);
+}
+.tk-badge--cooldown {
+  background: rgba(251,191,36,0.1);
+  color: #fbbf24;
+  border: 1px solid rgba(251,191,36,0.25);
+}
+.tk-badge--invalid {
+  background: rgba(248,113,113,0.1);
+  color: #f87171;
+  border: 1px solid rgba(248,113,113,0.25);
+}
+.tk-badge--disabled {
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.3);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.tk-badge--provider {
+  background: rgba(255,255,255,0.05);
+  color: rgba(255,255,255,0.4);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.tk-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.tk-card-detail {
+  font-size: 0.75rem;
+  color: rgba(255,255,255,0.3);
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.25rem;
+}
+
+.tk-card-detail span { display: flex; align-items: center; gap: 0.3rem; }
+
+.tk-preview {
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: rgba(255,255,255,0.25);
+  margin-top: 0.25rem;
+}
+
+.tk-card-error {
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(248,113,113,0.06);
+  border: 1px solid rgba(248,113,113,0.2);
+  border-radius: 4px;
+  font-size: 0.75rem;
+  color: #f87171;
+}
+
+.tk-confirm-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tk-confirm-text {
+  font-size: 0.75rem;
+  color: rgba(255,255,255,0.4);
+}
