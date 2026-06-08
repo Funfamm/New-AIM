@@ -128,9 +128,13 @@ export default async function AdminWorkFormPage({ params, searchParams }: Props)
         <WorkCastPanel workId={id} />
       )}
 
-      {/* Subtitle panel — only for non-episode works with video */}
+      {/* Subtitle panel — only for non-series works */}
       {!isNew && work && work.type !== "SERIES" && (
-        <SubtitlePanel workId={id} />
+        <SubtitlePanel
+          workId={id}
+          videoUrl={work.videoUrl ?? null}
+          trailerUrl={work.trailerUrl ?? null}
+        />
       )}
 
       {/* Notify Me CTA — link to dedicated CTA management page */}

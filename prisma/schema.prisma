@@ -1230,6 +1230,7 @@ model Subtitle {
   mediaType        String   @default("full")   // full | trailer | preview
   sourceLanguage   String   @default("en")
   label            String   @default("English")
+  status           String   @default("draft")  // draft | approved_source
   segmentsJson     Json
   translationsJson Json?    // Record<lang, Segment[]>
   vttKeysJson      Json?    // Record<lang, r2Key>

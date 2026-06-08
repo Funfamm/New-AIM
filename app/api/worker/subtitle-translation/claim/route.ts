@@ -5,15 +5,16 @@ import { selectGeminiKey } from "@/lib/subtitles/key-manager";
 import { verifyWorkerSecret } from "@/lib/worker-auth";
 
 // POST /api/worker/subtitle-translation/claim
-// Worker polls this to pick up pending translation jobs.
+// Worker polls this to pick up pending jobs (translate or transcribe).
 // Returns { job } with a decrypted apiKey — worker routes are the only callers.
 export async function POST(req: NextRequest) {
   if (!verifyWorkerSecret(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // Claim the oldest pending job (translate or transcribe)
   const job = await prisma.subtitleJob.findFirst({
-    where: { status: "PENDING", type: "translate" },
+    where: { status: "PENDING", type: { in: ["translate", "transcribe"] } },
     orderBy: { createdAt: "asc" },
   });
 
@@ -35,8 +36,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ job: null });
   }
 
-  // Select a translation key (DB pool → env fallback).
-  // Decrypted key is returned here because this is a worker-only route, verified above.
+  // Select a Gemini API key (DB pool → env fallback)
   const selectedKey = await selectGeminiKey();
   if (!selectedKey) {
     await prisma.subtitleJob.update({
@@ -46,14 +46,46 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ job: null });
   }
 
+  if (claimed.type === "transcribe") {
+    // For transcription jobs, return the video URL from the work
+    const work = await prisma.work.findUnique({
+      where: { id: subtitle.workId },
+      select: { videoUrl: true, trailerUrl: true },
+    });
+    const videoUrl =
+      subtitle.mediaType === "trailer" ? (work?.trailerUrl ?? null) : (work?.videoUrl ?? null);
+
+    if (!videoUrl) {
+      await prisma.subtitleJob.update({
+        where: { id: claimed.id },
+        data: { status: "FAILED", error: "No video URL found for this work", updatedAt: new Date() },
+      });
+      return NextResponse.json({ job: null });
+    }
+
+    return NextResponse.json({
+      job: {
+        id: claimed.id,
+        type: "transcribe",
+        subtitleId: claimed.subtitleId,
+        sourceLanguage: subtitle.sourceLanguage,
+        videoUrl,
+        apiKey: selectedKey.decryptedKey,
+        apiKeyId: selectedKey.apiKeyId,
+        apiKeyName: selectedKey.apiKeyName,
+      },
+    });
+  }
+
+  // Default: translate job
   return NextResponse.json({
     job: {
       id: claimed.id,
+      type: "translate",
       subtitleId: claimed.subtitleId,
       languages: claimed.languagesJson as string[],
       sourceLanguage: subtitle.sourceLanguage,
       segments: subtitle.segmentsJson,
-      // Key injection — only ever sent to authenticated worker routes
       apiKey: selectedKey.decryptedKey,
       apiKeyId: selectedKey.apiKeyId,
       apiKeyName: selectedKey.apiKeyName,
