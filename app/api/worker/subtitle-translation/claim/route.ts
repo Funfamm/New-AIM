@@ -36,18 +36,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ job: null });
   }
 
-  // Select a Gemini API key (DB pool → env fallback)
+  // Select a Gemini API key (DB pool → env fallback).
+  // Transcription jobs may not need it (whisper provider), so we resolve it
+  // without failing here — the worker checks its own TRANSCRIPTION_PROVIDER.
   const selectedKey = await selectGeminiKey();
-  if (!selectedKey) {
-    await prisma.subtitleJob.update({
-      where: { id: claimed.id },
-      data: { status: "FAILED", error: "No Gemini API key available", updatedAt: new Date() },
-    });
-    return NextResponse.json({ job: null });
-  }
 
   if (claimed.type === "transcribe") {
-    // For transcription jobs, return the video URL from the work
     const work = await prisma.work.findUnique({
       where: { id: subtitle.workId },
       select: { videoUrl: true, trailerUrl: true },
@@ -68,16 +62,27 @@ export async function POST(req: NextRequest) {
         id: claimed.id,
         type: "transcribe",
         subtitleId: claimed.subtitleId,
+        workId: subtitle.workId,
+        mediaType: subtitle.mediaType,
         sourceLanguage: subtitle.sourceLanguage,
         videoUrl,
-        apiKey: selectedKey.decryptedKey,
-        apiKeyId: selectedKey.apiKeyId,
-        apiKeyName: selectedKey.apiKeyName,
+        // apiKey may be null when whisper is the active provider (worker handles it)
+        apiKey: selectedKey?.decryptedKey ?? null,
+        apiKeyId: selectedKey?.apiKeyId ?? null,
+        apiKeyName: selectedKey?.apiKeyName ?? null,
       },
     });
   }
 
-  // Default: translate job
+  // Default: translate job — always requires Gemini key
+  if (!selectedKey) {
+    await prisma.subtitleJob.update({
+      where: { id: claimed.id },
+      data: { status: "FAILED", error: "No Gemini API key available for translation. Add a key in Settings.", updatedAt: new Date() },
+    });
+    return NextResponse.json({ job: null });
+  }
+
   return NextResponse.json({
     job: {
       id: claimed.id,
