@@ -3,6 +3,7 @@ import { createWork, updateWork } from "@/lib/actions/works";
 import WorkForm from "@/components/admin/work-form";
 import SeriesEpisodesPanel from "@/components/admin/series-episodes-panel";
 import WorkCastPanel from "@/components/admin/work-cast-panel";
+import SubtitlePanel from "@/components/admin/subtitle-panel";
 import ReleaseEmailButton from "./release-email-button";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -125,6 +126,11 @@ export default async function AdminWorkFormPage({ params, searchParams }: Props)
       {/* Cast panel — only rendered when editing an existing work */}
       {!isNew && work && (
         <WorkCastPanel workId={id} />
+      )}
+
+      {/* Subtitle panel — only for non-episode works with video */}
+      {!isNew && work && work.type !== "SERIES" && (
+        <SubtitlePanel workId={id} />
       )}
 
       {/* Notify Me CTA — link to dedicated CTA management page */}

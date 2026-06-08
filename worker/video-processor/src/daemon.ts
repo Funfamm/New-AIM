@@ -1,6 +1,7 @@
 import http from "http";
 import { checkFfmpeg } from "./ffmpeg";
 import { processOne } from "./worker";
+import { processSubtitleJob } from "./subtitle-worker";
 import { WORKER_PORT } from "./config";
 
 let busy = false;
@@ -32,7 +33,8 @@ const server = http.createServer((req, res) => {
     setImmediate(async () => {
       busy = true;
       try {
-        await processOne();
+        const result = await processOne();
+        if (!result.claimed) await processSubtitleJob();
       } catch (err) {
         console.error("[daemon] Unhandled error:", (err as Error).message);
       } finally {
@@ -57,7 +59,9 @@ async function poll(): Promise<void> {
     if (busy) continue;
     busy = true;
     try {
-      await processOne();
+      const result = await processOne();
+      // If no video job was found, check for subtitle translation jobs
+      if (!result.claimed) await processSubtitleJob();
     } catch (err) {
       console.error("[daemon] Poll error:", (err as Error).message);
     } finally {
