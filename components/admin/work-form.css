@@ -76,3 +76,114 @@ select.form-input { cursor: pointer; }
 @media (min-width: 480px) {
   .form-check-grid { grid-template-columns: repeat(3, 1fr); }
 }
+
+/* ── Sticky save bar ─────────────────────────────────────────────────────── */
+
+.wf-save-bar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.6rem 1rem;
+  background: rgba(10, 10, 10, 0.92);
+  border: 1px solid var(--color-brand-border);
+  border-radius: 6px;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+}
+
+.wf-save-label {
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-brand-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.wf-save-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.wf-cancel-link {
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  color: var(--color-brand-muted);
+  text-decoration: none;
+  padding: 0.45rem 0.875rem;
+  border: 1px solid var(--color-brand-border);
+  border-radius: 4px;
+  transition: color 0.15s;
+}
+.wf-cancel-link:hover { color: var(--color-brand-white); }
+
+/* ── Accordion sections ──────────────────────────────────────────────────── */
+
+.wf-section {
+  background: var(--color-brand-dark);
+  border: 1px solid var(--color-brand-border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.wf-section-hdr {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.875rem 1.125rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.wf-section-hdr:hover { background: rgba(255,255,255,0.025); }
+
+.wf-section--open .wf-section-hdr { background: rgba(255,255,255,0.015); }
+
+.wf-section-ttl {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--color-brand-white);
+}
+
+.wf-section-ico {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.wf-section-chevron {
+  color: var(--color-brand-muted);
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+  transform: rotate(-90deg);
+}
+
+.wf-section-chevron--open {
+  transform: rotate(0deg);
+}
+
+.wf-section-body {
+  border-top: 1px solid var(--color-brand-border);
+}
+
+.wf-sec-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.25rem;
+}
