@@ -26,8 +26,13 @@ export const R2_PUBLIC_BASE_URL  = requireEnv("R2_PUBLIC_BASE_URL").replace(/\/$
 // Gemini model — override via GEMINI_MODEL env var if a newer model is available
 export const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
-// Transcription endpoint (ngrok URL for local dev, stable URL in production)
-export const TRANSCRIPTION_ENDPOINT = (process.env.TRANSCRIPTION_ENDPOINT || "").replace(/\/$/, "");
+// Transcription endpoint — always stored as base URL (no trailing /transcribe).
+// Accepts both "https://xxx.ngrok-free.app" and "https://xxx.ngrok-free.app/transcribe";
+// the worker appends /transcribe when making requests.
+const _rawEndpoint = (process.env.TRANSCRIPTION_ENDPOINT || "").replace(/\/$/, "");
+export const TRANSCRIPTION_ENDPOINT = _rawEndpoint.endsWith("/transcribe")
+  ? _rawEndpoint.slice(0, -"/transcribe".length)
+  : _rawEndpoint;
 // Optional Bearer token sent to the transcription endpoint
 export const TRANSCRIPTION_SECRET = process.env.TRANSCRIPTION_SECRET || "";
 

@@ -252,6 +252,19 @@ async function transcribeViaWhisper(
 
   if (!res.ok) {
     const body = await res.text().catch(() => "");
+    if (res.status === 404) {
+      throw new Error(
+        `Whisper endpoint was reached but /transcribe was not found (404). ` +
+        `Restart the Python server with the latest main.py that includes @app.post("/transcribe"). ` +
+        `Endpoint: ${TRANSCRIPTION_ENDPOINT}/transcribe`
+      );
+    }
+    if (res.status === 401) {
+      throw new Error(
+        `Whisper endpoint rejected the request (401 Unauthorized). ` +
+        `Check that TRANSCRIPTION_SECRET in worker .env matches the Python server's TRANSCRIPTION_SECRET.`
+      );
+    }
     throw new Error(`Whisper transcription failed: endpoint returned ${res.status}. ${body.slice(0, 300)}`);
   }
 
