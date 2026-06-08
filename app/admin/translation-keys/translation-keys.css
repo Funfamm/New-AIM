@@ -281,3 +281,73 @@
   font-size: 0.75rem;
   color: rgba(255,255,255,0.4);
 }
+
+/* Filter bar */
+.tk-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 6px;
+}
+
+.tk-search-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 180px;
+}
+
+.tk-search-icon {
+  position: absolute;
+  left: 0.625rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(255,255,255,0.25);
+  pointer-events: none;
+}
+
+.tk-search {
+  width: 100%;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 4px;
+  color: var(--color-brand-white);
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  padding: 0.4rem 0.75rem 0.4rem 2rem;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.tk-search::placeholder { color: rgba(255,255,255,0.2); }
+.tk-search:focus { border-color: rgba(232,201,126,0.35); }
+
+.tk-filter-select {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 4px;
+  color: rgba(255,255,255,0.55);
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  padding: 0.4rem 0.625rem;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+  appearance: none;
+  padding-right: 1.5rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='rgba(255,255,255,0.25)' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.5rem center;
+}
+.tk-filter-select:hover  { border-color: rgba(255,255,255,0.15); color: rgba(255,255,255,0.75); }
+.tk-filter-select:focus  { border-color: rgba(232,201,126,0.35); color: var(--color-brand-white); }
+
+.tk-filter-count {
+  font-size: 0.6875rem;
+  color: rgba(255,255,255,0.25);
+  white-space: nowrap;
+  margin-left: auto;
+}

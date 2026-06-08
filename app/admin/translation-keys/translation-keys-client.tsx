@@ -1,7 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, Trash2, RotateCcw, Power, CheckCircle, AlertTriangle, Clock, XCircle, Key } from "lucide-react";
+import { useMemo, useState } from "react";
+import {
+  Plus, Trash2, RotateCcw, Power,
+  CheckCircle, AlertTriangle, Clock, XCircle, Key, Search,
+} from "lucide-react";
 
 type ApiKey = {
   id: string;
@@ -20,6 +23,10 @@ type ApiKey = {
   createdAt: string;
 };
 
+type FilterStatus   = "all" | "healthy" | "cooldown" | "invalid" | "disabled";
+type FilterHealth   = "all" | "attention" | "working";
+type SortBy         = "newest" | "recently-used" | "most-failures" | "most-successes";
+
 type Props = { initialKeys: ApiKey[] };
 
 function fmtDate(d: string | null | undefined): string {
@@ -27,8 +34,35 @@ function fmtDate(d: string | null | undefined): string {
   return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
+function matchesStatus(k: ApiKey, f: FilterStatus, now: Date): boolean {
+  if (f === "all") return true;
+  if (f === "disabled") return !k.isEnabled;
+  if (!k.isEnabled) return false; // remaining filters are for enabled keys only
+  if (f === "healthy")  return k.status === "HEALTHY" && !(k.cooldownUntil && new Date(k.cooldownUntil) > now);
+  if (f === "cooldown") return k.status === "COOLDOWN" || !!(k.cooldownUntil && new Date(k.cooldownUntil) > now);
+  if (f === "invalid")  return k.status === "INVALID";
+  return true;
+}
+
+function matchesHealth(k: ApiKey, f: FilterHealth): boolean {
+  if (f === "all") return true;
+  const needsAttention = k.failureCount > 0 || k.status !== "HEALTHY" || !k.isEnabled;
+  if (f === "attention") return needsAttention;
+  if (f === "working")   return k.isEnabled && k.status === "HEALTHY";
+  return true;
+}
+
+function sortKeys(list: ApiKey[], sort: SortBy): ApiKey[] {
+  const copy = [...list];
+  if (sort === "newest")         return copy.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  if (sort === "recently-used")  return copy.sort((a, b) => (b.lastUsedAt ? new Date(b.lastUsedAt).getTime() : 0) - (a.lastUsedAt ? new Date(a.lastUsedAt).getTime() : 0));
+  if (sort === "most-failures")  return copy.sort((a, b) => b.failureCount - a.failureCount);
+  if (sort === "most-successes") return copy.sort((a, b) => b.successCount - a.successCount);
+  return copy;
+}
+
 function StatusBadge({ status, isEnabled }: { status: string; isEnabled: boolean }) {
-  if (!isEnabled) return <span className="tk-badge tk-badge--disabled">Disabled</span>;
+  if (!isEnabled)            return <span className="tk-badge tk-badge--disabled">Disabled</span>;
   if (status === "HEALTHY")  return <span className="tk-badge tk-badge--healthy"><CheckCircle size={9} /> Healthy</span>;
   if (status === "COOLDOWN") return <span className="tk-badge tk-badge--cooldown"><Clock size={9} /> Cooldown</span>;
   if (status === "INVALID")  return <span className="tk-badge tk-badge--invalid"><XCircle size={9} /> Invalid</span>;
@@ -36,15 +70,44 @@ function StatusBadge({ status, isEnabled }: { status: string; isEnabled: boolean
 }
 
 export default function TranslationKeysClient({ initialKeys }: Props) {
-  const [keys, setKeys] = useState<ApiKey[]>(initialKeys);
-  const [showAdd, setShowAdd] = useState(false);
-  const [addName, setAddName] = useState("");
-  const [addKey, setAddKey] = useState("");
-  const [adding, setAdding] = useState(false);
-  const [addError, setAddError] = useState<string | null>(null);
+  const [keys, setKeys]                       = useState<ApiKey[]>(initialKeys);
+  const [showAdd, setShowAdd]                 = useState(false);
+  const [addName, setAddName]                 = useState("");
+  const [addKey, setAddKey]                   = useState("");
+  const [adding, setAdding]                   = useState(false);
+  const [addError, setAddError]               = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-  const [busy, setBusy] = useState<string | null>(null);
-  const [pageError, setPageError] = useState<string | null>(null);
+  const [busy, setBusy]                       = useState<string | null>(null);
+  const [pageError, setPageError]             = useState<string | null>(null);
+
+  // filter + sort state
+  const [search, setSearch]               = useState("");
+  const [filterProvider, setFilterProvider] = useState("all");
+  const [filterStatus, setFilterStatus]   = useState<FilterStatus>("all");
+  const [filterHealth, setFilterHealth]   = useState<FilterHealth>("all");
+  const [sortBy, setSortBy]               = useState<SortBy>("newest");
+
+  const providers = useMemo(() => [...new Set(keys.map((k) => k.provider))], [keys]);
+
+  const needsAttentionCount = useMemo(
+    () => keys.filter((k) => k.failureCount > 0 || k.status !== "HEALTHY" || !k.isEnabled).length,
+    [keys],
+  );
+
+  const filteredKeys = useMemo(() => {
+    const now = new Date();
+    const q   = search.toLowerCase().trim();
+    const filtered = keys.filter((k) => {
+      if (q && !k.name.toLowerCase().includes(q) && !(k.keyPreview ?? "").toLowerCase().includes(q)) return false;
+      if (filterProvider !== "all" && k.provider !== filterProvider) return false;
+      if (!matchesStatus(k, filterStatus, now)) return false;
+      if (!matchesHealth(k, filterHealth)) return false;
+      return true;
+    });
+    return sortKeys(filtered, sortBy);
+  }, [keys, search, filterProvider, filterStatus, filterHealth, sortBy]);
+
+  const isFiltered = search || filterStatus !== "all" || filterHealth !== "all" || filterProvider !== "all";
 
   async function refresh() {
     const res = await fetch("/api/admin/translation-keys");
@@ -175,12 +238,65 @@ export default function TranslationKeysClient({ initialKeys }: Props) {
         </form>
       )}
 
+      {/* Filter bar — only shown when there are keys */}
+      {keys.length > 0 && (
+        <div className="tk-filter-bar">
+          <div className="tk-search-wrap">
+            <Search size={12} className="tk-search-icon" />
+            <input
+              className="tk-search"
+              placeholder="Search by name or key…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+
+          {providers.length > 1 && (
+            <select className="tk-filter-select" value={filterProvider} onChange={(e) => setFilterProvider(e.target.value)}>
+              <option value="all">All Providers</option>
+              {providers.map((p) => (
+                <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
+              ))}
+            </select>
+          )}
+
+          <select className="tk-filter-select" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as FilterStatus)}>
+            <option value="all">All Status</option>
+            <option value="healthy">Healthy</option>
+            <option value="cooldown">Cooldown</option>
+            <option value="invalid">Invalid</option>
+            <option value="disabled">Disabled</option>
+          </select>
+
+          <select className="tk-filter-select" value={filterHealth} onChange={(e) => setFilterHealth(e.target.value as FilterHealth)}>
+            <option value="all">All Health</option>
+            <option value="attention">
+              Needs Attention{needsAttentionCount > 0 ? ` (${needsAttentionCount})` : ""}
+            </option>
+            <option value="working">Working</option>
+          </select>
+
+          <select className="tk-filter-select" value={sortBy} onChange={(e) => setSortBy(e.target.value as SortBy)}>
+            <option value="newest">Newest</option>
+            <option value="recently-used">Recently Used</option>
+            <option value="most-failures">Most Failures</option>
+            <option value="most-successes">Most Successes</option>
+          </select>
+
+          {isFiltered && (
+            <span className="tk-filter-count">{filteredKeys.length} of {keys.length}</span>
+          )}
+        </div>
+      )}
+
       {/* Key list */}
       {keys.length === 0 ? (
         <div className="tk-empty">No API keys added yet. Add a key above to enable DB-backed rotation.</div>
+      ) : filteredKeys.length === 0 ? (
+        <div className="tk-empty">No keys match your filters.</div>
       ) : (
         <div className="tk-list">
-          {keys.map((k) => {
+          {filteredKeys.map((k) => {
             const isBusy = (suf: string) => busy === k.id + suf;
             return (
               <div key={k.id} className={`tk-card${!k.isEnabled ? " tk-card--disabled" : ""}`}>
