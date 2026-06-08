@@ -1297,15 +1297,18 @@ model TranslationApiKey {
   keyPreview    String?   // last-8-chars mask shown in admin UI
   isEnabled     Boolean   @default(true)
   status        String    @default("HEALTHY")  // HEALTHY | COOLDOWN | DISABLED | INVALID
-  failureCount  Int       @default(0)
-  successCount  Int       @default(0)
-  lastUsedAt    DateTime?
-  lastSuccessAt DateTime?
-  lastFailureAt DateTime?
-  cooldownUntil DateTime?
-  errorMessage  String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  failureCount   Int       @default(0)
+  successCount   Int       @default(0)
+  lastUsedAt     DateTime?
+  lastSuccessAt  DateTime?
+  lastFailureAt  DateTime?
+  cooldownUntil  DateTime?
+  errorMessage   String?
+  windowMaxCalls Int       @default(50)  // quota window ceiling
+  usedInWindow   Int       @default(0)   // calls consumed in current window
+  windowResetAt  DateTime?               // when current window expires
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   @@index([provider, isEnabled, status])
   @@map("translation_api_keys")
