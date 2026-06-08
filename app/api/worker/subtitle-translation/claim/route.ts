@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { findSubtitle } from "@/lib/subtitles/subtitle-repo";
 import { selectGeminiKey } from "@/lib/subtitles/key-manager";
 import { verifyWorkerSecret } from "@/lib/worker-auth";
+import { getDownloadPresignedUrl } from "@/lib/r2Client";
 
 // POST /api/worker/subtitle-translation/claim
 // Worker polls this to pick up pending jobs (translate or transcribe).
@@ -36,23 +37,32 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ job: null });
   }
 
-  // Transcribe jobs use Whisper — Gemini keys are never needed here.
-  // Resolve the video URL and return without touching the key pool.
+  // Transcribe jobs use Whisper — resolve a signed URL for the private master MP4.
   if (claimed.type === "transcribe") {
     const work = await prisma.work.findUnique({
       where: { id: subtitle.workId },
-      select: { videoUrl: true, trailerUrl: true },
+      select: { masterVideoKey: true, masterTrailerKey: true, masterPreviewKey: true },
     });
-    const videoUrl =
-      subtitle.mediaType === "trailer" ? (work?.trailerUrl ?? null) : (work?.videoUrl ?? null);
 
-    if (!videoUrl) {
+    const masterKey =
+      subtitle.mediaType === "trailer" ? (work?.masterTrailerKey ?? null) :
+      subtitle.mediaType === "preview"  ? (work?.masterPreviewKey ?? null) :
+      (work?.masterVideoKey ?? null);
+
+    if (!masterKey) {
       await prisma.subtitleJob.update({
         where: { id: claimed.id },
-        data: { status: "FAILED", error: "No video URL found for this work", updatedAt: new Date() },
+        data: {
+          status: "FAILED",
+          error: "Subtitle transcription requires the original master MP4. No master source file found. Upload the master video before generating subtitles.",
+          updatedAt: new Date(),
+        },
       });
       return NextResponse.json({ job: null });
     }
+
+    // Sign a 1-hour GET URL so the Python worker can download the private master file
+    const videoUrl = await getDownloadPresignedUrl(masterKey, 3600);
 
     return NextResponse.json({
       job: {
