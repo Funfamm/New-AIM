@@ -5,6 +5,8 @@ import { after } from "next/server";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import "./detail.css";
+import "@/components/action-buttons.css";
+import "@/components/save-button.css";
 import Image from "next/image";
 import { Play, Clock, Calendar, ChevronLeft, Lock } from "lucide-react";
 import type { Metadata } from "next";
