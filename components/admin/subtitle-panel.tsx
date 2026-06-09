@@ -93,6 +93,8 @@ export default function SubtitlePanel({ workId, videoUrl, trailerUrl }: Props) {
 
   // Cancelling
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  // Resetting stalled job
+  const [resettingId, setResettingId] = useState<string | null>(null);
 
   // ── Data loading ──────────────────────────────────────────────────────────
   const load = useCallback(async () => {
@@ -278,6 +280,21 @@ export default function SubtitlePanel({ workId, videoUrl, trailerUrl }: Props) {
     } else {
       const langs = (currentJob?.languagesJson ?? getTargetLangs(sub.sourceLanguage ?? "auto")) as string[];
       await handleTranslate(sub.id, langs);
+    }
+  }
+
+  // ── Reset stalled job ─────────────────────────────────────────────────────
+  async function handleResetJob(subtitleId: string) {
+    setResettingId(subtitleId);
+    try {
+      const res = await fetch(`/api/admin/subtitles/${subtitleId}/job`, { method: "PATCH" });
+      if (res.ok) {
+        const data = await res.json() as { job: SubtitleJob };
+        setJobs((prev) => ({ ...prev, [subtitleId]: data.job }));
+        startPolling(subtitleId);
+      }
+    } finally {
+      setResettingId(null);
     }
   }
 
@@ -571,11 +588,11 @@ export default function SubtitlePanel({ workId, videoUrl, trailerUrl }: Props) {
                           </button>
                           <button
                             className="sp-btn sp-btn--ghost sp-btn--sm"
-                            onClick={() => currentSub && handleRetryJob(currentSub, currentJob.type)}
-                            disabled={generating[activeTab]}
-                            title="Cancel and retry"
+                            onClick={() => currentSub && handleResetJob(currentSub.id)}
+                            disabled={resettingId === currentSub?.id}
+                            title="Reset stuck job back to queue so the worker picks it up again"
                           >
-                            ↺ Retry
+                            {resettingId === currentSub?.id ? "Resetting…" : "↺ Reset"}
                           </button>
                           <button
                             className="sp-btn sp-btn--danger sp-btn--sm"
