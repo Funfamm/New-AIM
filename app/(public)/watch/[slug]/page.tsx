@@ -7,6 +7,8 @@ import Link from "next/link";
 import { Fragment } from "react";
 import "./watch.css";
 import "../../works/[slug]/detail.css";
+import "@/components/action-buttons.css";
+import "@/components/save-button.css";
 import { ChevronLeft, ChevronRight, Lock, Check, Play, Clock } from "lucide-react";
 import Image from "next/image";
 import type { Metadata } from "next";
