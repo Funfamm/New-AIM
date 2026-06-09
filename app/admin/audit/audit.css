@@ -1,5 +1,12 @@
 /* Admin Audit Log — audit.css */
 
+.alog-subtitle {
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  color: rgba(255,255,255,0.3);
+  margin: 0.2rem 0 0;
+}
+
 /* ── Table cell styles ── */
 .alog-when {
   vertical-align: top;

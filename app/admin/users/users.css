@@ -97,50 +97,15 @@
   margin-top: 0.3rem;
 }
 
-/* ── Filters bar ── */
+/* ── Filters bar — inherits shared admin-filter-bar ── */
 .ufilters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: center;
+  margin-bottom: 1.25rem;
 }
-
-.ufilter-search {
-  flex: 1;
-  min-width: 180px;
-  background: var(--color-brand-dark);
-  border: 1px solid var(--color-brand-border);
-  border-radius: 4px;
-  color: var(--color-brand-light);
-  font-family: var(--font-body);
-  font-size: 0.82rem;
-  padding: 0.45rem 0.75rem;
-  outline: none;
-  transition: border-color 0.15s;
-}
-
-.ufilter-search::placeholder { color: var(--color-brand-muted); }
-.ufilter-search:focus { border-color: var(--color-brand-accent); }
-
+/* Legacy ufilter-search/select kept for fallback, now replaced by admin-filter-* + psel */
+.ufilter-search,
 .ufilter-select {
-  background: var(--color-brand-dark);
-  border: 1px solid var(--color-brand-border);
-  border-radius: 4px;
-  color: var(--color-brand-light);
-  font-family: var(--font-body);
-  font-size: 0.8rem;
-  padding: 0.45rem 0.65rem;
-  outline: none;
-  cursor: pointer;
-  transition: border-color 0.15s;
-  appearance: none;
-  padding-right: 1.4rem;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath fill='%236b7280' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 0.5rem center;
+  display: none; /* replaced by admin-filter-search + PremiumSelect */
 }
-
-.ufilter-select:focus { border-color: var(--color-brand-accent); }
 
 /* ── Table cell styles ── */
 .ucell-name {
@@ -182,25 +147,29 @@
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  background: rgba(232, 201, 126, 0.12);
+  background: rgba(232, 201, 126, 0.1);
   color: var(--color-brand-accent);
-  border: 1px solid rgba(232, 201, 126, 0.25);
-  border-radius: 2px;
-  padding: 1px 5px;
+  border: 1px solid rgba(232, 201, 126, 0.22);
+  border-radius: 999px;
+  padding: 0.12rem 0.5rem;
 }
 
 .urow--self td { background: rgba(232, 201, 126, 0.025); }
 
 /* ── Login method badges ── */
 .uvia-badge {
-  font-size: 0.62rem;
+  font-size: 0.58rem;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  padding: 0.2rem 0.55rem;
-  border-radius: 2px;
+  padding: 0.18rem 0.6rem;
+  border-radius: 999px;
   white-space: nowrap;
+  border: 1px solid transparent;
 }
+.uvia-badge--google { border-color: rgba(66,133,244,0.2); }
+.uvia-badge--email  { border-color: rgba(107,114,128,0.15); }
+.uvia-badge--multi  { border-color: rgba(167,139,250,0.2); }
 
 .uvia-badge--google {
   background: rgba(66, 133, 244, 0.12);
@@ -319,10 +288,10 @@
   align-items: center;
   gap: 0.6rem;
   padding: 0.6rem 1rem;
-  background: rgba(232, 201, 126, 0.06);
-  border: 1px solid rgba(232, 201, 126, 0.2);
+  background: rgba(232,201,126,0.05);
+  border: 1px solid rgba(232,201,126,0.18);
   border-bottom: none;
-  border-radius: 4px 4px 0 0;
+  border-radius: 12px 12px 0 0;
   margin-top: 0.75rem;
   flex-wrap: wrap;
 }
@@ -419,39 +388,8 @@
 
 .ubulk-error-close:hover { opacity: 1; }
 
-/* ── Pagination ── */
-.upagination {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 1rem;
-  margin-top: 1.5rem;
-  padding-top: 1.25rem;
-  border-top: 1px solid var(--color-brand-border);
-}
-
-.upag-btn {
-  font-family: var(--font-body);
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--color-brand-light);
-  background: var(--color-brand-dark);
-  border: 1px solid var(--color-brand-border);
-  border-radius: 4px;
-  padding: 0.4rem 0.85rem;
-  text-decoration: none;
-  transition: border-color 0.15s, color 0.15s;
-}
-
-.upag-btn:hover { border-color: rgba(255,255,255,0.25); color: var(--color-brand-white); }
-.upag-btn--disabled { opacity: 0.3; cursor: default; pointer-events: none; }
-
-.upag-info {
-  font-size: 0.78rem;
-  color: var(--color-brand-muted);
-}
-
-.upag-sub { color: var(--color-brand-border); }
+/* ── Pagination — shared classes in admin-layout.css, local overrides only ── */
+.upag-sub { color: rgba(255,255,255,0.18); }
 
 /* ── DEACTIVATED status badge + row ── */
 .ustatus-badge--deactivated {
@@ -835,34 +773,8 @@
   opacity: 0.8;
 }
 
-/* ── Filter bar — refined inputs ── */
-.ufilters {
-  margin-bottom: 1.25rem;
-  gap: 0.4rem;
-}
-
-.ufilter-search,
-.ufilter-select {
-  border-radius: 3px;
-  font-size: 0.78rem;
-  padding: 0.42rem 0.7rem;
-  height: 34px;
-  background: #0f0f0f;
-  border-color: rgba(255,255,255,0.08);
-  transition: border-color 0.15s, box-shadow 0.15s;
-}
-
-.ufilter-search:focus,
-.ufilter-select:focus {
-  border-color: rgba(232, 201, 126, 0.45);
-  box-shadow: 0 0 0 2px rgba(232, 201, 126, 0.07);
-}
-
-.ufilter-select {
-  padding-right: 1.6rem;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath fill='%23666' d='M0 0l4 5 4-5z'/%3E%3C/svg%3E");
-  background-position: right 0.55rem center;
-}
+/* ── Filter bar overrides ── */
+.ufilters { margin-bottom: 1.25rem; }
 
 /* ── Table: premium row treatment ── */
 .utbl-wrap.admin-table-wrap {
@@ -908,9 +820,3 @@
   /* border-radius kept at 20px (pill) from base definition */
 }
 
-/* ── Filters: align with page header ── */
-.ufilters {
-  padding-bottom: 1.25rem;
-  border-bottom: 1px solid rgba(255,255,255,0.05);
-  margin-bottom: 0;
-}
