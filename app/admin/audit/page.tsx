@@ -64,21 +64,21 @@ export default async function AuditLogPage({
       {/* ── Header ── */}
       <div className="admin-page-header">
         <h1 className="admin-page-title">Audit Log</h1>
-        <span className="alog-total">{total.toLocaleString()} entries</span>
       </div>
 
       {/* ── Filter by action type ── */}
-      <form method="get" action="/admin/audit" className="alog-filters">
-        <select name="action" defaultValue={action} className="alog-select">
+      <form method="get" action="/admin/audit" className="admin-filter-bar">
+        <select name="action" defaultValue={action} className="admin-filter-select">
           <option value="">All Actions</option>
           {Object.entries(ACTION_META).map(([val, { label }]) => (
             <option key={val} value={val}>{label}</option>
           ))}
         </select>
-        <button type="submit" className="alog-filter-btn">Filter</button>
+        <button type="submit" className="admin-filter-btn">Filter</button>
         {action && (
-          <Link href="/admin/audit" className="alog-clear">Clear filter</Link>
+          <Link href="/admin/audit" className="admin-filter-clear">Clear filter</Link>
         )}
+        <span className="admin-filter-count">{total.toLocaleString()} entries</span>
       </form>
 
       {/* ── Table ── */}

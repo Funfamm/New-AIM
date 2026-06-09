@@ -1,39 +1,57 @@
-.td-title { font-weight: 500; color: var(--color-brand-white); max-width: 220px; }
-.td-sub { display: block; font-size: 0.75rem; color: var(--color-brand-muted); font-weight: 400; margin-top: 0.15rem; }
-.type-label {
-  font-family: var(--font-body); font-size: 0.6875rem; font-weight: 500;
-  color: var(--color-brand-muted); white-space: nowrap;
+/* ── Title cell ── */
+.td-title {
+  font-weight: 600;
+  color: var(--color-brand-white);
+  max-width: 220px;
 }
-.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
-.dot--green { background: #4ade80; }
-.dot--red   { background: var(--color-brand-border); }
-.check { color: #4ade80; font-size: 0.9rem; }
-.dash  { color: var(--color-brand-border); }
+.td-sub {
+  display: block;
+  font-size: 0.72rem;
+  color: rgba(255,255,255,0.3);
+  font-weight: 400;
+  margin-top: 0.15rem;
+}
 
-/* ── Engagement stat columns ─────────────────────────── */
-.th-stat {
-  width: 48px;
-  text-align: center;
-  color: var(--color-brand-muted);
-  padding-inline: 6px;
-}
-.th-stat svg { display: inline-block; vertical-align: middle; }
-.td-stat {
-  text-align: center;
-  padding-inline: 6px;
+/* ── Type label ── */
+.type-label {
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: rgba(255,255,255,0.4);
   white-space: nowrap;
 }
-.stat-val {
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--color-brand-light);
-  font-family: var(--font-body);
-  letter-spacing: 0;
+
+/* ── Dot indicator ── */
+.dot {
+  display: inline-block;
+  width: 7px; height: 7px;
+  border-radius: 50%;
 }
-/* asterisk on series rows that aggregate episodes */
+.dot--green { background: #4ade80; box-shadow: 0 0 0 2px rgba(74,222,128,0.15); }
+.dot--red   { background: rgba(255,255,255,0.12); }
+
+/* ── Boolean cells ── */
+.check {
+  color: #4ade80;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+.dash { color: rgba(255,255,255,0.14); }
+
+/* ── Stat columns ── */
+.th-stat { width: 44px; text-align: center; padding-inline: 6px; }
+.th-stat svg { display: inline-block; vertical-align: middle; }
+.td-stat { text-align: center; padding-inline: 6px; white-space: nowrap; }
+.stat-val {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-brand-white);
+}
 .stat-agg {
   font-size: 0.65rem;
-  color: var(--color-brand-muted);
+  color: rgba(232,201,126,0.55);
   margin-left: 1px;
   vertical-align: super;
   cursor: default;
