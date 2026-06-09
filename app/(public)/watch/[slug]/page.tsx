@@ -12,7 +12,7 @@ import "@/components/save-button.css";
 import { ChevronLeft, ChevronRight, Lock, Check, Play, Clock } from "lucide-react";
 import Image from "next/image";
 import type { Metadata } from "next";
-import AimPlayer from "@/components/aim-player";
+import AimPlayer from "@/components/aim-player-loader";
 import SynopsisToggle from "@/components/synopsis-toggle";
 import { getWatchProgress, getEpisodeProgressMap } from "@/lib/actions/progress";
 import SaveButton from "@/components/save-button";

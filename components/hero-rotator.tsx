@@ -52,11 +52,7 @@ export default function HeroRotator({ items, interval = 4000, onSlideChange }: P
         return (
           <div
             key={i}
-            className="hr-slide"
-            style={{
-              opacity: isActive ? 1 : 0,
-              pointerEvents: isActive ? "auto" : "none",
-            }}
+            className={`hr-slide${isActive ? " hr-slide--active" : ""}`}
           >
             <Link
               href={`/works/${item.slug}`}

@@ -70,3 +70,14 @@
   padding: 0 0.85rem;
   font-size: 0.75rem;
 }
+
+/* Heart pop animation on like */
+@keyframes heart-pop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.45); }
+  70%  { transform: scale(0.9); }
+  100% { transform: scale(1); }
+}
+.action-btn--like-pop svg {
+  animation: heart-pop 0.38s var(--ease-bounce);
+}

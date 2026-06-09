@@ -1,10 +1,30 @@
 .hr-stack { position: absolute; inset: 0; }
 .hr-slide {
   position: absolute; inset: 0;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
   transition: opacity 0.8s ease;
 }
+.hr-slide--active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Ken Burns — subtle slow zoom on active slide */
+@keyframes ken-burns {
+  from { transform: scale(1); }
+  to   { transform: scale(1.06); }
+}
+.hr-slide--active .hr-img,
+.hr-slide--active .hr-img-native {
+  animation: ken-burns 8s ease-out forwards;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .hr-slide { transition: none; }
+  .hr-slide--active .hr-img,
+  .hr-slide--active .hr-img-native { animation: none; }
 }
 
 /* Full-bleed clickable link — covers the entire slide */
