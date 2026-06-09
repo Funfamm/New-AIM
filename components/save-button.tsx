@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Bookmark, BookmarkCheck } from "lucide-react";
 import { saveWork, unsaveWork } from "@/lib/actions/watchlist";
+import { useToast } from "./toast-context";
 import "./save-button.css";
 
 type Props = {
@@ -14,16 +15,18 @@ type Props = {
 export default function SaveButton({ workId, initialSaved, className = "save-btn" }: Props) {
   const [saved, setSaved] = useState(initialSaved);
   const [pending, startTransition] = useTransition();
+  const { showToast } = useToast();
 
   function toggle() {
     const next = !saved;
     setSaved(next);
+    showToast(next ? "Saved to your list" : "Removed from list", next ? "success" : "info");
     startTransition(async () => {
       try {
         if (next) await saveWork(workId);
         else await unsaveWork(workId);
       } catch {
-        setSaved(!next); // revert on error
+        setSaved(!next);
       }
     });
   }
