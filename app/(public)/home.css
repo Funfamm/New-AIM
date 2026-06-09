@@ -14,8 +14,8 @@
   position: absolute; inset: 0;
   pointer-events: none;
   background:
-    linear-gradient(to right, rgba(5,5,5,0.88) 0%, rgba(5,5,5,0.45) 35%, rgba(5,5,5,0.05) 60%, rgba(5,5,5,0) 75%),
-    linear-gradient(to top,   rgba(5,5,5,1) 0%, rgba(5,5,5,0.7) 15%, rgba(5,5,5,0.15) 45%, rgba(5,5,5,0) 65%);
+    linear-gradient(to right, rgba(5,5,5,0.70) 0%, rgba(5,5,5,0.38) 35%, rgba(5,5,5,0.04) 60%, rgba(5,5,5,0) 75%),
+    linear-gradient(to top,   rgba(5,5,5,0.92) 0%, rgba(5,5,5,0.56) 15%, rgba(5,5,5,0.12) 45%, rgba(5,5,5,0) 65%);
 }
 .hero-content {
   position: absolute;
@@ -108,9 +108,9 @@
 @media (min-width: 768px) {
   .hero-bg-gradient {
     background:
-      linear-gradient(to right,  rgba(5,5,5,0.93) 0%, rgba(5,5,5,0.65) 30%, rgba(5,5,5,0.18) 56%, rgba(5,5,5,0) 74%),
-      linear-gradient(to top,    rgba(5,5,5,1) 0%, rgba(5,5,5,0.8) 16%, rgba(5,5,5,0.1) 52%, rgba(5,5,5,0) 72%),
-      radial-gradient(ellipse 55% 75% at 8% 92%, rgba(5,5,5,0.4) 0%, transparent 70%);
+      linear-gradient(to right,  rgba(5,5,5,0.76) 0%, rgba(5,5,5,0.50) 30%, rgba(5,5,5,0.13) 56%, rgba(5,5,5,0) 74%),
+      linear-gradient(to top,    rgba(5,5,5,0.92) 0%, rgba(5,5,5,0.62) 16%, rgba(5,5,5,0.08) 52%, rgba(5,5,5,0) 72%),
+      radial-gradient(ellipse 55% 75% at 8% 92%, rgba(5,5,5,0.28) 0%, transparent 70%);
   }
 }
 
@@ -194,7 +194,7 @@
   position: relative;
   padding: 3.5rem 0;
   margin-top: 3rem;
-  background: linear-gradient(180deg, rgba(17,17,17,0.5) 0%, rgba(10,10,10,0.9) 100%);
+  background: linear-gradient(180deg, rgba(17,17,17,0.45) 0%, rgba(10,10,10,0.75) 100%);
   overflow: hidden;
 }
 .brand-strip::before {
@@ -236,7 +236,7 @@
   top: 50%; left: 50%;
   transform: translate(-50%, -50%);
   width: 80vw; max-width: 700px; height: 60vh; max-height: 500px;
-  background: radial-gradient(ellipse, rgba(232,201,126,0.04) 0%, transparent 60%);
+  background: radial-gradient(ellipse, rgba(232,201,126,0.06) 0%, transparent 60%);
   pointer-events: none; z-index: 0;
 }
 
@@ -273,7 +273,7 @@
 }
 .si-body {
   font-family: var(--font-body); font-size: 0.9375rem;
-  line-height: 1.75; color: rgba(255,255,255,0.55);
+  line-height: 1.75; color: rgba(255,255,255,0.68);
   margin: 0 0 2.5rem; max-width: 42ch;
 }
 .si-ctas { display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; }
@@ -326,7 +326,7 @@
 }
 .si-card-desc {
   font-family: var(--font-body); font-size: 0.8125rem;
-  line-height: 1.65; color: rgba(255,255,255,0.4); margin: 0;
+  line-height: 1.65; color: rgba(255,255,255,0.52); margin: 0;
 }
 .si-card:hover .si-card-desc { color: rgba(255,255,255,0.55); }
 

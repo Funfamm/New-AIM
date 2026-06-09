@@ -145,10 +145,10 @@
   pointer-events: none;
   background: linear-gradient(
     to top,
-    rgba(5,5,5,0.98) 0%,
-    rgba(5,5,5,0.85) 18%,
-    rgba(5,5,5,0.45) 40%,
-    rgba(5,5,5,0.15) 60%,
+    rgba(5,5,5,0.93) 0%,
+    rgba(5,5,5,0.76) 18%,
+    rgba(5,5,5,0.38) 40%,
+    rgba(5,5,5,0.12) 60%,
     rgba(5,5,5,0) 100%
   );
 }
