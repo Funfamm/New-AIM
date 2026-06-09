@@ -1,102 +1,35 @@
 /* Admin — Notify Me CTAs list page */
 
-.nmc-page {
-  padding: 2rem 0;
-}
-
-/* ── Header ── */
-.nmc-head {
-  display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 2rem; gap: 1rem; flex-wrap: wrap;
-}
-.nmc-head-title {
-  display: flex; align-items: center; gap: 0.5rem;
-  color: var(--color-brand-white);
-}
-.nmc-head-title h1 {
-  font-family: var(--font-display); font-size: 1.5rem;
-  font-weight: 700; letter-spacing: -0.01em; margin: 0;
-}
-
-/* ── Add button ── */
-.nmc-add-btn {
-  display: inline-flex; align-items: center; gap: 0.4rem;
-  font-family: var(--font-body); font-size: 0.8125rem; font-weight: 600;
-  letter-spacing: 0.03em;
-  color: var(--color-brand-black); background: var(--color-brand-accent);
-  padding: 0.55rem 1.1rem; border-radius: 2px; text-decoration: none;
-  transition: filter 0.15s;
-}
-.nmc-add-btn:hover { filter: brightness(1.08); }
-
-/* ── Empty state ── */
-.nmc-empty {
-  display: flex; flex-direction: column; align-items: center;
-  gap: 1rem; padding: 4rem 2rem; text-align: center;
-  color: var(--color-brand-muted);
-}
-.nmc-empty p {
-  font-family: var(--font-body); font-size: 0.9rem; max-width: 380px;
-}
-
-/* ── Table wrapper ── */
-.nmc-table-wrap {
-  overflow-x: auto;
-  border: 1px solid var(--color-brand-border);
-  border-radius: 4px;
-}
-
-.nmc-table {
-  width: 100%; border-collapse: collapse;
-  font-family: var(--font-body); font-size: 0.8375rem;
-}
-.nmc-table thead th {
-  text-align: left; padding: 0.75rem 1rem;
-  font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.07em;
-  text-transform: uppercase; color: var(--color-brand-muted);
-  border-bottom: 1px solid var(--color-brand-border);
-  background: var(--color-brand-dark);
-  white-space: nowrap;
-}
-.nmc-table tbody tr {
-  border-bottom: 1px solid var(--color-brand-border);
-  transition: background 0.12s;
-}
-.nmc-table tbody tr:last-child { border-bottom: none; }
-.nmc-table tbody tr:hover { background: var(--color-brand-surface); }
-.nmc-table td {
-  padding: 0.875rem 1rem; vertical-align: middle;
-  color: var(--color-brand-light);
-}
+/* ── Table override (uses shared admin-table-wrap / admin-table) ── */
+.nmc-table { font-size: 0.8375rem; }
 
 /* ── Work cell ── */
 .nmc-work-cell { display: flex; flex-direction: column; gap: 0.15rem; }
-.nmc-work-title {
-  font-weight: 600; color: var(--color-brand-white);
-}
+.nmc-work-title { font-weight: 600; color: var(--color-brand-white); }
 .nmc-work-type {
-  font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.06em;
-  color: var(--color-brand-muted);
+  font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.07em;
+  color: rgba(255,255,255,0.3);
 }
 
-/* ── Type chip ── */
+/* ── Type chip — pill ── */
 .nmc-type-chip {
   display: inline-block;
-  font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.06em;
+  font-size: 0.6rem; font-weight: 700; letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--color-brand-white);
-  background: var(--color-brand-surface);
-  border: 1px solid var(--color-brand-border);
-  padding: 0.15rem 0.45rem; border-radius: 2px;
+  color: rgba(255,255,255,0.55);
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.09);
+  padding: 0.18rem 0.6rem; border-radius: 999px;
+  white-space: nowrap;
 }
 
 /* ── Status badges ── */
 .nmc-status {
   display: inline-flex; align-items: center; gap: 0.3rem;
-  font-size: 0.75rem; font-weight: 600; letter-spacing: 0.04em;
+  font-size: 0.7rem; font-weight: 600; letter-spacing: 0.04em;
 }
 .nmc-status--active { color: #4ade80; }
-.nmc-status--off    { color: var(--color-brand-muted); }
+.nmc-status--off    { color: rgba(255,255,255,0.28); }
 
 /* ── Numeric cell ── */
 .nmc-num { font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -104,74 +37,49 @@
 /* ── Edit button ── */
 .nmc-edit-btn {
   display: inline-flex; align-items: center; gap: 0.3rem;
-  font-family: var(--font-body); font-size: 0.75rem; font-weight: 600;
+  font-family: var(--font-body); font-size: 0.72rem; font-weight: 700;
+  letter-spacing: 0.04em;
   color: var(--color-brand-accent); text-decoration: none;
   transition: opacity 0.15s;
 }
-.nmc-edit-btn:hover { opacity: 0.75; }
+.nmc-edit-btn:hover { opacity: 0.72; }
 
 /* ── Actions cell ── */
 .nmc-actions-cell {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex-wrap: nowrap;
+  display: flex; align-items: center; gap: 0.6rem; flex-wrap: nowrap;
 }
 
 /* ── View signups button ── */
 .nmc-signups-btn {
   display: inline-flex; align-items: center; gap: 0.3rem;
-  font-family: var(--font-body); font-size: 0.72rem; font-weight: 600;
-  color: rgba(174, 184, 205, 0.8); text-decoration: none;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 999px;
-  padding: 0.2rem 0.65rem;
+  font-family: var(--font-body); font-size: 0.7rem; font-weight: 600;
+  color: rgba(174,184,205,0.75); text-decoration: none;
+  border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 999px; padding: 0.18rem 0.65rem;
   transition: color 0.15s, border-color 0.15s;
   white-space: nowrap;
 }
-.nmc-signups-btn:hover {
-  color: var(--color-brand-white);
-  border-color: rgba(255, 255, 255, 0.22);
-}
+.nmc-signups-btn:hover { color: var(--color-brand-white); border-color: rgba(255,255,255,0.22); }
 
 /* ── Signup cell ── */
-.nmc-signup-cell {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-}
+.nmc-signup-cell { display: flex; flex-direction: column; gap: 0.15rem; }
 .nmc-signup-total {
-  font-weight: 600;
-  color: var(--color-brand-white);
-  font-variant-numeric: tabular-nums;
+  font-weight: 600; color: var(--color-brand-white); font-variant-numeric: tabular-nums;
 }
 .nmc-signup-breakdown {
-  font-size: 0.72rem;
-  color: var(--color-brand-muted);
-  letter-spacing: 0.02em;
+  font-size: 0.68rem; color: rgba(255,255,255,0.3); letter-spacing: 0.02em;
 }
 
 /* ── Delivery cell ── */
-.nmc-delivery-none {
-  color: var(--color-brand-muted);
-  opacity: 0.4;
-}
-.nmc-delivery-cell {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.3rem;
-}
+.nmc-delivery-none { color: rgba(255,255,255,0.18); }
+.nmc-delivery-cell { display: flex; flex-wrap: wrap; gap: 0.3rem; }
 .nmc-delivery-chip {
   display: inline-block;
-  font-family: var(--font-body);
-  font-size: 0.67rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  padding: 0.18rem 0.55rem;
-  border-radius: 999px;
-  white-space: nowrap;
+  font-family: var(--font-body); font-size: 0.62rem; font-weight: 700;
+  letter-spacing: 0.05em; padding: 0.18rem 0.55rem;
+  border-radius: 999px; white-space: nowrap;
 }
-.nmc-delivery-chip--sent    { color: #4ade80; background: rgba(74,222,128,0.1); border: 1px solid rgba(74,222,128,0.2); }
+.nmc-delivery-chip--sent    { color: #4ade80;  background: rgba(74,222,128,0.1);  border: 1px solid rgba(74,222,128,0.2); }
 .nmc-delivery-chip--pending { color: var(--color-brand-accent); background: rgba(226,184,101,0.08); border: 1px solid rgba(226,184,101,0.2); }
-.nmc-delivery-chip--inapp   { color: #a78bfa; background: rgba(167,139,250,0.09); border: 1px solid rgba(167,139,250,0.2); }
-.nmc-delivery-chip--failed  { color: #f87171; background: rgba(248,113,113,0.09); border: 1px solid rgba(248,113,113,0.2); }
+.nmc-delivery-chip--inapp   { color: #a78bfa;  background: rgba(167,139,250,0.09); border: 1px solid rgba(167,139,250,0.2); }
+.nmc-delivery-chip--failed  { color: #f87171;  background: rgba(248,113,113,0.09); border: 1px solid rgba(248,113,113,0.2); }

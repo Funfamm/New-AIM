@@ -38,11 +38,11 @@
   font-family: var(--font-body);
   font-size: 0.72rem;
   font-weight: 600;
-  padding: 0.3rem 0.7rem;
-  border-radius: 3px;
-  border: 1px solid var(--color-brand-border);
+  padding: 0.3rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.09);
   background: transparent;
-  color: var(--color-brand-muted);
+  color: rgba(255,255,255,0.35);
   text-decoration: none;
   transition: color 0.15s, border-color 0.15s;
 }
@@ -53,9 +53,9 @@
 }
 
 .sec-tab--active {
-  background: var(--color-brand-surface);
+  background: rgba(255,255,255,0.07);
   color: var(--color-brand-white);
-  border-color: var(--color-brand-border);
+  border-color: rgba(255,255,255,0.18);
 }
 
 /* ── Severity badge ── */
@@ -64,17 +64,18 @@
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  padding: 0.18rem 0.5rem;
-  border-radius: 2px;
+  padding: 0.18rem 0.6rem;
+  border-radius: 999px;
   white-space: nowrap;
+  border: 1px solid transparent;
   flex-shrink: 0;
 }
 
-.sec-sev--info     { background: rgba(107, 114, 128, 0.12); color: var(--color-brand-muted); }
-.sec-sev--low      { background: rgba(74, 222, 128, 0.08);  color: #4ade80; }
-.sec-sev--medium   { background: rgba(251, 191, 36, 0.1);   color: #fbbf24; }
-.sec-sev--high     { background: rgba(248, 113, 113, 0.12); color: #f87171; }
-.sec-sev--critical { background: rgba(239, 68, 68, 0.18);   color: #ef4444; }
+.sec-sev--info     { background: rgba(107,114,128,0.12); color: var(--color-brand-muted); border-color: rgba(107,114,128,0.18); }
+.sec-sev--low      { background: rgba(74,222,128,0.08);   color: #4ade80; border-color: rgba(74,222,128,0.2); }
+.sec-sev--medium   { background: rgba(251,191,36,0.1);    color: #fbbf24; border-color: rgba(251,191,36,0.22); }
+.sec-sev--high     { background: rgba(248,113,113,0.12);  color: #f87171; border-color: rgba(248,113,113,0.22); }
+.sec-sev--critical { background: rgba(239,68,68,0.18);    color: #ef4444; border-color: rgba(239,68,68,0.3); }
 
 /* ── Alert cards ── */
 .sec-alerts-list {
