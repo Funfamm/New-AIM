@@ -14,6 +14,8 @@ export type HeroItem = {
   heroDesktopUrl?: string | null;
   /** Desktop-only preview clip (mp4 or .m3u8). Mobile always keeps static image. */
   previewClipUrl?: string | null;
+  /** Seconds to play the preview before returning to poster. Null = 12 s default. */
+  previewClipDuration?: number | null;
 };
 
 type Props = {
@@ -98,6 +100,7 @@ export default function HeroRotator({ items, interval = 4000, onSlideChange }: P
               <HeroVideoBg
                 src={item.previewClipUrl}
                 isActive={isActive}
+                previewMs={(item.previewClipDuration ?? 12) * 1000}
               />
             )}
           </div>

@@ -27,9 +27,9 @@ type Props = {
   src: string;
   /** Whether this slide is the active/visible slide */
   isActive: boolean;
+  /** How long to play before returning to poster, in ms. Defaults to 12 000 ms. */
+  previewMs?: number;
 };
-
-const PREVIEW_MS = 12_000;
 
 type NavConn = {
   saveData?: boolean;
@@ -47,7 +47,7 @@ function isDesktopCapable(): boolean {
   return true;
 }
 
-export default function HeroVideoBg({ src, isActive }: Props) {
+export default function HeroVideoBg({ src, isActive, previewMs = 12_000 }: Props) {
   // Determined once on client mount — avoids SSR/hydration mismatch
   const [canUse, setCanUse] = useState(false);
   const [videoVisible, setVideoVisible] = useState(false);
@@ -129,7 +129,7 @@ export default function HeroVideoBg({ src, isActive }: Props) {
       cancelled = true;
       if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
     };
-  }, [isActive, canUse, src]);
+  }, [isActive, canUse, src, previewMs]);
 
   // Not capable — render nothing (poster / Ken Burns image stays)
   if (!canUse) return null;
@@ -151,7 +151,7 @@ export default function HeroVideoBg({ src, isActive }: Props) {
         timerRef.current = setTimeout(() => {
           videoRef.current?.pause();
           setVideoVisible(false);
-        }, PREVIEW_MS);
+        }, previewMs);
       }}
       onError={() => setVideoVisible(false)}
     />

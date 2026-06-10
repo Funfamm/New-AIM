@@ -44,6 +44,7 @@ type WorkData = {
   commentsEnabled: boolean; order: number;
   parentId: string | null; episodeNumber: number | null; seasonNumber: number | null;
   introStart: number | null; introEnd: number | null; creditsStart: number | null;
+  heroPreviewDuration: number | null;
   contentRating: string | null; contentDescriptors: string[];
 };
 
@@ -503,6 +504,22 @@ export default function WorkForm({
                     onUrlReady={setPreviewClipUrl}
                   />
                   <span className="form-hint">Private source for HLS preview processing. Not shown publicly.</span>
+                </div>
+
+                {/* Hero Preview Duration */}
+                <div className="form-group">
+                  <label className="form-label">Hero Preview Duration (seconds)</label>
+                  <input
+                    type="number"
+                    name="heroPreviewDuration"
+                    className="form-input"
+                    defaultValue={work?.heroPreviewDuration ?? 12}
+                    min={5}
+                    max={30}
+                    step={1}
+                    placeholder="12"
+                  />
+                  <span className="form-hint">Controls how long the desktop hero preview video plays before returning to the poster. Mobile stays static.</span>
                 </div>
               </>
             )}

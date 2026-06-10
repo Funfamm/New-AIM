@@ -316,6 +316,7 @@ model Work {
   introStart    Int?      // seconds: Skip Intro button appears
   introEnd      Int?      // seconds: Skip Intro seeks here
   creditsStart  Int?      // seconds: Skip Credits button appears
+  heroPreviewDuration Int? // seconds: desktop hero preview plays this long (null = 12 s default)
 
   // Content advisory — admin-selected per work
   contentRating      String?   // e.g. "G", "PG", "PG-13", "R", "TV-MA", "NR"
