@@ -104,3 +104,23 @@
   transition: color 0.15s, background 0.15s;
 }
 .adm-signout:hover { color: var(--color-brand-white); background: var(--color-brand-surface); }
+
+/* Bell notification indicator in sidebar header */
+.adm-top-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 0.5rem; margin-bottom: 0.25rem;
+}
+.adm-top-row .adm-logo { margin-bottom: 0; }
+.adm-bell {
+  display: flex; align-items: center; gap: 0.3rem;
+  padding: 0.25rem 0.5rem; border-radius: 6px;
+  background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.2);
+  color: #f87171; text-decoration: none;
+  transition: background 0.15s, border-color 0.15s;
+  flex-shrink: 0;
+}
+.adm-bell:hover { background: rgba(248,113,113,0.18); border-color: rgba(248,113,113,0.35); }
+.adm-bell-count {
+  font-family: var(--font-body); font-size: 0.6rem; font-weight: 700;
+  line-height: 1;
+}

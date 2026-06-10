@@ -7,6 +7,18 @@
     {
       "path": "/api/cron/scheduled-outreach",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/heal-video-jobs",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/heal-email-queue",
+      "schedule": "*/30 * * * *"
+    },
+    {
+      "path": "/api/cron/reconcile-counts",
+      "schedule": "0 2 * * *"
     }
   ]
 }
