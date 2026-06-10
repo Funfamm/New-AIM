@@ -9,17 +9,22 @@ import "./series-trailer-player.css";
 type Props = {
   posterUrl: string | null;
   trailerUrl: string | null;
+  previewClipUrl?: string | null;
   title: string;
 };
 
-export default function SeriesTrailerPlayer({ posterUrl, trailerUrl, title }: Props) {
+export default function SeriesTrailerPlayer({ posterUrl, trailerUrl, previewClipUrl, title }: Props) {
   const [playing, setPlaying] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<HlsType | null>(null);
 
-  // HLS support for Chrome/Edge when trailerUrl is a .m3u8 manifest
+  // Prefer trailerUrl; fall back to previewClipUrl
+  const videoSrc = trailerUrl ?? previewClipUrl ?? null;
+  const isPreview = !trailerUrl && !!previewClipUrl;
+
+  // HLS support for Chrome/Edge when videoSrc is a .m3u8 manifest
   useEffect(() => {
-    if (!playing || !trailerUrl || !trailerUrl.endsWith(".m3u8")) return;
+    if (!playing || !videoSrc || !videoSrc.endsWith(".m3u8")) return;
     const video = videoRef.current;
     if (!video) return;
     // Safari handles HLS natively
@@ -33,7 +38,7 @@ export default function SeriesTrailerPlayer({ posterUrl, trailerUrl, title }: Pr
       hlsRef.current = hls;
       // Clear the src React set from JSX before hls.js takes over
       video.removeAttribute("src");
-      hls.loadSource(trailerUrl);
+      hls.loadSource(videoSrc);
       hls.attachMedia(video);
     })();
 
@@ -44,7 +49,7 @@ export default function SeriesTrailerPlayer({ posterUrl, trailerUrl, title }: Pr
         hlsRef.current = null;
       }
     };
-  }, [playing, trailerUrl]);
+  }, [playing, videoSrc]);
 
   function handlePlay() {
     setPlaying(true);
@@ -59,17 +64,17 @@ export default function SeriesTrailerPlayer({ posterUrl, trailerUrl, title }: Pr
     }
     if (videoRef.current) {
       videoRef.current.pause();
-      videoRef.current.src = ""; // release the resource
+      videoRef.current.removeAttribute("src"); // release the resource
     }
   }
 
   return (
     <div className="stp-wrap">
-      {playing && trailerUrl ? (
+      {playing && videoSrc ? (
         <>
           <video
             ref={videoRef}
-            src={trailerUrl}
+            src={videoSrc}
             className="stp-video"
             controls
             autoPlay
@@ -78,7 +83,7 @@ export default function SeriesTrailerPlayer({ posterUrl, trailerUrl, title }: Pr
             controlsList="nodownload"
             disablePictureInPicture
           />
-          <button className="stp-close" onClick={handleStop} aria-label="Close trailer">
+          <button className="stp-close" onClick={handleStop} aria-label={isPreview ? "Close preview" : "Close trailer"}>
             <X size={15} />
           </button>
         </>
@@ -102,10 +107,9 @@ export default function SeriesTrailerPlayer({ posterUrl, trailerUrl, title }: Pr
 
           <div className="stp-gradient" aria-hidden="true" />
 
-          {/* Play icon only — no text. The duplicate Watch Trailer text CTA
-              lives in the main detail-actions group below the genre line. */}
-          {trailerUrl && (
-            <button className="stp-play-btn" onClick={handlePlay} aria-label="Play trailer">
+          {/* Play icon only — no text. The CTA text lives in the detail-actions group. */}
+          {videoSrc && (
+            <button className="stp-play-btn" onClick={handlePlay} aria-label={isPreview ? "Play preview" : "Play trailer"}>
               <Play size={20} fill="currentColor" />
             </button>
           )}
