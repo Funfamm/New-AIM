@@ -140,17 +140,18 @@ export default async function HomePage() {
       firstEpisodeSlug: firstEpSlug,
     });
     return {
-      posterUrl:      (w.posterUrl ?? w.heroMobileUrl ?? w.heroDesktopUrl)!,
-      title:          w.title,
-      slug:           w.slug,
-      type:           w.type,
-      genre:          w.genre ?? null,
-      heroMobileUrl:  w.heroMobileUrl ?? null,
-      heroDesktopUrl: w.heroDesktopUrl ?? null,
-      primaryLabel:   cta.primaryLabel,
-      primaryHref:    cta.primaryHref,
-      secondaryLabel: cta.secondaryLabel,
-      secondaryHref:  cta.secondaryHref,
+      posterUrl:       (w.posterUrl ?? w.heroMobileUrl ?? w.heroDesktopUrl)!,
+      title:           w.title,
+      slug:            w.slug,
+      type:            w.type,
+      genre:           w.genre ?? null,
+      heroMobileUrl:   w.heroMobileUrl ?? null,
+      heroDesktopUrl:  w.heroDesktopUrl ?? null,
+      previewClipUrl:  w.previewClipUrl ?? null,
+      primaryLabel:    cta.primaryLabel,
+      primaryHref:     cta.primaryHref,
+      secondaryLabel:  cta.secondaryLabel,
+      secondaryHref:   cta.secondaryHref,
     };
   });
 

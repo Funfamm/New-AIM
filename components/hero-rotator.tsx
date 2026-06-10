@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import HeroVideoBg from "./hero-video-bg";
 import "./hero-rotator.css";
 
 export type HeroItem = {
@@ -11,6 +12,8 @@ export type HeroItem = {
   slug: string;
   heroMobileUrl?: string | null;
   heroDesktopUrl?: string | null;
+  /** Desktop-only preview clip (mp4 or .m3u8). Mobile always keeps static image. */
+  previewClipUrl?: string | null;
 };
 
 type Props = {
@@ -89,6 +92,14 @@ export default function HeroRotator({ items, interval = 4000, onSlideChange }: P
                 />
               )}
             </Link>
+
+            {/* Desktop-only preview video — renders nothing on mobile/slow networks */}
+            {item.previewClipUrl && (
+              <HeroVideoBg
+                src={item.previewClipUrl}
+                isActive={isActive}
+              />
+            )}
           </div>
         );
       })}

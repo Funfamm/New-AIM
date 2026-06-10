@@ -12,6 +12,7 @@ export type HeroDesktopItem = HeroItem & {
   primaryHref:    string;
   secondaryLabel: string | null;
   secondaryHref:  string | null;
+  // previewClipUrl inherited from HeroItem — passed through to HeroRotator
 };
 
 type Props = {
@@ -45,6 +46,7 @@ export default function HeroDesktopSection({ items }: Props) {
     slug:            item.slug,
     heroMobileUrl:   item.heroMobileUrl,
     heroDesktopUrl:  item.heroDesktopUrl,
+    previewClipUrl:  item.previewClipUrl ?? null,
   }));
 
   const current = items[activeIdx] ?? items[0];
