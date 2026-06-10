@@ -33,12 +33,14 @@ const WORK_STATUSES: WorkStatus[] = ["PUBLISHED","DRAFT","PRIVATE","IN_PRODUCTIO
 export default async function AdminWorksPage({
   searchParams,
 }: {
-  searchParams: Promise<{ search?: string; type?: string; status?: string }>;
+  searchParams: Promise<{ search?: string; type?: string; status?: string; jobs?: string; subtitles?: string }>;
 }) {
   const sp = await searchParams;
-  const search = sp.search?.trim() ?? "";
-  const typeFilter  = (WORK_TYPES.includes(sp.type  as WorkType)  ? sp.type  : "") as WorkType | "";
-  const statusFilter = (WORK_STATUSES.includes(sp.status as WorkStatus) ? sp.status : "") as WorkStatus | "";
+  const search         = sp.search?.trim() ?? "";
+  const typeFilter     = (WORK_TYPES.includes(sp.type as WorkType)     ? sp.type   : "") as WorkType | "";
+  const statusFilter   = (WORK_STATUSES.includes(sp.status as WorkStatus) ? sp.status : "") as WorkStatus | "";
+  const jobsFilter     = sp.jobs     === "failed" ? "failed" : "";
+  const subtitlesFilter = sp.subtitles === "failed" ? "failed" : "";
 
   // ── Total counts for stat cards (unfiltered) ────────────────────────────
   const [totalCount, publishedCount, draftCount, seriesCount] = await Promise.all([
@@ -54,6 +56,12 @@ export default async function AdminWorksPage({
       type: typeFilter ? { equals: typeFilter } : { not: "EPISODE" },
       ...(statusFilter ? { status: statusFilter } : {}),
       ...(search ? { title: { contains: search, mode: "insensitive" } } : {}),
+      ...(jobsFilter === "failed"
+        ? { videoProcessingJobs: { some: { status: "FAILED" } } }
+        : {}),
+      ...(subtitlesFilter === "failed"
+        ? { subtitles: { some: { jobs: { some: { status: "FAILED" } } } } }
+        : {}),
     },
     orderBy: { createdAt: "desc" },
     select: {
@@ -92,7 +100,7 @@ export default async function AdminWorksPage({
     };
   });
 
-  const isFiltered = !!(search || typeFilter || statusFilter);
+  const isFiltered = !!(search || typeFilter || statusFilter || jobsFilter || subtitlesFilter);
 
   return (
     <div className="admin-page">
@@ -125,6 +133,27 @@ export default async function AdminWorksPage({
           <span className="admin-stat-label">Series</span>
         </div>
       </div>
+
+      {/* Health-filter alert banner */}
+      {(jobsFilter || subtitlesFilter) && (
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          gap: "1rem", padding: "0.7rem 1.1rem", marginBottom: "0.75rem",
+          background: "rgba(248,113,113,0.06)", border: "1px solid rgba(248,113,113,0.18)",
+          borderRadius: "8px",
+        }}>
+          <span style={{ fontFamily: "var(--font-body)", fontSize: "0.78rem", color: "#f87171" }}>
+            {jobsFilter     ? "Showing works with failed video jobs"     : ""}
+            {subtitlesFilter ? "Showing works with failed subtitle jobs" : ""}
+          </span>
+          <Link href="/admin/works" style={{
+            fontFamily: "var(--font-body)", fontSize: "0.72rem", fontWeight: 600,
+            color: "rgba(255,255,255,0.35)", textDecoration: "none",
+          }}>
+            Clear filter ×
+          </Link>
+        </div>
+      )}
 
       {/* Filter bar */}
       <WorksFilterBar
