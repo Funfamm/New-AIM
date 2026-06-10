@@ -106,7 +106,7 @@ export default async function AdminWorksPage({
     <div className="admin-page">
       <div className="admin-page-header">
         <h1 className="admin-page-title">Works</h1>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+        <div className="admin-page-header-actions">
           <WorkerStatus />
           <Link href="/admin/works/new" className="admin-add-btn">
             <Plus size={15} /> Add Work
@@ -136,20 +136,12 @@ export default async function AdminWorksPage({
 
       {/* Health-filter alert banner */}
       {(jobsFilter || subtitlesFilter) && (
-        <div style={{
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          gap: "1rem", padding: "0.7rem 1.1rem", marginBottom: "0.75rem",
-          background: "rgba(248,113,113,0.06)", border: "1px solid rgba(248,113,113,0.18)",
-          borderRadius: "8px",
-        }}>
-          <span style={{ fontFamily: "var(--font-body)", fontSize: "0.78rem", color: "#f87171" }}>
-            {jobsFilter     ? "Showing works with failed video jobs"     : ""}
+        <div className="admin-filter-alert">
+          <span className="admin-filter-alert-text">
+            {jobsFilter      ? "Showing works with failed video jobs"    : ""}
             {subtitlesFilter ? "Showing works with failed subtitle jobs" : ""}
           </span>
-          <Link href="/admin/works" style={{
-            fontFamily: "var(--font-body)", fontSize: "0.72rem", fontWeight: 600,
-            color: "rgba(255,255,255,0.35)", textDecoration: "none",
-          }}>
+          <Link href="/admin/works" className="admin-filter-alert-clear">
             Clear filter ×
           </Link>
         </div>

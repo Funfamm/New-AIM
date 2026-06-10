@@ -3,6 +3,7 @@
 import { useRouter, usePathname } from "next/navigation";
 import { useCallback, useTransition } from "react";
 import { Search } from "lucide-react";
+import { PremiumSelect } from "@/components/admin/premium-select";
 
 interface Option { value: string; label: string; }
 
@@ -51,27 +52,23 @@ export default function WorksFilterBar({
         />
       </div>
 
-      <select
-        className="admin-filter-select"
-        value={typeFilter}
-        onChange={(e) => push({ type: e.target.value })}
-      >
-        <option value="">All types</option>
-        {typeOptions.map((o) => (
-          <option key={o.value} value={o.value}>{o.label}</option>
-        ))}
-      </select>
+      <PremiumSelect
+        key={typeFilter}
+        name="type"
+        defaultValue={typeFilter}
+        options={typeOptions}
+        placeholder="All types"
+        onChange={(value) => push({ type: value })}
+      />
 
-      <select
-        className="admin-filter-select"
-        value={statusFilter}
-        onChange={(e) => push({ status: e.target.value })}
-      >
-        <option value="">All statuses</option>
-        {statusOptions.map((o) => (
-          <option key={o.value} value={o.value}>{o.label}</option>
-        ))}
-      </select>
+      <PremiumSelect
+        key={statusFilter}
+        name="status"
+        defaultValue={statusFilter}
+        options={statusOptions}
+        placeholder="All statuses"
+        onChange={(value) => push({ status: value })}
+      />
 
       {isFiltered && (
         <button

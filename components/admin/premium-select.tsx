@@ -25,6 +25,9 @@ export function PremiumSelect({
   const containerRef = useRef<HTMLDivElement>(null);
   const hiddenRef    = useRef<HTMLInputElement>(null);
 
+  // Sync internal state when the parent changes the filter (e.g. clear filters)
+  useEffect(() => { setSelected(defaultValue); }, [defaultValue]);
+
   useEffect(() => {
     function handle(e: MouseEvent) {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -57,7 +60,7 @@ export function PremiumSelect({
   }
 
   return (
-    <div ref={containerRef} className={`psel ${className}`} style={{ position: "relative", display: "inline-block" }}>
+    <div ref={containerRef} className={`psel ${className}`}>
       {/* Hidden input carries the value into form submissions */}
       <input ref={hiddenRef} type="hidden" name={name} defaultValue={defaultValue} />
 

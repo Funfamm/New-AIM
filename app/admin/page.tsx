@@ -7,7 +7,10 @@ import {
 } from "lucide-react";
 import type { Metadata } from "next";
 import GlobalSearch from "@/components/admin/global-search";
-import { dismissVideoJob, dismissSubtitleJob } from "@/lib/actions/admin-health";
+import {
+  dismissVideoJob, dismissSubtitleJob,
+  resolveAllVideoFailures, resolveAllEmailFailures, resolveAllSubtitleFailures,
+} from "@/lib/actions/admin-health";
 import "@/components/admin/system-health.css";
 import "@/components/admin/global-search.css";
 import "./admin-overview.css";
@@ -295,7 +298,7 @@ export default async function AdminOverviewPage() {
               <div className={`sh-card sh-card--${status}`}>
                 <div className="sh-card-head">
                   <span className="sh-card-label">
-                    <VideoIcon size={9} style={{ display: "inline", marginRight: 4 }} />
+                    <VideoIcon size={9} />
                     Video Jobs
                   </span>
                   <span className={`sh-status-dot sh-status-dot--${status}`} />
@@ -322,9 +325,20 @@ export default async function AdminOverviewPage() {
                     <span className={`sh-metric-val ${health.videoReadyToday > 0 ? "sh-metric-val--ok" : "sh-metric-val--muted"}`}>{health.videoReadyToday}</span>
                   </div>
                 </div>
-                <Link href={videoHref} className="sh-card-action">
-                  {(health.videoFailed + health.videoStuck) > 0 ? "View Failed Jobs" : "View Jobs"} <ArrowRight size={9} />
-                </Link>
+                {(health.videoFailed + health.videoStuck) > 0 ? (
+                  <div className="sh-card-footer">
+                    <Link href={videoHref} className="sh-card-action">
+                      View Failed Jobs <ArrowRight size={9} />
+                    </Link>
+                    <form action={resolveAllVideoFailures}>
+                      <button type="submit" className="sh-card-resolve">Resolve</button>
+                    </form>
+                  </div>
+                ) : (
+                  <Link href={videoHref} className="sh-card-action">
+                    View Jobs <ArrowRight size={9} />
+                  </Link>
+                )}
               </div>
             );
           })()}
@@ -339,7 +353,7 @@ export default async function AdminOverviewPage() {
               <div className={`sh-card sh-card--${status}`}>
                 <div className="sh-card-head">
                   <span className="sh-card-label">
-                    <Mail size={9} style={{ display: "inline", marginRight: 4 }} />
+                    <Mail size={9} />
                     Email Queue
                   </span>
                   <span className={`sh-status-dot sh-status-dot--${status}`} />
@@ -360,9 +374,20 @@ export default async function AdminOverviewPage() {
                     </span>
                   </div>
                 </div>
-                <Link href={emailHref} className="sh-card-action">
-                  {health.emailFailed > 0 ? "View Failed Emails" : "Email Queue"} <ArrowRight size={9} />
-                </Link>
+                {health.emailFailed > 0 ? (
+                  <div className="sh-card-footer">
+                    <Link href={emailHref} className="sh-card-action">
+                      View Failed Emails <ArrowRight size={9} />
+                    </Link>
+                    <form action={resolveAllEmailFailures}>
+                      <button type="submit" className="sh-card-resolve">Resolve</button>
+                    </form>
+                  </div>
+                ) : (
+                  <Link href={emailHref} className="sh-card-action">
+                    Email Queue <ArrowRight size={9} />
+                  </Link>
+                )}
               </div>
             );
           })()}
@@ -393,9 +418,20 @@ export default async function AdminOverviewPage() {
                     <span className={`sh-metric-val ${health.subFailed > 0 ? "sh-metric-val--danger" : "sh-metric-val--muted"}`}>{health.subFailed}</span>
                   </div>
                 </div>
-                <Link href={subtitleHref} className="sh-card-action">
-                  {health.subFailed > 0 ? "View Failed Subtitles" : "Manage Subtitles"} <ArrowRight size={9} />
-                </Link>
+                {health.subFailed > 0 ? (
+                  <div className="sh-card-footer">
+                    <Link href={subtitleHref} className="sh-card-action">
+                      View Failed Subtitles <ArrowRight size={9} />
+                    </Link>
+                    <form action={resolveAllSubtitleFailures}>
+                      <button type="submit" className="sh-card-resolve">Resolve</button>
+                    </form>
+                  </div>
+                ) : (
+                  <Link href={subtitleHref} className="sh-card-action">
+                    Manage Subtitles <ArrowRight size={9} />
+                  </Link>
+                )}
               </div>
             );
           })()}
@@ -407,7 +443,7 @@ export default async function AdminOverviewPage() {
               <div className={`sh-card sh-card--${status}`}>
                 <div className="sh-card-head">
                   <span className="sh-card-label">
-                    <KeyRound size={9} style={{ display: "inline", marginRight: 4 }} />
+                    <KeyRound size={9} />
                     Trans. Keys
                   </span>
                   <span className={`sh-status-dot sh-status-dot--${status}`} />
@@ -437,7 +473,7 @@ export default async function AdminOverviewPage() {
           <div className="sh-card sh-card--healthy">
             <div className="sh-card-head">
               <span className="sh-card-label">
-                <Bell size={9} style={{ display: "inline", marginRight: 4 }} />
+                <Bell size={9} />
                 Today&apos;s Pulse
               </span>
               <span className="sh-status-dot sh-status-dot--healthy" />
@@ -468,7 +504,7 @@ export default async function AdminOverviewPage() {
               <div className={`sh-card sh-card--${status}`}>
                 <div className="sh-card-head">
                   <span className="sh-card-label">
-                    <Shield size={9} style={{ display: "inline", marginRight: 4 }} />
+                    <Shield size={9} />
                     Security
                   </span>
                   <span className={`sh-status-dot sh-status-dot--${status}`} />

@@ -45,6 +45,9 @@
   gap: 0.5rem;
 }
 .sh-card-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
   font-family: var(--font-body);
   font-size: 0.65rem;
   font-weight: 700;
@@ -109,6 +112,37 @@
 }
 .sh-card-action:hover { color: var(--color-brand-accent); }
 .sh-card-action svg { flex-shrink: 0; }
+
+/* Footer row used when both nav link + resolve button are shown */
+.sh-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: auto;
+  padding-top: 0.25rem;
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+.sh-card-footer .sh-card-action { margin-top: 0; padding-top: 0; border-top: none; }
+
+.sh-card-resolve {
+  font-family: var(--font-body);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: rgba(255,255,255,0.2);
+  background: none;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 5px;
+  padding: 0.22rem 0.6rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s;
+}
+.sh-card-resolve:hover {
+  color: #4ade80;
+  border-color: rgba(74,222,128,0.3);
+}
 
 /* ── Needs Attention Panel ── */
 .attn-panel {

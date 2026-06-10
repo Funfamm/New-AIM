@@ -1,4 +1,5 @@
 /* ── Global Admin Search ── */
+.gsearch-group-icon { display: inline; margin-right: 4px; vertical-align: middle; }
 .gsearch-wrap {
   position: relative;
   width: 100%;
