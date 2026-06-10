@@ -207,10 +207,10 @@ function CommentRow({
 
 // ── Reply thread ──────────────────────────────────────────────
 function ReplyThread({
-  parentId, replyCount, currentUser, workSlug, likedSet, onLikeToggle,
+  parentId, replyCount, currentUser, workId, workSlug, likedSet, onLikeToggle,
 }: {
   parentId: string; replyCount: number; currentUser: Props["currentUser"];
-  workSlug: string; likedSet: Set<string>;
+  workId: string; workSlug: string; likedSet: Set<string>;
   onLikeToggle: (id: string, delta: number) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -237,7 +237,7 @@ function ReplyThread({
     if (!clean) return;
     setSubmitting(true);
     setErr("");
-    const res = await createComment(workSlug, clean, parentId);
+    const res = await createComment(workId, clean, parentId);
     setSubmitting(false);
     if (!res.ok) { setErr(res.error ?? "Could not post reply."); return; }
     if (res.comment) {
@@ -446,7 +446,7 @@ export default function CommentSection({ workId, workSlug, currentUser }: Props)
               {/* Replies (only for top-level comments) */}
               <ReplyThread
                 parentId={c.id} replyCount={c.replyCount}
-                currentUser={currentUser} workSlug={workSlug}
+                currentUser={currentUser} workId={workId} workSlug={workSlug}
                 likedSet={likedSet} onLikeToggle={() => {}}
               />
             </div>
