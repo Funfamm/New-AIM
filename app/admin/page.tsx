@@ -287,7 +287,10 @@ export default async function AdminOverviewPage() {
 
           {/* Video Processing */}
           {(() => {
-            const status = healthStatus(health.videoFailed + health.videoStuck, health.videoPending);
+            const status    = healthStatus(health.videoFailed + health.videoStuck, health.videoPending);
+            const videoHref = (health.videoFailed + health.videoStuck) > 0
+              ? "/admin/works?jobs=failed"
+              : "/admin/works";
             return (
               <div className={`sh-card sh-card--${status}`}>
                 <div className="sh-card-head">
@@ -319,8 +322,8 @@ export default async function AdminOverviewPage() {
                     <span className={`sh-metric-val ${health.videoReadyToday > 0 ? "sh-metric-val--ok" : "sh-metric-val--muted"}`}>{health.videoReadyToday}</span>
                   </div>
                 </div>
-                <Link href="/admin/works" className="sh-card-action">
-                  View Jobs <ArrowRight size={9} />
+                <Link href={videoHref} className="sh-card-action">
+                  {(health.videoFailed + health.videoStuck) > 0 ? "View Failed Jobs" : "View Jobs"} <ArrowRight size={9} />
                 </Link>
               </div>
             );
@@ -328,7 +331,10 @@ export default async function AdminOverviewPage() {
 
           {/* Email Queue */}
           {(() => {
-            const status = healthStatus(health.emailFailed, health.emailQueued);
+            const status    = healthStatus(health.emailFailed, health.emailQueued);
+            const emailHref = health.emailFailed > 0
+              ? "/admin/email?tab=logs&status=FAILED"
+              : "/admin/email?tab=queue";
             return (
               <div className={`sh-card sh-card--${status}`}>
                 <div className="sh-card-head">
@@ -354,8 +360,8 @@ export default async function AdminOverviewPage() {
                     </span>
                   </div>
                 </div>
-                <Link href="/admin/email" className="sh-card-action">
-                  Email Center <ArrowRight size={9} />
+                <Link href={emailHref} className="sh-card-action">
+                  {health.emailFailed > 0 ? "View Failed Emails" : "Email Queue"} <ArrowRight size={9} />
                 </Link>
               </div>
             );
@@ -363,7 +369,10 @@ export default async function AdminOverviewPage() {
 
           {/* Subtitle Jobs */}
           {(() => {
-            const status = healthStatus(health.subFailed, health.subPending);
+            const status       = healthStatus(health.subFailed, health.subPending);
+            const subtitleHref = health.subFailed > 0
+              ? "/admin/works?subtitles=failed"
+              : "/admin/works";
             return (
               <div className={`sh-card sh-card--${status}`}>
                 <div className="sh-card-head">
@@ -384,8 +393,8 @@ export default async function AdminOverviewPage() {
                     <span className={`sh-metric-val ${health.subFailed > 0 ? "sh-metric-val--danger" : "sh-metric-val--muted"}`}>{health.subFailed}</span>
                   </div>
                 </div>
-                <Link href="/admin/works" className="sh-card-action">
-                  Manage Subtitles <ArrowRight size={9} />
+                <Link href={subtitleHref} className="sh-card-action">
+                  {health.subFailed > 0 ? "View Failed Subtitles" : "Manage Subtitles"} <ArrowRight size={9} />
                 </Link>
               </div>
             );

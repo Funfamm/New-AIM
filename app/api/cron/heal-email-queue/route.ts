@@ -46,8 +46,29 @@ export async function POST(req: Request) {
     });
   }
 
-  // Notify admins about permanently failed emails
+  // Handle permanently failed emails — auto-suppress + notify admins
   if (permanent.length > 0) {
+    const permanentEmails = [...new Set(permanent.map((e) => e.to.toLowerCase().trim()))];
+
+    // Auto-suppress: add each bad address to EmailSuppression so future campaigns
+    // skip it immediately instead of burning retries again.
+    await Promise.all(
+      permanentEmails.map((email) =>
+        prisma.emailSuppression.upsert({
+          where:  { email },
+          create: { email, reason: "bounce", source: "system", active: true },
+          update: { active: true, reason: "bounce", source: "system" },
+        }),
+      ),
+    );
+
+    // If the address belongs to a Subscriber, mark them suppressed too
+    await prisma.subscriber.updateMany({
+      where: { email: { in: permanentEmails }, suppressedAt: null },
+      data:  { suppressedAt: new Date(), suppressReason: "bounce_permanent" },
+    });
+
+    // Notify admins
     const admins = await prisma.user.findMany({
       where: { role: { in: ["ADMIN", "SUPER_ADMIN"] }, status: "ACTIVE" },
       select: { id: true },
@@ -58,9 +79,9 @@ export async function POST(req: Request) {
         data: admins.map((a) => ({
           userId: a.id,
           type:  "SYSTEM" as const,
-          title: `${permanent.length} email${permanent.length === 1 ? "" : "s"} permanently failed`,
-          body:  "Max retry attempts exceeded. Review the email queue for details.",
-          href:  "/admin/email",
+          title: `${permanent.length} email${permanent.length === 1 ? "" : "s"} permanently failed — addresses suppressed`,
+          body:  `${permanentEmails.length} address${permanentEmails.length === 1 ? " has" : "es have"} been auto-suppressed. Review in Email → Suppression List.`,
+          href:  "/admin/email?tab=suppression",
         })),
       });
     }
