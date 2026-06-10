@@ -506,21 +506,24 @@ export default function WorkForm({
                   <span className="form-hint">Private source for HLS preview processing. Not shown publicly.</span>
                 </div>
 
-                {/* Hero Preview Duration */}
-                <div className="form-group">
-                  <label className="form-label">Hero Preview Duration (seconds)</label>
-                  <input
-                    type="number"
-                    name="heroPreviewDuration"
-                    className="form-input"
-                    defaultValue={work?.heroPreviewDuration ?? 12}
-                    min={5}
-                    max={30}
-                    step={1}
-                    placeholder="12"
-                  />
-                  <span className="form-hint">Controls how long the desktop hero preview video plays before returning to the poster. Mobile stays static.</span>
-                </div>
+                {/* Hero Preview Duration — collapsed by default */}
+                <details className="wf-advanced">
+                  <summary className="wf-advanced-toggle">Hero Display Settings</summary>
+                  <div className="form-group wf-advanced-body">
+                    <label className="form-label">Hero Preview Duration (seconds)</label>
+                    <input
+                      type="number"
+                      name="heroPreviewDuration"
+                      className="form-input"
+                      defaultValue={work?.heroPreviewDuration ?? 12}
+                      min={5}
+                      max={30}
+                      step={1}
+                      placeholder="12"
+                    />
+                    <span className="form-hint">How long the desktop hero preview plays before returning to the poster (5–30 s). Mobile stays static.</span>
+                  </div>
+                </details>
               </>
             )}
 
