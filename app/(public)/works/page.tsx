@@ -20,7 +20,7 @@ async function getWorksHero() {
     orderBy: { order: "asc" },
     select: {
       posterUrl: true, heroMobileUrl: true, heroDesktopUrl: true,
-      title: true, slug: true,
+      title: true, slug: true, previewClipUrl: true,
     },
   });
 }
@@ -63,6 +63,7 @@ export default async function WorksPage({ searchParams }: Props) {
       slug:           w.slug,
       heroMobileUrl:  w.heroMobileUrl ?? null,
       heroDesktopUrl: w.heroDesktopUrl ?? null,
+      previewClipUrl: w.previewClipUrl ?? null,
     }));
 
   return (

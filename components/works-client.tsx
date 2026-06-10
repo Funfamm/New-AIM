@@ -102,6 +102,7 @@ type FeaturedHeroItem = {
   slug: string;
   heroMobileUrl?: string | null;
   heroDesktopUrl?: string | null;
+  previewClipUrl?: string | null;
 };
 
 type Props = {
@@ -143,11 +144,12 @@ export default function WorksClient({ works, collection, isLoggedIn = false, fea
       .filter((w) => !!(w.posterUrl ?? w.heroMobileUrl ?? w.heroDesktopUrl))
       .slice(0, 5)
       .map((w) => ({
-        posterUrl: (w.posterUrl ?? w.heroMobileUrl ?? w.heroDesktopUrl)!,
-        title: w.title,
-        slug: w.slug,
-        heroMobileUrl: w.heroMobileUrl,
+        posterUrl:      (w.posterUrl ?? w.heroMobileUrl ?? w.heroDesktopUrl)!,
+        title:          w.title,
+        slug:           w.slug,
+        heroMobileUrl:  w.heroMobileUrl,
         heroDesktopUrl: w.heroDesktopUrl,
+        previewClipUrl: w.previewClipUrl ?? null,
       }));
   }, [featuredHeroItems, publishedWorks]);
 
