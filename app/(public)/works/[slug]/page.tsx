@@ -182,6 +182,7 @@ export default async function WorkDetailPage({ params }: Props) {
         <SeriesTrailerPlayer
           posterUrl={portraitImg}
           trailerUrl={work.trailerUrl}
+          previewClipUrl={work.previewClipUrl}
           title={work.title}
         />
       )}
