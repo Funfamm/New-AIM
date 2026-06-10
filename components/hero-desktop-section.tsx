@@ -12,7 +12,7 @@ export type HeroDesktopItem = HeroItem & {
   primaryHref:    string;
   secondaryLabel: string | null;
   secondaryHref:  string | null;
-  // previewClipUrl inherited from HeroItem — passed through to HeroRotator
+  // previewClipUrl + previewClipDuration inherited from HeroItem — passed through to HeroRotator
 };
 
 type Props = {
@@ -41,12 +41,13 @@ export default function HeroDesktopSection({ items }: Props) {
   }, []);
 
   const heroItems: HeroItem[] = items.map((item) => ({
-    posterUrl:       item.posterUrl,
-    title:           item.title,
-    slug:            item.slug,
-    heroMobileUrl:   item.heroMobileUrl,
-    heroDesktopUrl:  item.heroDesktopUrl,
-    previewClipUrl:  item.previewClipUrl ?? null,
+    posterUrl:            item.posterUrl,
+    title:                item.title,
+    slug:                 item.slug,
+    heroMobileUrl:        item.heroMobileUrl,
+    heroDesktopUrl:       item.heroDesktopUrl,
+    previewClipUrl:       item.previewClipUrl ?? null,
+    previewClipDuration:  item.previewClipDuration ?? null,
   }));
 
   const current = items[activeIdx] ?? items[0];

@@ -57,6 +57,7 @@ function parseFormData(formData: FormData) {
     introStart:   formData.get("introStart")   ? Number(formData.get("introStart"))   : null,
     introEnd:     formData.get("introEnd")     ? Number(formData.get("introEnd"))     : null,
     creditsStart: formData.get("creditsStart") ? Number(formData.get("creditsStart")) : null,
+    heroPreviewDuration: formData.get("heroPreviewDuration") ? Number(formData.get("heroPreviewDuration")) : null,
     contentRating:      (formData.get("contentRating") as string) || null,
     contentDescriptors: (formData.getAll("contentDescriptors") as string[]).filter(Boolean),
   };

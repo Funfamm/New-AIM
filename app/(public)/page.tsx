@@ -15,7 +15,7 @@ const HOME_SELECT = {
   heroMobileUrl: true, heroDesktopUrl: true,
   genre: true, genres: true, requiresAuth: true, type: true,
   trailerUrl: true, requiresLoginToViewTrailer: true, videoUrl: true,
-  previewClipUrl: true,
+  previewClipUrl: true, heroPreviewDuration: true,
 } as const;
 
 import type { WorkStatus } from "@prisma/client";
@@ -147,7 +147,8 @@ export default async function HomePage() {
       genre:           w.genre ?? null,
       heroMobileUrl:   w.heroMobileUrl ?? null,
       heroDesktopUrl:  w.heroDesktopUrl ?? null,
-      previewClipUrl:  w.previewClipUrl ?? null,
+      previewClipUrl:       w.previewClipUrl ?? null,
+      previewClipDuration:  w.heroPreviewDuration ?? null,
       primaryLabel:    cta.primaryLabel,
       primaryHref:     cta.primaryHref,
       secondaryLabel:  cta.secondaryLabel,

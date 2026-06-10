@@ -21,6 +21,7 @@ type Work = {
   videoUrl?: string | null;
   trailerUrl?: string | null;
   previewClipUrl?: string | null;
+  heroPreviewDuration?: number | null;
 };
 
 type Tab =
@@ -103,6 +104,7 @@ type FeaturedHeroItem = {
   heroMobileUrl?: string | null;
   heroDesktopUrl?: string | null;
   previewClipUrl?: string | null;
+  previewClipDuration?: number | null;
 };
 
 type Props = {
@@ -147,9 +149,10 @@ export default function WorksClient({ works, collection, isLoggedIn = false, fea
         posterUrl:      (w.posterUrl ?? w.heroMobileUrl ?? w.heroDesktopUrl)!,
         title:          w.title,
         slug:           w.slug,
-        heroMobileUrl:  w.heroMobileUrl,
-        heroDesktopUrl: w.heroDesktopUrl,
-        previewClipUrl: w.previewClipUrl ?? null,
+        heroMobileUrl:       w.heroMobileUrl,
+        heroDesktopUrl:      w.heroDesktopUrl,
+        previewClipUrl:      w.previewClipUrl ?? null,
+        previewClipDuration: w.heroPreviewDuration ?? null,
       }));
   }, [featuredHeroItems, publishedWorks]);
 
