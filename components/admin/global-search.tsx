@@ -137,7 +137,7 @@ export default function GlobalSearch() {
               {results.users.map((u) => (
                 <Link
                   key={u.id}
-                  href={`/admin/users`}
+                  href={`/admin/users?q=${encodeURIComponent(u.email)}`}
                   className="gsearch-result"
                   onClick={handleResultClick}
                 >
@@ -163,7 +163,7 @@ export default function GlobalSearch() {
               {results.subscribers.map((s) => (
                 <Link
                   key={s.id}
-                  href="/admin/subscribers"
+                  href={`/admin/subscribers?q=${encodeURIComponent(s.email)}`}
                   className="gsearch-result"
                   onClick={handleResultClick}
                 >

@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import type { Metadata } from "next";
 import GlobalSearch from "@/components/admin/global-search";
+import { dismissVideoJob, dismissSubtitleJob } from "@/lib/actions/admin-health";
 import "@/components/admin/system-health.css";
 import "@/components/admin/global-search.css";
 import "./admin-overview.css";
@@ -112,19 +113,30 @@ async function getSystemHealth() {
 async function getNeedsAttention() {
   const stuckCutoff = new Date(Date.now() - 15 * 60_000);
 
-  const [failedVideoJobs, stuckVideoCount, failedSubJobs, badKeys, openAlerts] = await Promise.all([
+  const [rawFailedVideoJobs, stuckVideoCount, failedSubJobs, badKeys, openAlerts] = await Promise.all([
+    // Fetch FAILED video jobs — includes work's current URL fields so we can
+    // filter out stale failures where the work was already re-uploaded.
     prisma.videoProcessingJob.findMany({
       where: { status: "FAILED" },
-      take: 4,
       orderBy: { updatedAt: "desc" },
       select: {
         id: true, targetField: true, errorMessage: true, updatedAt: true, attempts: true,
-        work: { select: { id: true, title: true } },
+        work: {
+          select: {
+            id: true, title: true,
+            videoUrl: true, trailerUrl: true, previewClipUrl: true,
+          },
+        },
       },
     }),
     prisma.videoProcessingJob.count({ where: { status: "PROCESSING", updatedAt: { lt: stuckCutoff } } }),
+    // Only surface subtitle failures where NO READY job exists for the same
+    // subtitle — if a later job succeeded, this failure is irrelevant.
     prisma.subtitleJob.findMany({
-      where: { status: "FAILED" },
+      where: {
+        status: "FAILED",
+        subtitle: { jobs: { none: { status: "READY" } } },
+      },
       take: 3,
       orderBy: { updatedAt: "desc" },
       select: {
@@ -143,6 +155,18 @@ async function getNeedsAttention() {
       select: { id: true, title: true, severity: true, createdAt: true },
     }),
   ]);
+
+  // Smart filter: only show a video-job failure if the work's relevant field
+  // is still empty. If the field is set, a later upload resolved the issue.
+  const failedVideoJobs = rawFailedVideoJobs.filter((j) => {
+    if (!j.work) return true;
+    const resolved: Record<string, string | null> = {
+      videoUrl:      j.work.videoUrl,
+      trailerUrl:    j.work.trailerUrl,
+      previewClipUrl: j.work.previewClipUrl,
+    };
+    return !resolved[j.targetField];
+  }).slice(0, 4);
 
   return { failedVideoJobs, stuckVideoCount, failedSubJobs, badKeys, openAlerts };
 }
@@ -505,12 +529,18 @@ export default async function AdminOverviewPage() {
                       {j.attempts > 0 ? ` · ${j.attempts} attempt${j.attempts === 1 ? "" : "s"}` : ""}
                     </span>
                   </div>
-                  <Link
-                    href={j.work?.id ? `/admin/works/${j.work.id}` : "/admin/works"}
-                    className="attn-item-action"
-                  >
-                    Open Work
-                  </Link>
+                  <div className="attn-item-actions">
+                    <Link
+                      href={j.work?.id ? `/admin/works/${j.work.id}` : "/admin/works"}
+                      className="attn-item-action"
+                    >
+                      Open Work
+                    </Link>
+                    <form action={dismissVideoJob}>
+                      <input type="hidden" name="id" value={j.id} />
+                      <button type="submit" className="attn-item-dismiss">Dismiss</button>
+                    </form>
+                  </div>
                 </div>
               ))}
 
@@ -522,12 +552,18 @@ export default async function AdminOverviewPage() {
                     </span>
                     <span className="attn-item-detail">{j.error ?? "Translation job failed"}</span>
                   </div>
-                  <Link
-                    href={j.subtitle?.work?.id ? `/admin/works/${j.subtitle.work.id}` : "/admin/works"}
-                    className="attn-item-action"
-                  >
-                    Open Work
-                  </Link>
+                  <div className="attn-item-actions">
+                    <Link
+                      href={j.subtitle?.work?.id ? `/admin/works/${j.subtitle.work.id}` : "/admin/works"}
+                      className="attn-item-action"
+                    >
+                      Open Work
+                    </Link>
+                    <form action={dismissSubtitleJob}>
+                      <input type="hidden" name="id" value={j.id} />
+                      <button type="submit" className="attn-item-dismiss">Dismiss</button>
+                    </form>
+                  </div>
                 </div>
               ))}
 
