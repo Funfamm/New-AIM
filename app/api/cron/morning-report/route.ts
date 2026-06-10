@@ -1,15 +1,11 @@
 /**
- * app/api/cron/morning-report/route.ts
+ * POST /api/cron/morning-report  (Vercel Cron — fires at 08:00 UTC daily)
  *
- * Vercel Cron Job — fires at 08:00 UTC every day.
- * Sends a Good Morning system digest to the admin email.
+ * Sends the Good Morning system digest email to every admin, and creates an
+ * in-app SYSTEM notification so the bell count in the sidebar increments.
  *
- * Vercel passes Authorization: Bearer <CRON_SECRET> automatically.
- * Set CRON_SECRET as a random string in your Vercel environment variables.
- *
- * Schedule: "0 8 * * *"  — adjust in vercel.json for your timezone offset.
- *   e.g. WAT (UTC+1)  → "0 7 * * *"
- *        GMT           → "0 8 * * *"
+ * Set CRON_SECRET in your Vercel environment variables.
+ * Schedule: "0 8 * * *"
  */
 
 import { NextResponse } from "next/server";
@@ -19,29 +15,25 @@ import { sendEmail } from "@/lib/email";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// ── Auth guard ────────────────────────────────────────────────────────────────
-
 function isAuthorized(req: Request): boolean {
   const secret = process.env.CRON_SECRET;
-  if (!secret) return false; // never allow if secret is not configured
+  if (!secret) return false;
   return req.headers.get("authorization") === `Bearer ${secret}`;
 }
 
-// ── Stats query ───────────────────────────────────────────────────────────────
+// ── Stats ─────────────────────────────────────────────────────────────────────
 
 async function getStats(since: Date) {
+  const dayStart    = new Date();
+  dayStart.setHours(0, 0, 0, 0);
+  const stuckCutoff = new Date(Date.now() - 15 * 60_000);
+
   const [
-    newUsers,
-    totalUsers,
-    newLikes,
-    newShares,
-    newSignups,
-    watchCompletions,
-    openAlerts,
-    emailFailures,
-    totalPublished,
-    newWorks,
-    pageViews,
+    newUsers, totalUsers, newLikes, newShares, newSignups,
+    watchCompletions, openAlerts, emailFailures, totalPublished, newWorks, pageViews,
+    videoPending, videoFailed, videoStuck,
+    subFailed,
+    keyInvalid,
   ] = await Promise.all([
     prisma.user.count({ where: { createdAt: { gte: since }, status: "ACTIVE" } }),
     prisma.user.count({ where: { status: "ACTIVE" } }),
@@ -54,12 +46,20 @@ async function getStats(since: Date) {
     prisma.work.count({ where: { status: "PUBLISHED", type: { not: "EPISODE" } } }),
     prisma.work.count({ where: { createdAt: { gte: since }, type: { not: "EPISODE" } } }),
     prisma.analyticsEvent.count({ where: { type: "PAGE_VIEW", createdAt: { gte: since } } }),
+    prisma.videoProcessingJob.count({ where: { status: "PENDING" } }),
+    prisma.videoProcessingJob.count({ where: { status: "FAILED" } }),
+    prisma.videoProcessingJob.count({ where: { status: "PROCESSING", updatedAt: { lt: stuckCutoff } } }),
+    prisma.subtitleJob.count({ where: { status: "FAILED" } }),
+    prisma.translationApiKey.count({
+      where: { OR: [{ status: "INVALID" }, { status: "DISABLED" }, { isEnabled: false }] },
+    }),
   ]);
 
   return {
     newUsers, totalUsers, newLikes, newShares, newSignups,
-    watchCompletions, openAlerts, emailFailures,
-    totalPublished, newWorks, pageViews,
+    watchCompletions, openAlerts, emailFailures, totalPublished, newWorks, pageViews,
+    videoPending, videoFailed, videoStuck,
+    subFailed, keyInvalid,
   };
 }
 
@@ -70,7 +70,6 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Load admin settings
   const settings = await prisma.adminSettings.findUnique({
     where: { id: "singleton" },
     select: { adminAlertEmail: true, emailSendingEnabled: true },
@@ -80,27 +79,23 @@ export async function GET(req: Request) {
     return NextResponse.json({ skipped: "Email sending is disabled in admin settings" });
   }
 
-  // Resolve recipients
-  const recipients: string[] = [];
-  if (settings.adminAlertEmail) {
-    recipients.push(settings.adminAlertEmail);
-  } else {
-    const admins = await prisma.user.findMany({
-      where: { role: { in: ["ADMIN", "SUPER_ADMIN"] }, status: "ACTIVE" },
-      select: { email: true },
-    });
-    admins.forEach((a) => recipients.push(a.email));
-  }
+  // Resolve admin recipients
+  const adminUsers = await prisma.user.findMany({
+    where: { role: { in: ["ADMIN", "SUPER_ADMIN"] }, status: "ACTIVE" },
+    select: { id: true, email: true },
+  });
+
+  const recipients: string[] = settings.adminAlertEmail
+    ? [settings.adminAlertEmail]
+    : adminUsers.map((a) => a.email);
 
   if (recipients.length === 0) {
     return NextResponse.json({ skipped: "No admin recipients configured" });
   }
 
-  // Gather stats for the last 24 hours
-  const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const since  = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const stats  = await getStats(since);
 
-  // Date string for subject + heading
   const appUrl  = process.env.NEXT_PUBLIC_APP_URL ?? "https://aimstudio.app";
   const dateStr = new Date().toLocaleDateString("en-US", {
     weekday: "long", year: "numeric", month: "long", day: "numeric",
@@ -108,7 +103,7 @@ export async function GET(req: Request) {
 
   const html = buildEmailHtml({ dateStr, appUrl, stats });
 
-  // Send to all recipients in parallel
+  // Send email to all recipients
   const results = await Promise.allSettled(
     recipients.map((to) =>
       sendEmail({
@@ -127,7 +122,27 @@ export async function GET(req: Request) {
   const sent   = results.filter((r) => r.status === "fulfilled").length;
   const failed = results.filter((r) => r.status === "rejected").length;
 
-  return NextResponse.json({ ok: true, sent, failed, recipients: recipients.length });
+  // Create in-app SYSTEM notification for every admin user
+  const hasHealthIssues = stats.videoFailed + stats.videoStuck + stats.subFailed + stats.keyInvalid + stats.openAlerts > 0;
+  const notifTitle = hasHealthIssues
+    ? `Daily Report — ${stats.openAlerts + stats.videoFailed + stats.videoStuck} issue${stats.openAlerts + stats.videoFailed + stats.videoStuck === 1 ? "" : "s"} need attention`
+    : `Daily Report — ${dateStr.split(",")[0]}`;
+  const notifBody = `Page views: ${stats.pageViews} · New users: ${stats.newUsers} · Watch completions: ${stats.watchCompletions}`;
+
+  if (adminUsers.length > 0) {
+    await prisma.notification.createMany({
+      data: adminUsers.map((u) => ({
+        userId:    u.id,
+        type:      "SYSTEM" as const,
+        title:     notifTitle,
+        body:      notifBody,
+        href:      "/admin",
+        read:      false,
+      })),
+    });
+  }
+
+  return NextResponse.json({ ok: true, sent, failed, recipients: recipients.length, notificationsCreated: adminUsers.length });
 }
 
 // ── Email HTML ────────────────────────────────────────────────────────────────
@@ -150,13 +165,21 @@ function row(label: string, value: number, good = true): string {
 function buildEmailHtml({ dateStr, appUrl, stats }: { dateStr: string; appUrl: string; stats: Stats }): string {
   const hasAlerts   = stats.openAlerts > 0;
   const hasFailures = stats.emailFailures > 0;
+  const hasVideoIssues = stats.videoFailed > 0 || stats.videoStuck > 0;
+  const hasSubIssues = stats.subFailed > 0;
+  const hasKeyIssues = stats.keyInvalid > 0;
 
-  const alertBanner = (hasAlerts || hasFailures)
+  const alertParts: string[] = [];
+  if (hasAlerts)      alertParts.push(`⚠ ${stats.openAlerts} open security alert${stats.openAlerts !== 1 ? "s" : ""} — <a href="${appUrl}/admin/security" style="color:#e05252;">review</a>`);
+  if (hasFailures)    alertParts.push(`${stats.emailFailures} email queue failure${stats.emailFailures !== 1 ? "s" : ""} — <a href="${appUrl}/admin/email" style="color:#e05252;">check queue</a>`);
+  if (hasVideoIssues) alertParts.push(`${stats.videoFailed + stats.videoStuck} video job issue${stats.videoFailed + stats.videoStuck !== 1 ? "s" : ""} — <a href="${appUrl}/admin/works" style="color:#e05252;">view jobs</a>`);
+  if (hasSubIssues)   alertParts.push(`${stats.subFailed} subtitle failure${stats.subFailed !== 1 ? "s" : ""} — <a href="${appUrl}/admin/works" style="color:#e05252;">manage</a>`);
+  if (hasKeyIssues)   alertParts.push(`${stats.keyInvalid} translation key invalid — <a href="${appUrl}/admin/translation-keys" style="color:#e05252;">manage keys</a>`);
+
+  const alertBanner = alertParts.length > 0
     ? `<tr>
-        <td colspan="2" style="background:#2a1a1a;padding:12px 16px;color:#e05252;font-size:12px;font-weight:600;letter-spacing:.05em;border-radius:4px;margin-bottom:8px;">
-          ${hasAlerts ? `⚠ ${stats.openAlerts} open security alert${stats.openAlerts !== 1 ? "s" : ""} — <a href="${appUrl}/admin/security" style="color:#e05252;">review now</a>` : ""}
-          ${hasAlerts && hasFailures ? " &nbsp;·&nbsp; " : ""}
-          ${hasFailures ? `${stats.emailFailures} email queue failure${stats.emailFailures !== 1 ? "s" : ""} — <a href="${appUrl}/admin/email" style="color:#e05252;">check queue</a>` : ""}
+        <td colspan="2" style="background:#2a1a1a;padding:12px 16px;color:#e05252;font-size:12px;font-weight:600;letter-spacing:.05em;border-radius:4px;margin-bottom:8px;line-height:1.8;">
+          ${alertParts.join("<br />")}
         </td>
       </tr>`
     : "";
@@ -183,7 +206,7 @@ function buildEmailHtml({ dateStr, appUrl, stats }: { dateStr: string; appUrl: s
             </td>
           </tr>
 
-          <!-- Alert banner (only shown when needed) -->
+          <!-- Alert banner -->
           ${alertBanner ? `<tr><td><table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px;">${alertBanner}</table></td></tr>` : ""}
 
           <!-- Stats card -->
@@ -191,7 +214,7 @@ function buildEmailHtml({ dateStr, appUrl, stats }: { dateStr: string; appUrl: s
             <td style="background:#111111;border-radius:8px;border:1px solid #1f1f1f;overflow:hidden;">
               <table width="100%" cellpadding="0" cellspacing="0">
 
-                <!-- Section: Last 24 hours -->
+                <!-- Last 24 hours -->
                 <tr>
                   <td colspan="2" style="padding:14px 16px 6px;font-size:10px;letter-spacing:.12em;color:#6b7280;text-transform:uppercase;font-weight:600;background:#0f0f0f;">
                     Last 24 Hours
@@ -205,7 +228,7 @@ function buildEmailHtml({ dateStr, appUrl, stats }: { dateStr: string; appUrl: s
                 ${row("Watch Completions", stats.watchCompletions)}
                 ${row("New Works Added", stats.newWorks)}
 
-                <!-- Section: Platform -->
+                <!-- Platform -->
                 <tr>
                   <td colspan="2" style="padding:18px 16px 6px;font-size:10px;letter-spacing:.12em;color:#6b7280;text-transform:uppercase;font-weight:600;background:#0f0f0f;">
                     Platform
@@ -220,7 +243,19 @@ function buildEmailHtml({ dateStr, appUrl, stats }: { dateStr: string; appUrl: s
                   <td style="padding:10px 16px;text-align:right;border-bottom:1px solid #1f1f1f;">${stat(stats.totalUsers)}</td>
                 </tr>
 
-                <!-- Section: Alerts -->
+                <!-- System Health -->
+                <tr>
+                  <td colspan="2" style="padding:18px 16px 6px;font-size:10px;letter-spacing:.12em;color:#6b7280;text-transform:uppercase;font-weight:600;background:#0f0f0f;">
+                    System Health
+                  </td>
+                </tr>
+                ${row("Video Jobs Pending", stats.videoPending, false)}
+                ${row("Video Jobs Failed", stats.videoFailed, false)}
+                ${row("Video Jobs Stuck", stats.videoStuck, false)}
+                ${row("Subtitle Jobs Failed", stats.subFailed, false)}
+                ${row("Translation Keys Invalid", stats.keyInvalid, false)}
+
+                <!-- Alerts -->
                 <tr>
                   <td colspan="2" style="padding:18px 16px 6px;font-size:10px;letter-spacing:.12em;color:#6b7280;text-transform:uppercase;font-weight:600;background:#0f0f0f;">
                     Alerts

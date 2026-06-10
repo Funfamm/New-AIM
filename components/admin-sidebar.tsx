@@ -2,30 +2,30 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { LayoutDashboard, Clapperboard, Users, BarChart2, Mail, Settings, ScrollText, LogOut, Menu, X, ArrowLeft, BellRing, Shield, Megaphone, Database, MessageSquare, TrendingUp, Rss, Layers, KeyRound } from "lucide-react";
+import { LayoutDashboard, Clapperboard, Users, BarChart2, Mail, Settings, ScrollText, LogOut, Menu, X, ArrowLeft, BellRing, Shield, Megaphone, Database, MessageSquare, TrendingUp, Rss, Layers, KeyRound, Bell } from "lucide-react";
 import { logoutUser } from "@/lib/actions/auth";
 import "./admin-sidebar.css";
 
 const NAV = [
-  { href: "/admin",            label: "Overview",  icon: LayoutDashboard, exact: true },
-  { href: "/admin/works",      label: "Works",     icon: Clapperboard },
-  { href: "/admin/rows",       label: "Rows",      icon: Layers },
-  { href: "/admin/users",      label: "Users",     icon: Users },
-  { href: "/admin/analytics",  label: "Analytics", icon: BarChart2 },
-  { href: "/admin/outreach",         label: "Outreach",      icon: Megaphone },
-  { href: "/admin/notify-me-ctas", label: "Notify Me",     icon: BellRing },
-  { href: "/admin/subscribers",    label: "Subscribers",  icon: Rss },
-  { href: "/admin/comments",        label: "Comments",      icon: MessageSquare },
-  { href: "/admin/engagement",      label: "Engagement",    icon: TrendingUp },
-  { href: "/admin/security",       label: "Security",      icon: Shield },
-  { href: "/admin/email",          label: "Email",         icon: Mail },
+  { href: "/admin",            label: "Overview",    icon: LayoutDashboard, exact: true },
+  { href: "/admin/works",      label: "Works",       icon: Clapperboard },
+  { href: "/admin/rows",       label: "Rows",        icon: Layers },
+  { href: "/admin/users",      label: "Users",       icon: Users },
+  { href: "/admin/analytics",  label: "Analytics",   icon: BarChart2 },
+  { href: "/admin/outreach",         label: "Outreach",    icon: Megaphone },
+  { href: "/admin/notify-me-ctas", label: "Notify Me",   icon: BellRing },
+  { href: "/admin/subscribers",    label: "Subscribers", icon: Rss },
+  { href: "/admin/comments",        label: "Comments",    icon: MessageSquare },
+  { href: "/admin/engagement",      label: "Engagement",  icon: TrendingUp },
+  { href: "/admin/security",       label: "Security",    icon: Shield },
+  { href: "/admin/email",          label: "Email",       icon: Mail },
   { href: "/admin/translation-keys", label: "Trans. Keys", icon: KeyRound },
-  { href: "/admin/settings",  label: "Settings",  icon: Settings },
-  { href: "/admin/data",      label: "Data",      icon: Database },
-  { href: "/admin/audit",     label: "Audit Log", icon: ScrollText },
+  { href: "/admin/settings",  label: "Settings",    icon: Settings },
+  { href: "/admin/data",      label: "Data",        icon: Database },
+  { href: "/admin/audit",     label: "Audit Log",   icon: ScrollText },
 ];
 
-export default function AdminSidebar() {
+export default function AdminSidebar({ unreadNotifications = 0 }: { unreadNotifications?: number }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
@@ -51,9 +51,17 @@ export default function AdminSidebar() {
           <button className="adm-close" onClick={close} aria-label="Close menu">
             <X size={16} />
           </button>
-          <Link href="/" className="adm-logo" onClick={close}>
-            AIM<span>Studio</span>
-          </Link>
+          <div className="adm-top-row">
+            <Link href="/" className="adm-logo" onClick={close}>
+              AIM<span>Studio</span>
+            </Link>
+            {unreadNotifications > 0 && (
+              <Link href="/admin" onClick={close} className="adm-bell" aria-label={`${unreadNotifications} unread alerts`}>
+                <Bell size={13} />
+                <span className="adm-bell-count">{unreadNotifications > 99 ? "99+" : unreadNotifications}</span>
+              </Link>
+            )}
+          </div>
           <span className="adm-sublabel">Admin Panel</span>
         </div>
 
