@@ -112,6 +112,7 @@
 }
 .sh-card-action:hover { color: var(--color-brand-accent); }
 .sh-card-action svg { flex-shrink: 0; }
+.sh-card-action--secondary { opacity: 0.65; }
 
 /* Footer row used when both nav link + resolve button are shown */
 .sh-card-footer {
