@@ -18,7 +18,11 @@ export default function WorkerStatus() {
     }
   }, []);
 
-  useEffect(() => { check(); }, [check]);
+  useEffect(() => {
+    check();
+    const interval = setInterval(check, 30_000);
+    return () => clearInterval(interval);
+  }, [check]);
 
   async function trigger() {
     setTriggering(true);

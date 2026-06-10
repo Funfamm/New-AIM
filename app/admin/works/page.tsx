@@ -59,7 +59,7 @@ export default async function AdminWorksPage({
     select: {
       id: true, slug: true, title: true, type: true, status: true,
       featured: true, showOnHome: true, clientName: true, genre: true,
-      videoUrl: true, trailerUrl: true, createdAt: true,
+      videoUrl: true, trailerUrl: true, previewClipUrl: true, createdAt: true,
       episodes: { select: { id: true } },
     },
   });
@@ -144,7 +144,9 @@ export default async function AdminWorksPage({
               <th>Title</th>
               <th>Type</th>
               <th>Status</th>
-              <th>Video</th>
+              <th title="Main video">Video</th>
+              <th title="Trailer">Trailer</th>
+              <th title="Preview clip">Preview</th>
               <th>Featured</th>
               <th>Home</th>
               <th className="th-stat" title="Likes">
@@ -176,7 +178,13 @@ export default async function AdminWorksPage({
                     </span>
                   </td>
                   <td>
-                    <span className={`dot ${w.videoUrl || w.trailerUrl ? "dot--green" : "dot--red"}`} />
+                    <span className={`dot ${w.videoUrl ? "dot--green" : "dot--red"}`} />
+                  </td>
+                  <td>
+                    <span className={`dot ${w.trailerUrl ? "dot--green" : "dot--empty"}`} />
+                  </td>
+                  <td>
+                    <span className={`dot ${w.previewClipUrl ? "dot--green" : "dot--empty"}`} />
                   </td>
                   <td>{w.featured ? <span className="check">✓</span> : <span className="dash">—</span>}</td>
                   <td>{w.showOnHome ? <span className="check">✓</span> : <span className="dash">—</span>}</td>
@@ -226,7 +234,7 @@ export default async function AdminWorksPage({
             })}
             {worksWithStats.length === 0 && (
               <tr>
-                <td colSpan={9}>
+                <td colSpan={11}>
                   {isFiltered ? (
                     <div className="admin-empty-state">
                       <div className="admin-empty-state-icon">
