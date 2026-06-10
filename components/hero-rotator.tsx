@@ -27,6 +27,8 @@ type Props = {
 export default function HeroRotator({ items, interval = 4000, onSlideChange }: Props) {
   const [active, setActive] = useState(0);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Ref-based lock: skip rotation ticks while a preview video is playing
+  const previewActiveRef = useRef(false);
 
   // Notify parent when active slide changes
   useEffect(() => {
@@ -38,6 +40,7 @@ export default function HeroRotator({ items, interval = 4000, onSlideChange }: P
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
     timer.current = setInterval(() => {
+      if (previewActiveRef.current) return; // hold slide while preview is playing
       setActive((i) => (i + 1) % items.length);
     }, interval);
 
@@ -101,6 +104,7 @@ export default function HeroRotator({ items, interval = 4000, onSlideChange }: P
                 src={item.previewClipUrl}
                 isActive={isActive}
                 previewMs={(item.previewClipDuration ?? 12) * 1000}
+                onPlayingChange={(playing) => { previewActiveRef.current = playing; }}
               />
             )}
           </div>
