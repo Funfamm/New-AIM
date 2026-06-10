@@ -39,7 +39,7 @@ export async function resolveAllEmailFailures() {
   await requireAdmin();
   await prisma.emailQueue.updateMany({
     where: { status: "FAILED" },
-    data: { status: "CANCELLED" },
+    data: { status: "SKIPPED" },
   });
   revalidatePath("/admin");
 }
