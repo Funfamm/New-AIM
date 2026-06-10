@@ -105,7 +105,7 @@ export default function GlobalSearch() {
           {!loading && results && results.works.length > 0 && (
             <>
               <div className="gsearch-group-label">
-                <Clapperboard size={10} style={{ display: "inline", marginRight: 4 }} />
+                <Clapperboard size={10} className="gsearch-group-icon" />
                 Works
               </div>
               {results.works.map((w) => (
@@ -131,7 +131,7 @@ export default function GlobalSearch() {
           {!loading && results && results.users.length > 0 && (
             <>
               <div className="gsearch-group-label">
-                <Users size={10} style={{ display: "inline", marginRight: 4 }} />
+                <Users size={10} className="gsearch-group-icon" />
                 Users
               </div>
               {results.users.map((u) => (
@@ -157,7 +157,7 @@ export default function GlobalSearch() {
           {!loading && results && results.subscribers.length > 0 && (
             <>
               <div className="gsearch-group-label">
-                <Rss size={10} style={{ display: "inline", marginRight: 4 }} />
+                <Rss size={10} className="gsearch-group-icon" />
                 Subscribers
               </div>
               {results.subscribers.map((s) => (
