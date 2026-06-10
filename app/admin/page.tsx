@@ -72,7 +72,7 @@ async function getSystemHealth() {
     emailQueued, emailFailed, emailLastSent,
     subPending, subProcessing, subFailed,
     keyHealthy, keyCooldown, keyInvalid,
-    subscribersToday, notifyMeToday, usersToday,
+    subscribersToday, notifyMeToday, usersToday, unsubscribesToday,
   ] = await Promise.all([
     prisma.videoProcessingJob.count({ where: { status: "PENDING" } }),
     prisma.videoProcessingJob.count({ where: { status: "PROCESSING" } }),
@@ -101,6 +101,7 @@ async function getSystemHealth() {
     prisma.subscriber.count({ where: { subscribedAt: { gte: dayStart } } }),
     prisma.notifyMeSignup.count({ where: { createdAt: { gte: dayStart } } }),
     prisma.user.count({ where: { createdAt: { gte: dayStart } } }),
+    prisma.emailSuppression.count({ where: { reason: "unsubscribe", createdAt: { gte: dayStart } } }),
   ]);
 
   return {
@@ -109,7 +110,7 @@ async function getSystemHealth() {
     emailLastSentAt: emailLastSent?.createdAt ?? null,
     subPending, subProcessing, subFailed,
     keyHealthy, keyCooldown, keyInvalid,
-    subscribersToday, notifyMeToday, usersToday,
+    subscribersToday, notifyMeToday, usersToday, unsubscribesToday,
   };
 }
 
@@ -491,10 +492,25 @@ export default async function AdminOverviewPage() {
                 <span className="sh-metric-label">Notify Me</span>
                 <span className={`sh-metric-val ${health.notifyMeToday > 0 ? "sh-metric-val--ok" : "sh-metric-val--muted"}`}>{health.notifyMeToday}</span>
               </div>
+              <div className="sh-metric">
+                <span className="sh-metric-label">Unsubscribes</span>
+                <span className={`sh-metric-val ${health.unsubscribesToday > 0 ? "sh-metric-val--warn" : "sh-metric-val--muted"}`}>{health.unsubscribesToday}</span>
+              </div>
             </div>
-            <Link href="/admin/subscribers" className="sh-card-action">
-              View Subscribers <ArrowRight size={9} />
-            </Link>
+            {health.unsubscribesToday > 0 ? (
+              <div className="sh-card-footer">
+                <Link href="/admin/subscribers" className="sh-card-action">
+                  Subscribers <ArrowRight size={9} />
+                </Link>
+                <Link href="/admin/email/suppressions" className="sh-card-action sh-card-action--secondary">
+                  Suppressions <ArrowRight size={9} />
+                </Link>
+              </div>
+            ) : (
+              <Link href="/admin/subscribers" className="sh-card-action">
+                View Subscribers <ArrowRight size={9} />
+              </Link>
+            )}
           </div>
 
           {/* Security */}

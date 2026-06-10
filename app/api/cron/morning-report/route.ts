@@ -34,6 +34,7 @@ async function getStats(since: Date) {
     videoPending, videoFailed, videoStuck,
     subFailed,
     keyInvalid,
+    newUnsubscribes, newBounces, newComplaints, newManualSuppressions,
   ] = await Promise.all([
     prisma.user.count({ where: { createdAt: { gte: since }, status: "ACTIVE" } }),
     prisma.user.count({ where: { status: "ACTIVE" } }),
@@ -53,6 +54,10 @@ async function getStats(since: Date) {
     prisma.translationApiKey.count({
       where: { OR: [{ status: "INVALID" }, { status: "DISABLED" }, { isEnabled: false }] },
     }),
+    prisma.emailSuppression.count({ where: { reason: "unsubscribe", createdAt: { gte: since } } }),
+    prisma.emailSuppression.count({ where: { reason: "bounce",      createdAt: { gte: since } } }),
+    prisma.emailSuppression.count({ where: { reason: "complaint",   createdAt: { gte: since } } }),
+    prisma.emailSuppression.count({ where: { reason: "manual",      createdAt: { gte: since } } }),
   ]);
 
   return {
@@ -60,6 +65,7 @@ async function getStats(since: Date) {
     watchCompletions, openAlerts, emailFailures, totalPublished, newWorks, pageViews,
     videoPending, videoFailed, videoStuck,
     subFailed, keyInvalid,
+    newUnsubscribes, newBounces, newComplaints, newManualSuppressions,
   };
 }
 
@@ -254,6 +260,24 @@ function buildEmailHtml({ dateStr, appUrl, stats }: { dateStr: string; appUrl: s
                 ${row("Video Jobs Stuck", stats.videoStuck, false)}
                 ${row("Subtitle Jobs Failed", stats.subFailed, false)}
                 ${row("Translation Keys Invalid", stats.keyInvalid, false)}
+
+                <!-- Email Suppression -->
+                <tr>
+                  <td colspan="2" style="padding:18px 16px 6px;font-size:10px;letter-spacing:.12em;color:#6b7280;text-transform:uppercase;font-weight:600;background:#0f0f0f;">
+                    Email Suppression (Last 24 Hours)
+                  </td>
+                </tr>
+                ${row("New Unsubscribes", stats.newUnsubscribes, false)}
+                ${row("New Bounces", stats.newBounces, false)}
+                ${row("New Complaints", stats.newComplaints, false)}
+                ${row("Manual Suppressions", stats.newManualSuppressions, false)}
+                ${(stats.newUnsubscribes + stats.newBounces + stats.newComplaints + stats.newManualSuppressions) > 0 ? `
+                <tr>
+                  <td colspan="2" style="padding:8px 16px 12px;font-size:11px;color:#6b7280;border-bottom:1px solid #1f1f1f;">
+                    Review suppressions in
+                    <a href="${appUrl}/admin/email/suppressions" style="color:#e8c97e;text-decoration:none;">Admin → Email → Suppressions</a>.
+                  </td>
+                </tr>` : ""}
 
                 <!-- Alerts -->
                 <tr>
