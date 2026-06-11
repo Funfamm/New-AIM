@@ -208,10 +208,13 @@ function CommentRow({
 // ── Reply thread ──────────────────────────────────────────────
 function ReplyThread({
   parentId, replyCount, currentUser, workId, workSlug, likedSet, onLikeToggle,
+  autoOpen, scrollTargetId,
 }: {
   parentId: string; replyCount: number; currentUser: Props["currentUser"];
   workId: string; workSlug: string; likedSet: Set<string>;
   onLikeToggle: (id: string, delta: number) => void;
+  autoOpen?: boolean;
+  scrollTargetId?: string | null;
 }) {
   const [open, setOpen] = useState(false);
   const [replies, setReplies] = useState<Comment[]>([]);
@@ -231,6 +234,25 @@ function ReplyThread({
     setLoading(false);
     setOpen(true);
   }
+
+  // Auto-open when this thread contains the reply the user was notified about
+  useEffect(() => {
+    if (autoOpen && !open && !loading) load();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoOpen]);
+
+  // Scroll to and briefly highlight the target reply once it's in the DOM
+  useEffect(() => {
+    if (!open || !scrollTargetId) return;
+    const timer = setTimeout(() => {
+      const el = document.getElementById(scrollTargetId);
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("cmt-highlighted");
+      setTimeout(() => el.classList.remove("cmt-highlighted"), 2200);
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [open, scrollTargetId]);
 
   async function submitReply() {
     const clean = replyBody.trim();
@@ -263,7 +285,7 @@ function ReplyThread({
       {open && (
         <div className="cmt-reply-list">
           {replies.map((r) => (
-            <div key={r.id} className="cmt-reply-item">
+            <div key={r.id} id={`reply-${r.id}`} className="cmt-reply-item">
               <CommentRow
                 comment={r} currentUser={currentUser} workSlug={workSlug}
                 isReply likedSet={likedSet} onLikeToggle={onLikeToggle}
@@ -315,6 +337,9 @@ export default function CommentSection({ workId, workSlug, currentUser }: Props)
   const [body, setBody] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [postErr, setPostErr] = useState("");
+  // Deep-link state: populated from ?thread= and #reply- URL params
+  const [autoOpenThreadId, setAutoOpenThreadId] = useState<string | null>(null);
+  const [scrollTargetId, setScrollTargetId] = useState<string | null>(null);
   const maxLen = 1000;
   const mounted = useRef(false);
 
@@ -333,6 +358,15 @@ export default function CommentSection({ workId, workSlug, currentUser }: Props)
       setLoading(false);
     });
   }, [loadComments, sort]);
+
+  // Parse deep-link params set by reply notifications (?thread=<parentId>#reply-<replyId>)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const thread = params.get("thread");
+    const hash   = window.location.hash; // "#reply-<id>"
+    if (thread) setAutoOpenThreadId(thread);
+    if (hash.startsWith("#reply-")) setScrollTargetId(hash.slice(1)); // "reply-<id>"
+  }, []);
 
   async function handleSort(s: "newest" | "top") {
     if (s === sort) return;
@@ -430,7 +464,7 @@ export default function CommentSection({ workId, workSlug, currentUser }: Props)
           <p className="cmt-empty">No comments yet. Be the first to share your thoughts.</p>
         ) : (
           comments.map((c) => (
-            <div key={c.id} className={`cmt-item${c.isPinned ? " cmt-item--pinned" : ""}`}>
+            <div key={c.id} id={`comment-${c.id}`} className={`cmt-item${c.isPinned ? " cmt-item--pinned" : ""}`}>
               <CommentRow
                 comment={c} currentUser={currentUser} workSlug={workSlug}
                 likedSet={likedSet}
@@ -448,6 +482,8 @@ export default function CommentSection({ workId, workSlug, currentUser }: Props)
                 parentId={c.id} replyCount={c.replyCount}
                 currentUser={currentUser} workId={workId} workSlug={workSlug}
                 likedSet={likedSet} onLikeToggle={() => {}}
+                autoOpen={autoOpenThreadId === c.id}
+                scrollTargetId={autoOpenThreadId === c.id ? scrollTargetId : null}
               />
             </div>
           ))
