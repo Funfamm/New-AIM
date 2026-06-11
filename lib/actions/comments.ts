@@ -141,7 +141,7 @@ export async function createComment(
           type: "COMMENT_REPLY",
           title: "New reply to your comment",
           body: `${session.user.name ?? "Someone"} replied to your comment.`,
-          href: `/works/${work.slug}`,
+          href: `/works/${work.slug}?thread=${parentId}#reply-${comment.id}`,
           read: false,
           createdAt: new Date(),
         },

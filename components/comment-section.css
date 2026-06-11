@@ -165,6 +165,14 @@
 .cmt-reply-item { padding: 0.75rem 0; border-bottom: 1px solid var(--color-brand-border); }
 .cmt-reply-item:last-child { border-bottom: none; }
 
+/* Deep-link highlight — applied by JS after scroll-to reply */
+@keyframes cmt-pulse {
+  0%   { background: rgba(232,201,126,0.12); }
+  60%  { background: rgba(232,201,126,0.07); }
+  100% { background: transparent; }
+}
+.cmt-highlighted { animation: cmt-pulse 2.2s ease-out forwards; border-radius: 6px; }
+
 /* Reply form */
 .cmt-reply-form {
   display: flex; gap: 0.6rem; align-items: flex-start;
