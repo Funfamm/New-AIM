@@ -321,3 +321,37 @@ export async function adminResolveReport(
   revalidatePath("/admin/comments");
   return { ok: true };
 }
+
+// ── Admin: permanently delete a single DELETED comment ────────
+export async function purgeSingleComment(commentId: string): Promise<{ ok: boolean }> {
+  await requireAdmin();
+
+  const comment = await prisma.comment.findUnique({
+    where: { id: commentId },
+    select: { status: true },
+  });
+  if (!comment || comment.status !== "DELETED") return { ok: false };
+
+  await prisma.comment.delete({ where: { id: commentId } });
+
+  revalidatePath("/admin/comments");
+  return { ok: true };
+}
+
+// ── Admin: bulk-purge all DELETED comments ───────────────────
+export async function purgeDeletedComments(): Promise<{ purged: number }> {
+  await requireAdmin();
+
+  // Replies first (leaf nodes) — cascade removes their likes and reports
+  const replies = await prisma.comment.deleteMany({
+    where: { status: "DELETED", parentId: { not: null } },
+  });
+
+  // Parents only when no active children remain (avoid cascade-deleting published replies)
+  const parents = await prisma.comment.deleteMany({
+    where: { status: "DELETED", parentId: null, replies: { none: {} } },
+  });
+
+  revalidatePath("/admin/comments");
+  return { purged: replies.count + parents.count };
+}
