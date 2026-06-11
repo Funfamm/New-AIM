@@ -4,7 +4,8 @@ import { useState, useTransition } from "react";
 import { Heart } from "lucide-react";
 import { likeWork, unlikeWork } from "@/lib/actions/likes";
 import { useToast } from "./toast-context";
-import "./action-buttons.css";
+// CSS imported at route level (app/(public)/works/[slug]/page.tsx) to avoid
+// late-loading during client-side navigation.
 
 type Props = {
   workId: string;
@@ -75,8 +76,7 @@ export default function LikeButton({
       aria-pressed={liked}
     >
       <Heart size={size === "sm" ? 13 : 14} fill={liked ? "currentColor" : "none"} />
-      {count > 0 && <span className="action-btn-count">{count}</span>}
-      <span>{liked ? "Liked" : "Like"}</span>
+      <span>{count > 0 ? `${count} ` : ""}{liked ? "Liked" : "Like"}</span>
     </button>
   );
 }
