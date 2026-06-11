@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { Share2, Check } from "lucide-react";
-import "./action-buttons.css";
+// CSS imported at route level (app/(public)/works/[slug]/page.tsx) to avoid
+// late-loading during client-side navigation.
 
 type Props = {
   title: string;

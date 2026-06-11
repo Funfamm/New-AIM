@@ -4,7 +4,8 @@ import { useState, useTransition } from "react";
 import { Bookmark, BookmarkCheck } from "lucide-react";
 import { saveWork, unsaveWork } from "@/lib/actions/watchlist";
 import { useToast } from "./toast-context";
-import "./save-button.css";
+// CSS imported at route level (app/(public)/works/[slug]/page.tsx) to avoid
+// late-loading during client-side navigation.
 
 type Props = {
   workId: string;
@@ -12,7 +13,7 @@ type Props = {
   className?: string;
 };
 
-export default function SaveButton({ workId, initialSaved, className = "save-btn" }: Props) {
+export default function SaveButton({ workId, initialSaved, className }: Props) {
   const [saved, setSaved] = useState(initialSaved);
   const [pending, startTransition] = useTransition();
   const { showToast } = useToast();
@@ -31,19 +32,29 @@ export default function SaveButton({ workId, initialSaved, className = "save-btn
     });
   }
 
+  const cls = [
+    "action-btn",
+    "action-btn--save",
+    saved ? "action-btn--liked" : "",
+    className ?? "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
     <button
       type="button"
       onClick={toggle}
       disabled={pending}
-      className={className}
+      className={cls}
       aria-label={saved ? "Remove from watchlist" : "Save to watchlist"}
       aria-pressed={saved}
     >
       {saved
         ? <BookmarkCheck size={14} />
         : <Bookmark size={14} />}
-      {saved ? "Saved" : "Save"}
+      <span>{saved ? "Saved" : "Save"}</span>
     </button>
   );
 }
+

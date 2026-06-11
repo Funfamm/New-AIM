@@ -1,10 +1,11 @@
-/* Shared engagement action buttons — Like, Share
-   Imported by like-button.tsx and share-button.tsx */
+/* Shared engagement action buttons — Like, Save, Share
+   Imported at route level by app/(public)/works/[slug]/page.tsx */
 
 .action-btn {
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
+  justify-content: center;
+  gap: 7px;
   font-family: var(--font-body);
   font-size: 0.8125rem;
   font-weight: 600;
@@ -14,8 +15,9 @@
     linear-gradient(180deg, rgba(255,255,255,0.075) 0%, rgba(255,255,255,0.025) 100%),
     rgba(12,12,14,0.72);
   border: 1px solid rgba(255,255,255,0.11);
-  min-height: 40px;
-  padding: 0 1.1rem;
+  min-height: 42px;
+  min-width: 96px;
+  padding: 0 16px;
   border-radius: 999px;
   cursor: pointer;
   outline: none;
@@ -27,7 +29,8 @@
     0 4px 14px rgba(0,0,0,0.18);
   transition: color 0.15s, border-color 0.15s, background 0.15s, box-shadow 0.15s;
   white-space: nowrap;
-  flex-shrink: 0;
+  flex: 0 0 auto;
+  box-sizing: border-box;
 }
 
 .action-btn:hover:not(:disabled) {
@@ -58,7 +61,10 @@
 /* Share — no persistent state */
 .action-btn--share {}
 
-/* Like count badge */
+/* Save — no additional styles needed (uses --liked for active state) */
+.action-btn--save {}
+
+/* Like count — tabular nums for consistent width */
 .action-btn-count {
   font-variant-numeric: tabular-nums;
   font-size: 0.75rem;
@@ -69,6 +75,7 @@
 /* Compact variant for watch page */
 .action-btn--sm {
   min-height: 34px;
+  min-width: 80px;
   padding: 0 0.85rem;
   font-size: 0.75rem;
 }
@@ -83,3 +90,14 @@
 .action-btn--like-pop svg {
   animation: heart-pop 0.38s var(--ease-bounce);
 }
+
+/* ── Mobile responsive ── */
+@media (max-width: 640px) {
+  .action-btn {
+    min-height: 38px;
+    min-width: 86px;
+    padding: 0 13px;
+    font-size: 13px;
+  }
+}
+

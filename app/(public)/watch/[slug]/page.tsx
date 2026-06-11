@@ -8,7 +8,7 @@ import { Fragment } from "react";
 import "./watch.css";
 import "../../works/[slug]/detail.css";
 import "@/components/action-buttons.css";
-import "@/components/save-button.css";
+
 import { ChevronLeft, ChevronRight, Lock, Check, Play, Clock } from "lucide-react";
 import Image from "next/image";
 import type { Metadata } from "next";
@@ -416,7 +416,7 @@ export default async function WatchPage({ params, searchParams }: Props) {
 
               <div className="watch-engagement">
                 {session?.user && (
-                  <SaveButton workId={work.id} initialSaved={isSaved} className="save-btn save-btn--sm" />
+                  <SaveButton workId={work.id} initialSaved={isSaved} className="action-btn--sm" />
                 )}
                 <ShareButton
                   title={isEpisode && work.parent ? work.parent.title : work.title}
