@@ -319,7 +319,21 @@
     linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01)),
     rgba(12,12,14,0.82);
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 4px 16px rgba(0,0,0,0.18);
-  overflow: hidden;
+  /* overflow:clip clips visually for border-radius but does NOT create a new
+     scroll container — the inner .email-log-scroll can scroll horizontally */
+  overflow: clip;
+}
+
+/* Scroll wrapper inside the glass panel */
+.email-log-scroll {
+  overflow-x: auto;
+}
+
+/* Hint text above the table */
+.email-hint {
+  margin-bottom: 0.75rem;
+  font-size: 0.78rem;
+  color: rgba(107,114,128,0.75);
 }
 
 /* Suppression table shares log-wrap panel */
@@ -335,6 +349,9 @@
   border-collapse: collapse;
   font-family: var(--font-body); font-size: 0.8125rem;
 }
+
+/* Ensure the date column is never compressed — table needs a floor width */
+.email-log-table { min-width: 860px; }
 
 .email-log-table thead tr,
 .email-sup-table thead tr {

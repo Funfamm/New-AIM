@@ -83,7 +83,7 @@ export default async function TabSuppression({ error }: { error?: string }) {
           <p className="email-empty">No active suppressions.</p>
         ) : (
           <div className="email-log-wrap">
-            <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+            <div className="email-log-scroll">
               <table className="email-sup-table">
                 <thead>
                   <tr><th>Email</th><th>Reason</th><th>Source</th><th>Added</th><th></th></tr>
@@ -118,7 +118,7 @@ export default async function TabSuppression({ error }: { error?: string }) {
             These addresses were suppressed and then manually re-enabled. They can receive emails again.
           </p>
           <div className="email-log-wrap">
-            <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+            <div className="email-log-scroll">
               <table className="email-sup-table">
                 <thead>
                   <tr><th>Email</th><th>Reason</th><th>Source</th><th>Date</th></tr>

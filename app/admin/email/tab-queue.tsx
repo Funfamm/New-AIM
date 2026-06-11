@@ -65,7 +65,7 @@ export default async function TabQueue() {
         <section className="email-section">
           <h2 className="email-section-title">Recent queue items (last {recentItems.length})</h2>
           <div className="email-log-wrap">
-            <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+            <div className="email-log-scroll">
               <table className="email-log-table">
                 <thead>
                   <tr>
