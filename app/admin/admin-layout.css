@@ -162,13 +162,18 @@
     rgba(11,11,14,0.82);
   border: 1px solid rgba(255,255,255,0.07);
   border-radius: 14px;
-  overflow-x: auto;
+  overflow: hidden;
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
+}
+/* Mobile: allow horizontal scroll */
+@media (max-width: 1023px) {
+  .admin-table-wrap { overflow-x: auto; }
 }
 .admin-table {
   width: 100%; border-collapse: collapse;
   font-family: var(--font-body); font-size: 0.875rem;
+  table-layout: fixed;
 }
 .admin-table th {
   text-align: left; padding: 0.75rem 1.25rem;
@@ -176,11 +181,12 @@
   letter-spacing: 0.1em; text-transform: uppercase;
   color: rgba(255,255,255,0.3);
   border-bottom: 1px solid rgba(255,255,255,0.06);
-  white-space: nowrap;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .admin-table td {
   padding: 0.875rem 1.25rem; color: var(--color-brand-light);
   border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle;
+  overflow: hidden; overflow-wrap: anywhere;
 }
 .admin-table tr:last-child td { border-bottom: none; }
 .admin-table tbody tr:hover td { background: rgba(255,255,255,0.02); }
