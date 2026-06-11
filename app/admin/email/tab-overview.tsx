@@ -195,7 +195,7 @@ export default async function TabOverview() {
           <p className="email-empty">No emails sent yet.</p>
         ) : (
           <div className="email-log-wrap">
-            <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+            <div className="email-log-scroll">
               <table className="email-log-table">
                 <thead>
                   <tr>

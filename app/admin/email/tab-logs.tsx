@@ -102,12 +102,12 @@ export default async function TabLogs({ statusFilter, typeFilter }: Props) {
           <p className="email-empty">No logs match the current filter.</p>
         ) : (
           <>
-            <p className="email-hint" style={{ marginBottom: "0.75rem" }}>
+            <p className="email-hint">
               Showing {logs.length.toLocaleString()} most recent{statusFilter !== "ALL" ? ` ${statusFilter}` : ""} emails
               {logs.length === 200 ? " · limit 200" : ""}.
             </p>
             <div className="email-log-wrap">
-              <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+              <div className="email-log-scroll">
                 <table className="email-log-table">
                   <thead>
                     <tr>
