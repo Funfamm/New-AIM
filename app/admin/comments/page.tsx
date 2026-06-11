@@ -1,6 +1,6 @@
 import { requireAdmin } from "@/lib/auth-guard";
 import { prisma } from "@/lib/prisma";
-import { adminModerateComment, adminResolveReport } from "@/lib/actions/comments";
+import { adminModerateComment, adminResolveReport, purgeSingleComment, purgeDeletedComments } from "@/lib/actions/comments";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -63,21 +63,41 @@ export default async function AdminCommentsPage({ searchParams }: Props) {
   const hasMore = items.length > PAGE;
   if (hasMore) items.pop();
   const nextCursor = hasMore ? items[items.length - 1]?.id : null;
-  const openReports = await prisma.commentReport.count({ where: { status: "OPEN" } });
+
+  const [openReports, deletedCount] = await Promise.all([
+    prisma.commentReport.count({ where: { status: "OPEN" } }),
+    prisma.comment.count({ where: { status: "DELETED" } }),
+  ]);
 
   return (
     <div className="admin-page">
       <div className="admin-page-hd">
         <h1 className="admin-page-title">Comments</h1>
-        {openReports > 0 && (
-          <span style={{
-            fontFamily: "var(--font-body)", fontSize: "0.75rem", fontWeight: 700,
-            background: "rgba(192,57,43,0.15)", color: "var(--color-brand-red)",
-            border: "1px solid rgba(192,57,43,0.3)", borderRadius: 4, padding: "0.25rem 0.6rem",
-          }}>
-            {openReports} open report{openReports !== 1 ? "s" : ""}
-          </span>
-        )}
+        <div className="admin-page-header-actions">
+          {openReports > 0 && (
+            <span style={{
+              fontFamily: "var(--font-body)", fontSize: "0.75rem", fontWeight: 700,
+              background: "rgba(192,57,43,0.15)", color: "var(--color-brand-red)",
+              border: "1px solid rgba(192,57,43,0.3)", borderRadius: 4, padding: "0.25rem 0.6rem",
+            }}>
+              {openReports} open report{openReports !== 1 ? "s" : ""}
+            </span>
+          )}
+          {deletedCount > 0 && (
+            <form>
+              <button
+                formAction={async () => {
+                  "use server";
+                  await purgeDeletedComments();
+                }}
+                className="admin-action-btn admin-action-btn--danger"
+                style={{ fontSize: "0.75rem", padding: "0.3rem 0.75rem" }}
+              >
+                Purge {deletedCount} deleted
+              </button>
+            </form>
+          )}
+        </div>
       </div>
 
       {/* Filter tabs */}
@@ -227,6 +247,20 @@ export default async function AdminCommentsPage({ searchParams }: Props) {
                             className="admin-action-btn admin-action-btn--danger"
                           >
                             Delete
+                          </button>
+                        </form>
+                      )}
+                      {c.status === "DELETED" && (
+                        <form>
+                          <button
+                            formAction={async () => {
+                              "use server";
+                              await purgeSingleComment(c.id);
+                            }}
+                            className="admin-action-btn admin-action-btn--danger"
+                            title="Permanently remove from database"
+                          >
+                            Purge
                           </button>
                         </form>
                       )}
