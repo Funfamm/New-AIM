@@ -1,3 +1,6 @@
+/* Narrow the page container so the 11-col table doesn't give title 500px of air */
+.admin-page { max-width: 900px; }
+
 /* ── Works table — fixed column layout so 11 cols fit on desktop ── */
 .admin-works-table { table-layout: fixed; }
 
