@@ -159,7 +159,7 @@ export default async function AdminWorksPage({
       />
 
       <div className="admin-table-wrap">
-        <table className="admin-table">
+        <table className="admin-table admin-works-table">
           <thead>
             <tr>
               <th>Title</th>
@@ -185,7 +185,7 @@ export default async function AdminWorksPage({
               return (
                 <tr key={w.id}>
                   <td className="td-title">
-                    {w.title}
+                    <span className="admin-work-title">{w.title}</span>
                     {w.clientName && (
                       <span className="td-sub">{w.clientName}</span>
                     )}

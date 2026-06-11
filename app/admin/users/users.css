@@ -781,6 +781,12 @@
   border-radius: 6px;
   border-color: rgba(255,255,255,0.07);
   background: #0f0f0f;
+  /* Users table has 10 columns — restore horizontal scroll so badges/dates never clip */
+  overflow-x: auto;
+}
+/* Users table: auto layout lets columns size naturally to their content */
+.utbl-wrap.admin-table-wrap .admin-table {
+  table-layout: auto;
 }
 
 .utbl-wrap.admin-table-wrap .admin-table thead th {
