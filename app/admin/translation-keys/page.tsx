@@ -5,7 +5,7 @@ import TranslationKeysClient from "./translation-keys-client";
 import "./translation-keys.css";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Admin — Translation Keys" };
+export const metadata: Metadata = { title: "Admin — AI Keys" };
 
 export default async function TranslationKeysPage() {
   await requireAdmin();
@@ -14,7 +14,8 @@ export default async function TranslationKeysPage() {
     orderBy: [{ createdAt: "asc" }],
     select: {
       id: true, provider: true, name: true, keyPreview: true,
-      isEnabled: true, status: true, failureCount: true, successCount: true,
+      isEnabled: true, status: true, taskScopes: true,
+      failureCount: true, successCount: true,
       lastUsedAt: true, lastSuccessAt: true, lastFailureAt: true,
       cooldownUntil: true, errorMessage: true,
       windowMaxCalls: true, usedInWindow: true, windowResetAt: true,
