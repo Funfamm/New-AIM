@@ -5,7 +5,8 @@ import { encryptSecret, maskSecret } from "@/lib/server/crypto";
 
 function safeKey(k: {
   id: string; provider: string; name: string; keyPreview: string | null;
-  isEnabled: boolean; status: string; failureCount: number; successCount: number;
+  isEnabled: boolean; status: string; taskScopes: string[];
+  failureCount: number; successCount: number;
   lastUsedAt: Date | null; lastSuccessAt: Date | null; lastFailureAt: Date | null;
   cooldownUntil: Date | null; errorMessage: string | null;
   windowMaxCalls: number; usedInWindow: number; windowResetAt: Date | null;
@@ -15,9 +16,10 @@ function safeKey(k: {
     id: k.id,
     provider: k.provider,
     name: k.name,
-    keyPreview: k.keyPreview,       // already masked at creation time
+    keyPreview: k.keyPreview,
     isEnabled: k.isEnabled,
     status: k.status,
+    taskScopes: k.taskScopes,
     failureCount: k.failureCount,
     successCount: k.successCount,
     lastUsedAt: k.lastUsedAt,
@@ -33,6 +35,14 @@ function safeKey(k: {
   };
 }
 
+const VALID_SCOPES = new Set(["TRANSLATION", "CASTING_AUDITION"]);
+
+function validateScopes(scopes: unknown): string[] {
+  if (!Array.isArray(scopes) || scopes.length === 0) return ["TRANSLATION"];
+  const valid = scopes.filter((s) => typeof s === "string" && VALID_SCOPES.has(s));
+  return valid.length > 0 ? valid : ["TRANSLATION"];
+}
+
 // GET /api/admin/translation-keys
 export async function GET() {
   await requireAdmin();
@@ -43,14 +53,15 @@ export async function GET() {
 }
 
 // POST /api/admin/translation-keys
-// Body: { name, provider?, key }
+// Body: { name, provider?, key, taskScopes? }
 export async function POST(req: NextRequest) {
   await requireAdmin();
 
-  const { name, provider = "gemini", key: rawKey } = await req.json() as {
+  const { name, provider = "gemini", key: rawKey, taskScopes } = await req.json() as {
     name?: string;
     provider?: string;
     key?: string;
+    taskScopes?: unknown;
   };
 
   if (!name?.trim()) {
@@ -77,6 +88,7 @@ export async function POST(req: NextRequest) {
       name: name.trim(),
       encryptedKey,
       keyPreview: maskSecret(rawKey.trim()),
+      taskScopes: validateScopes(taskScopes),
       updatedAt: new Date(),
     },
   });

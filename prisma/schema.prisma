@@ -132,10 +132,41 @@ enum EmailType {
   NEW_RELEASE
   NEW_EPISODE
   ADMIN_ALERT
-  SECURITY_ALERT       // sent on suspicious events
+  SECURITY_ALERT            // sent on suspicious events
   FUTURE_CAMPAIGN
-  ANNOUNCEMENT         // studio-wide broadcast
-  NOTIFY_ME_FOLLOWUP   // CTA release-ready follow-up
+  ANNOUNCEMENT              // studio-wide broadcast
+  NOTIFY_ME_FOLLOWUP        // CTA release-ready follow-up
+  CASTING_RECEIVED          // application received confirmation
+  CASTING_REQUIREMENTS_NOT_MET  // submission quality below threshold
+  CASTING_READY_FOR_REVIEW  // passed agent review — notifies admin
+  CASTING_SHORTLISTED       // admin shortlisted the applicant
+  CASTING_CONTACTED         // admin contacted the applicant
+  CASTING_SELECTED          // applicant selected for role
+  CASTING_NOT_SELECTED      // applicant not selected (polite)
+  CASTING_WITHDRAWN         // applicant withdrew their application
+}
+
+enum CastingApplicationStatus {
+  SUBMITTED
+  UNDER_AGENT_REVIEW
+  READY_FOR_ADMIN_REVIEW
+  REQUIREMENTS_NOT_MET
+  SHORTLISTED
+  CONTACTED
+  SELECTED
+  NOT_SELECTED
+  WITHDRAWN
+}
+
+enum CastingMediaType {
+  IMAGE
+  AUDIO
+}
+
+enum CastingAgentRecommendation {
+  PASS
+  FAIL
+  MANUAL_REVIEW
 }
 
 enum EmailProvider {
@@ -249,6 +280,11 @@ model User {
   commentReports         CommentReport[] @relation("CommentReporter")
   commentReportsReviewed CommentReport[] @relation("CommentReportReviewer")
   notifyMeSignups        NotifyMeSignup[]
+
+  // Casting back-relations
+  castingApplications  CastingApplication[]
+  castingNotes         CastingApplicationNote[]
+  castingDecisions     CastingApplication[] @relation("CastingDecisionBy")
 
   // Welcome onboarding — set once on first login/registration, never reset
   welcomeEmailSentAt        DateTime?
@@ -1299,6 +1335,7 @@ model TranslationApiKey {
   keyPreview    String?   // last-8-chars mask shown in admin UI
   isEnabled     Boolean   @default(true)
   status        String    @default("HEALTHY")  // HEALTHY | COOLDOWN | DISABLED | INVALID
+  taskScopes    String[]  @default(["TRANSLATION"])  // "TRANSLATION" | "CASTING_AUDITION"
   failureCount   Int       @default(0)
   successCount   Int       @default(0)
   lastUsedAt     DateTime?
@@ -1339,4 +1376,168 @@ model WorkVideoDisplaySetting {
   @@index([workId])
   @@index([mediaType])
   @@map("work_video_display_settings")
+}
+
+// ─────────────────────────────────────────────
+// CASTING
+// ─────────────────────────────────────────────
+
+model CastingRole {
+  id                 String   @id @default(cuid())
+  slug               String   @unique
+  title              String
+  description        String
+  isOpen             Boolean  @default(true)
+
+  requireGender      Boolean  @default(false)
+  allowedGender      String?  // "MALE" | "FEMALE" | "ANY"
+
+  requireAgeRange    Boolean  @default(false)
+  minAge             Int?
+  maxAge             Int?
+
+  requireVoiceSample Boolean  @default(true)
+  minAgentScore      Int      @default(70)
+  sortOrder          Int      @default(0)
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  applications       CastingApplication[]
+
+  @@map("casting_roles")
+}
+
+model CastingApplication {
+  id            String                   @id @default(cuid())
+  userId        String
+  roleId        String
+  trackingToken String                   @unique @default(cuid())
+
+  // Applicant info
+  name          String
+  email         String
+  location      String
+  socialHandle  String
+  roleInterest  String
+  shortNote     String
+
+  // Role-specific applicant fields
+  gender        String?
+  ageRange      String?
+
+  // Consent / policy proof
+  consentAccepted         Boolean   @default(false)
+  policyAccepted          Boolean   @default(false)
+  isAdultConfirmed        Boolean   @default(false)
+  unpaidAccepted          Boolean   @default(false)
+  likenessReleaseAccepted Boolean   @default(false)
+  withdrawalTermsAccepted Boolean   @default(false)
+
+  policyVersion    String?
+  policyAcceptedAt DateTime?
+  releaseAcceptedAt DateTime?
+  consentAt        DateTime?
+  ipAddress        String?
+  userAgent        String?
+
+  // Status / lifecycle
+  status              CastingApplicationStatus @default(SUBMITTED)
+  reviewStartedAt     DateTime?
+  readyForReviewAt    DateTime?
+  decisionAt          DateTime?
+  decisionById        String?
+  decisionReason      String?
+  requirementsReason  String?
+
+  withdrawnAt          DateTime?
+  lastResubmittedAt    DateTime?
+  resubmissionCount    Int      @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role       CastingRole @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  decisionBy User?       @relation("CastingDecisionBy", fields: [decisionById], references: [id])
+
+  media       CastingApplicationMedia[]
+  agentReview CastingAgentReview?
+  notes       CastingApplicationNote[]
+
+  @@unique([userId, roleId])
+  @@index([status])
+  @@index([roleId])
+  @@index([trackingToken])
+  @@map("casting_applications")
+}
+
+model CastingApplicationMedia {
+  id              String           @id @default(cuid())
+  applicationId   String
+  type            CastingMediaType
+
+  r2Key           String
+  originalFilename String?
+  mimeType        String
+  fileSizeBytes   Int
+  durationSeconds Float?
+
+  sortOrder      Int      @default(0)
+  isValid        Boolean?
+  validationNote String?
+
+  createdAt DateTime @default(now())
+
+  application CastingApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId])
+  @@map("casting_application_media")
+}
+
+model CastingAgentReview {
+  id            String                     @id @default(cuid())
+  applicationId String                     @unique
+
+  overallScore Int
+  photoScore   Int
+  voiceScore   Int
+  socialScore  Int
+  formScore    Int
+
+  recommendation  CastingAgentRecommendation
+
+  summary         String
+  imageReview     String
+  audioReview     String
+  socialResult    String
+  roleMatchResult String
+  suggestedAction String
+
+  imageReviewJson Json?
+  audioReviewJson Json?
+  scoreBreakdown  Json?
+
+  missingItems String[] @default([])
+
+  completedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  application CastingApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@map("casting_agent_reviews")
+}
+
+model CastingApplicationNote {
+  id            String   @id @default(cuid())
+  applicationId String
+  adminId       String
+  body          String
+  createdAt     DateTime @default(now())
+
+  application CastingApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  admin       User               @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId])
+  @@map("casting_application_notes")
 }

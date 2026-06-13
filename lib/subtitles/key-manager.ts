@@ -7,6 +7,8 @@ const ERROR_COOLDOWN_MS          = 5 * 60_000;   // 5min after other errors
 const MAX_FAILURES_BEFORE_INVALID = 5;
 const WINDOW_DURATION_MS         = 24 * 60 * 60 * 1000; // 24h quota window
 
+export type KeyTask = "TRANSLATION" | "CASTING_AUDITION";
+
 export function isRateLimitError(msg: string): boolean {
   const lower = msg.toLowerCase();
   return (
@@ -25,7 +27,9 @@ export type SelectedKey = {
 };
 
 /**
- * Pick the best available Gemini key using quota-aware selection.
+ * Pick the best available Gemini key for a specific task using quota-aware selection.
+ *
+ * Only keys whose taskScopes includes the requested task are considered.
  *
  * Priority order:
  *   1. Enabled, not INVALID, not in active cooldown
@@ -36,14 +40,15 @@ export type SelectedKey = {
  *
  * Falls back to GEMINI_API_KEY env var if no DB keys are available.
  */
-export async function selectGeminiKey(): Promise<SelectedKey | null> {
+export async function selectGeminiKeyForTask(task: KeyTask): Promise<SelectedKey | null> {
   const now = new Date();
 
   const candidates = await prisma.translationApiKey.findMany({
     where: {
-      provider:  "gemini",
-      isEnabled: true,
-      status:    { not: "INVALID" },
+      provider:   "gemini",
+      isEnabled:  true,
+      status:     { not: "INVALID" },
+      taskScopes: { has: task },
     },
   });
 
@@ -102,11 +107,21 @@ export async function selectGeminiKey(): Promise<SelectedKey | null> {
     }
   }
 
-  // Env var fallback
-  const envKey = process.env.GEMINI_API_KEY;
-  if (envKey) return { apiKeyId: null, apiKeyName: null, decryptedKey: envKey };
+  // Env var fallback (only for TRANSLATION — casting must use DB keys explicitly)
+  if (task === "TRANSLATION") {
+    const envKey = process.env.GEMINI_API_KEY;
+    if (envKey) return { apiKeyId: null, apiKeyName: null, decryptedKey: envKey };
+  }
 
   return null;
+}
+
+/**
+ * Legacy alias — preserved for the subtitle worker route.
+ * Internally delegates to selectGeminiKeyForTask("TRANSLATION").
+ */
+export async function selectGeminiKey(): Promise<SelectedKey | null> {
+  return selectGeminiKeyForTask("TRANSLATION");
 }
 
 /** Record a successful translation against a DB key. No-op if apiKeyId is null (env fallback). */
@@ -149,28 +164,31 @@ export async function markKeyFailure(apiKeyId: string, errorMessage: string): Pr
 }
 
 /**
- * Returns true if a retry is viable — either a healthy DB key with quota remaining
+ * Returns true if a retry is viable for TRANSLATION — either a healthy DB key with quota
  * or the env fallback exists.
  */
 export async function hasHealthyKeysOrFallback(): Promise<boolean> {
+  return hasHealthyKeysForTask("TRANSLATION") || !!process.env.GEMINI_API_KEY;
+}
+
+/** Returns true if at least one healthy, quota-available DB key exists for the given task. */
+export async function hasHealthyKeysForTask(task: KeyTask): Promise<boolean> {
   const now = new Date();
 
   const candidates = await prisma.translationApiKey.findMany({
     where: {
-      provider:  "gemini",
-      isEnabled: true,
-      status:    { not: "INVALID" },
+      provider:   "gemini",
+      isEnabled:  true,
+      status:     { not: "INVALID" },
+      taskScopes: { has: task },
       OR: [{ cooldownUntil: null }, { cooldownUntil: { lte: now } }],
     },
     select: { usedInWindow: true, windowMaxCalls: true, windowResetAt: true },
   });
 
-  const hasAvailable = candidates.some((k) => {
+  return candidates.some((k) => {
     const windowExpired = !k.windowResetAt || k.windowResetAt <= now;
     const effectiveUsed = windowExpired ? 0 : k.usedInWindow;
     return effectiveUsed < k.windowMaxCalls;
   });
-
-  if (hasAvailable) return true;
-  return !!process.env.GEMINI_API_KEY;
 }
