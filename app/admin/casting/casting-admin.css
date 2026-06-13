@@ -835,3 +835,47 @@
   margin-bottom: 1rem;
   margin-top: 0;
 }
+
+.ca-field-success {
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  color: rgba(74,222,128,0.85);
+  margin: 6px 0 0;
+}
+
+/* ── Confirmation panel ──────────────────────────────────────── */
+
+.ca-confirm-panel {
+  background: rgba(232,201,126,0.04);
+  border: 1px solid rgba(232,201,126,0.14);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-top: 12px;
+}
+
+.ca-confirm-msg {
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  color: rgba(255,255,255,0.75);
+  margin: 0 0 12px;
+  line-height: 1.5;
+}
+
+.ca-confirm-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* ── Status notices ──────────────────────────────────────────── */
+
+.ca-status-notice {
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  color: rgba(255,255,255,0.35);
+  margin: 10px 0 0;
+  font-style: italic;
+}
+
+.ca-status-notice--warn {
+  color: rgba(251,191,36,0.6);
+}

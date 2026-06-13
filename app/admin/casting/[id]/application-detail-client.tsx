@@ -8,11 +8,20 @@ import type { CastingApplicationStatus } from "@prisma/client";
 
 type App = NonNullable<Awaited<ReturnType<typeof adminGetApplication>>>;
 
-const DECISION_OPTS: { value: CastingApplicationStatus; label: string }[] = [
-  { value: "SHORTLISTED",  label: "Shortlist" },
-  { value: "CONTACTED",    label: "Mark Contacted" },
-  { value: "SELECTED",     label: "Select" },
-  { value: "NOT_SELECTED", label: "Not Selected" },
+// Valid decisions per status — enforces professional workflow
+const VALID_DECISIONS: Partial<Record<CastingApplicationStatus, CastingApplicationStatus[]>> = {
+  READY_FOR_ADMIN_REVIEW: ["SHORTLISTED", "NOT_SELECTED"],
+  REQUIREMENTS_NOT_MET:   ["READY_FOR_ADMIN_REVIEW"],
+  SHORTLISTED:            ["CONTACTED", "SELECTED", "NOT_SELECTED"],
+  CONTACTED:              ["SELECTED", "NOT_SELECTED"],
+};
+
+const ALL_DECISION_OPTS: { value: CastingApplicationStatus; label: string; confirmMsg: string }[] = [
+  { value: "READY_FOR_ADMIN_REVIEW", label: "Move to Review Queue",  confirmMsg: "Move this application to the admin review queue? No email will be sent." },
+  { value: "SHORTLISTED",  label: "Shortlist",       confirmMsg: "Shortlist this applicant? A shortlist email will be sent." },
+  { value: "CONTACTED",    label: "Mark Contacted",  confirmMsg: "Mark as Contacted? A contact email will be sent." },
+  { value: "SELECTED",     label: "Select",          confirmMsg: "Select this applicant? A selection email will be sent. This is a final decision." },
+  { value: "NOT_SELECTED", label: "Not Selected",    confirmMsg: "Mark as Not Selected? A rejection email will be sent. This is a final decision." },
 ];
 
 const STATUS_DISPLAY: Record<string, string> = {
@@ -45,8 +54,18 @@ export default function ApplicationDetailClient({ app }: { app: App }) {
   const [note, setNote] = useState("");
   const [noteError, setNoteError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+  const [pendingDecision, setPendingDecision] = useState<typeof ALL_DECISION_OPTS[number] | null>(null);
   const [mediaUrls, setMediaUrls] = useState<Record<string, string>>({});
   const [loadingMedia, setLoadingMedia] = useState<Record<string, boolean>>({});
+
+  // Statuses where no admin decisions are permitted
+  const isLocked = app.status === "WITHDRAWN" || app.status === "SUBMITTED" || app.status === "UNDER_AGENT_REVIEW";
+  const isFinal  = app.status === "SELECTED" || app.status === "NOT_SELECTED";
+  const validNext = VALID_DECISIONS[app.status as CastingApplicationStatus] ?? [];
+
+  // Buttons to show — filtered by status rules
+  const decisionButtons = ALL_DECISION_OPTS.filter((opt) => validNext.includes(opt.value));
 
   async function fetchMediaUrl(mediaId: string) {
     if (mediaUrls[mediaId]) return;
@@ -59,11 +78,26 @@ export default function ApplicationDetailClient({ app }: { app: App }) {
     setLoadingMedia((prev) => ({ ...prev, [mediaId]: false }));
   }
 
-  async function handleStatusUpdate(newStatus: CastingApplicationStatus) {
+  function requestDecision(opt: typeof ALL_DECISION_OPTS[number]) {
     setActionError(null);
+    setActionSuccess(null);
+    setPendingDecision(opt);
+  }
+
+  function cancelDecision() {
+    setPendingDecision(null);
+  }
+
+  async function confirmDecision() {
+    if (!pendingDecision) return;
+    const opt = pendingDecision;
+    setPendingDecision(null);
+    setActionError(null);
+    setActionSuccess(null);
     startTransition(async () => {
-      const result = await adminUpdateApplicationStatus(app.id, newStatus);
+      const result = await adminUpdateApplicationStatus(app.id, opt.value);
       if (result.ok) {
+        setActionSuccess(`Status updated to "${opt.label}".`);
         router.refresh();
       } else {
         setActionError(result.error ?? "Update failed.");
@@ -87,9 +121,11 @@ export default function ApplicationDetailClient({ app }: { app: App }) {
 
   async function handleRetrigger() {
     setActionError(null);
+    setActionSuccess(null);
     startTransition(async () => {
       const result = await adminRetriggerReview(app.id);
       if (result.ok) {
+        setActionSuccess("AI review retriggered.");
         router.refresh();
       } else {
         setActionError(result.error ?? "Retrigger failed.");
@@ -120,20 +156,61 @@ export default function ApplicationDetailClient({ app }: { app: App }) {
           </button>
         </div>
 
-        <div className="ca-decision-row">
-          {DECISION_OPTS.map((opt) => (
-            <button
-              key={opt.value}
-              className={`ca-btn ca-btn--sm ${app.status === opt.value ? "ca-btn--primary" : "ca-btn--outline"}`}
-              onClick={() => handleStatusUpdate(opt.value)}
-              disabled={isPending || app.status === opt.value}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
+        {/* Confirmation panel — shown before executing a decision */}
+        {pendingDecision && (
+          <div className="ca-confirm-panel">
+            <p className="ca-confirm-msg">{pendingDecision.confirmMsg}</p>
+            <div className="ca-confirm-actions">
+              <button
+                className="ca-btn ca-btn--primary ca-btn--sm"
+                onClick={confirmDecision}
+                disabled={isPending}
+              >
+                {isPending ? "Processing…" : "Confirm"}
+              </button>
+              <button
+                className="ca-btn ca-btn--ghost ca-btn--sm"
+                onClick={cancelDecision}
+                disabled={isPending}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
 
-        {actionError && <p className="ca-field-error">{actionError}</p>}
+        {/* Decision buttons — shown only when valid transitions exist */}
+        {!pendingDecision && !isLocked && decisionButtons.length > 0 && (
+          <div className="ca-decision-row">
+            {decisionButtons.map((opt) => (
+              <button
+                key={opt.value}
+                className="ca-btn ca-btn--outline ca-btn--sm"
+                onClick={() => requestDecision(opt)}
+                disabled={isPending}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Locked / final state notices */}
+        {!pendingDecision && isLocked && (
+          <p className="ca-status-notice">
+            {app.status === "WITHDRAWN"
+              ? "This application has been withdrawn and cannot be changed."
+              : "No admin decisions available yet — waiting for AI review to complete."}
+          </p>
+        )}
+        {!pendingDecision && isFinal && (
+          <p className="ca-status-notice ca-status-notice--warn">
+            This is a final decision. Add a note and contact the team if a correction is needed.
+          </p>
+        )}
+
+        {actionSuccess && <p className="ca-field-success">{actionSuccess}</p>}
+        {actionError   && <p className="ca-field-error">{actionError}</p>}
       </div>
 
       {/* Applicant info */}

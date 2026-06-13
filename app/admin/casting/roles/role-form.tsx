@@ -6,7 +6,19 @@ import { adminCreateRole, adminUpdateRole } from "@/lib/actions/casting";
 import type { RoleInput } from "@/lib/actions/casting";
 import type { CastingRole } from "@prisma/client";
 
-export default function RoleForm({ existing }: { existing?: CastingRole }) {
+type Work = { id: string; title: string; posterUrl: string | null };
+
+type CastingRoleWithWork = CastingRole & {
+  work?: { id: string; title: string; slug: string; posterUrl: string | null } | null;
+};
+
+export default function RoleForm({
+  existing,
+  works = [],
+}: {
+  existing?: CastingRoleWithWork;
+  works?: Work[];
+}) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -15,6 +27,7 @@ export default function RoleForm({ existing }: { existing?: CastingRole }) {
   const [slug,               setSlug]               = useState(existing?.slug         ?? "");
   const [description,        setDescription]        = useState(existing?.description  ?? "");
   const [isOpen,             setIsOpen]             = useState(existing?.isOpen       ?? true);
+  const [workId,             setWorkId]             = useState(existing?.workId       ?? "");
   const [requireGender,      setRequireGender]      = useState(existing?.requireGender ?? false);
   const [allowedGender,      setAllowedGender]      = useState(existing?.allowedGender ?? "");
   const [requireAgeRange,    setRequireAgeRange]    = useState(existing?.requireAgeRange ?? false);
@@ -42,8 +55,9 @@ export default function RoleForm({ existing }: { existing?: CastingRole }) {
       title,
       description,
       isOpen,
+      workId:             workId || undefined,
       requireGender,
-      allowedGender: allowedGender || undefined,
+      allowedGender:      allowedGender || undefined,
       requireAgeRange,
       minAge:             minAge ? parseInt(minAge, 10) : undefined,
       maxAge:             maxAge ? parseInt(maxAge, 10) : undefined,
@@ -68,82 +82,98 @@ export default function RoleForm({ existing }: { existing?: CastingRole }) {
 
   return (
     <form className="ca-role-form" onSubmit={handleSubmit}>
-      <div className="ca-form-grid">
 
+      {/* ── Identity ── */}
+      <div className="ca-detail-section" style={{ marginBottom: "1rem" }}>
+        <h3 className="ca-detail-section-title">Role Identity</h3>
+        <div className="ca-form-grid">
+          <div className="ca-field">
+            <label className="ca-label">Title <span className="ca-req-star">*</span></label>
+            <input className="ca-input" type="text" value={title} onChange={(e) => handleTitleChange(e.target.value)} required />
+          </div>
+          <div className="ca-field">
+            <label className="ca-label">Slug <span className="ca-req-star">*</span></label>
+            <input className="ca-input ca-input--mono" type="text" value={slug} onChange={(e) => setSlug(e.target.value)} required />
+            <p className="ca-field-hint">URL: /casting/{slug || "…"}</p>
+          </div>
+          <div className="ca-field ca-field--full">
+            <label className="ca-label">Description <span className="ca-req-star">*</span></label>
+            <textarea className="ca-textarea" value={description} onChange={(e) => setDescription(e.target.value)} rows={5} required />
+          </div>
+        </div>
+      </div>
+
+      {/* ── Project Link ── */}
+      <div className="ca-detail-section" style={{ marginBottom: "1rem" }}>
+        <h3 className="ca-detail-section-title">Project Link</h3>
         <div className="ca-field">
-          <label className="ca-label">Title <span className="ca-req-star">*</span></label>
-          <input className="ca-input" type="text" value={title} onChange={(e) => handleTitleChange(e.target.value)} required />
+          <label className="ca-label">Assign to Production</label>
+          <select
+            className="ca-select"
+            style={{ borderRadius: "6px", height: "42px", paddingLeft: "14px", width: "100%", maxWidth: "420px" }}
+            value={workId}
+            onChange={(e) => setWorkId(e.target.value)}
+          >
+            <option value="">— General Casting (no project) —</option>
+            {works.map((w) => (
+              <option key={w.id} value={w.id}>{w.title}</option>
+            ))}
+          </select>
+          <p className="ca-field-hint">Roles linked to a production are grouped under that project on the public casting page.</p>
         </div>
+      </div>
 
-        <div className="ca-field">
-          <label className="ca-label">Slug <span className="ca-req-star">*</span></label>
-          <input className="ca-input ca-input--mono" type="text" value={slug} onChange={(e) => setSlug(e.target.value)} required />
-          <p className="ca-field-hint">URL: /casting/{slug || "…"}</p>
-        </div>
-
-        <div className="ca-field ca-field--full">
-          <label className="ca-label">Description <span className="ca-req-star">*</span></label>
-          <textarea className="ca-textarea" value={description} onChange={(e) => setDescription(e.target.value)} rows={5} required />
-        </div>
-
-        <div className="ca-field">
-          <label className="ca-label">Min Agent Score (0–100)</label>
-          <input className="ca-input" type="number" min={0} max={100} value={minAgentScore} onChange={(e) => setMinAgentScore(e.target.value)} />
-          <p className="ca-field-hint">Applications below this score go to REQUIREMENTS_NOT_MET</p>
-        </div>
-
-        <div className="ca-field">
-          <label className="ca-label">Sort Order</label>
-          <input className="ca-input" type="number" value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} />
-        </div>
-
-        {/* Toggles */}
-        <div className="ca-field ca-field--full">
-          <div className="ca-toggle-group">
-
-            <label className="ca-toggle-label">
-              <input type="checkbox" checked={isOpen} onChange={(e) => setIsOpen(e.target.checked)} />
-              <span>Open for Applications</span>
-            </label>
-
-            <label className="ca-toggle-label">
-              <input type="checkbox" checked={requireVoiceSample} onChange={(e) => setRequireVoiceSample(e.target.checked)} />
-              <span>Require Voice Sample</span>
-            </label>
-
-            <label className="ca-toggle-label">
-              <input type="checkbox" checked={requireGender} onChange={(e) => setRequireGender(e.target.checked)} />
-              <span>Require Gender</span>
-            </label>
-
-            {requireGender && (
-              <div className="ca-field ca-field--inline">
-                <label className="ca-label">Allowed Gender</label>
-                <input className="ca-input" type="text" value={allowedGender} onChange={(e) => setAllowedGender(e.target.value)} placeholder="e.g. Female, Male, Any" />
-              </div>
-            )}
-
-            <label className="ca-toggle-label">
-              <input type="checkbox" checked={requireAgeRange} onChange={(e) => setRequireAgeRange(e.target.checked)} />
-              <span>Require Age Range</span>
-            </label>
-
-            {requireAgeRange && (
-              <div className="ca-field-row">
-                <div className="ca-field">
-                  <label className="ca-label">Min Age</label>
-                  <input className="ca-input ca-input--sm" type="number" min={18} value={minAge} onChange={(e) => setMinAge(e.target.value)} />
-                </div>
-                <div className="ca-field">
-                  <label className="ca-label">Max Age</label>
-                  <input className="ca-input ca-input--sm" type="number" value={maxAge} onChange={(e) => setMaxAge(e.target.value)} />
-                </div>
-              </div>
-            )}
-
+      {/* ── Settings ── */}
+      <div className="ca-detail-section" style={{ marginBottom: "1rem" }}>
+        <h3 className="ca-detail-section-title">Settings</h3>
+        <div className="ca-form-grid">
+          <div className="ca-field">
+            <label className="ca-label">Min Agent Score (0–100)</label>
+            <input className="ca-input" type="number" min={0} max={100} value={minAgentScore} onChange={(e) => setMinAgentScore(e.target.value)} />
+            <p className="ca-field-hint">Applications below this score go to REQUIREMENTS_NOT_MET</p>
+          </div>
+          <div className="ca-field">
+            <label className="ca-label">Sort Order</label>
+            <input className="ca-input" type="number" value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} />
           </div>
         </div>
 
+        <div className="ca-toggle-group">
+          <label className="ca-toggle-label">
+            <input type="checkbox" checked={isOpen} onChange={(e) => setIsOpen(e.target.checked)} />
+            <span>Open for Applications</span>
+          </label>
+          <label className="ca-toggle-label">
+            <input type="checkbox" checked={requireVoiceSample} onChange={(e) => setRequireVoiceSample(e.target.checked)} />
+            <span>Require Voice Sample</span>
+          </label>
+          <label className="ca-toggle-label">
+            <input type="checkbox" checked={requireGender} onChange={(e) => setRequireGender(e.target.checked)} />
+            <span>Require Gender</span>
+          </label>
+          {requireGender && (
+            <div className="ca-field ca-field--inline">
+              <label className="ca-label">Allowed Gender</label>
+              <input className="ca-input" type="text" value={allowedGender} onChange={(e) => setAllowedGender(e.target.value)} placeholder="e.g. Female, Male, Any" />
+            </div>
+          )}
+          <label className="ca-toggle-label">
+            <input type="checkbox" checked={requireAgeRange} onChange={(e) => setRequireAgeRange(e.target.checked)} />
+            <span>Require Age Range</span>
+          </label>
+          {requireAgeRange && (
+            <div className="ca-field-row">
+              <div className="ca-field">
+                <label className="ca-label">Min Age</label>
+                <input className="ca-input ca-input--sm" type="number" min={18} value={minAge} onChange={(e) => setMinAge(e.target.value)} />
+              </div>
+              <div className="ca-field">
+                <label className="ca-label">Max Age</label>
+                <input className="ca-input ca-input--sm" type="number" value={maxAge} onChange={(e) => setMaxAge(e.target.value)} />
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {error && <p className="ca-field-error ca-field-error--banner">{error}</p>}

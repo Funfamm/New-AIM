@@ -112,9 +112,11 @@ type Props = {
   collection?: string;
   isLoggedIn?: boolean;
   featuredHeroItems?: FeaturedHeroItem[];
+  castingWorkIds?: string[];
 };
 
-export default function WorksClient({ works, collection, isLoggedIn = false, featuredHeroItems }: Props) {
+export default function WorksClient({ works, collection, isLoggedIn = false, featuredHeroItems, castingWorkIds = [] }: Props) {
+  const castingSet = useMemo(() => new Set(castingWorkIds), [castingWorkIds]);
   const [tab, setTab] = useState<Tab>(() => {
     if (collection && COLLECTION_TO_TAB[collection]) return COLLECTION_TO_TAB[collection];
     return "ALL";
@@ -288,7 +290,7 @@ export default function WorksClient({ works, collection, isLoggedIn = false, fea
                   <div className="rail-track">
                     {railWorks.map((w, i) => (
                       <div key={w.id} className="rail-card">
-                        <FilmCard {...w} priority={rail.key === firstRailKey && i < 4} isLoggedIn={isLoggedIn} />
+                        <FilmCard {...w} priority={rail.key === firstRailKey && i < 4} isLoggedIn={isLoggedIn} castingOpen={castingSet.has(w.id)} />
                       </div>
                     ))}
                   </div>
@@ -308,7 +310,7 @@ export default function WorksClient({ works, collection, isLoggedIn = false, fea
               <div className="wc-grid">
                 {visibleWorks.map((w, i) => (
                   <div key={w.id} className="wc-grid-item">
-                    <FilmCard {...w} priority={i < 4} isLoggedIn={isLoggedIn} />
+                    <FilmCard {...w} priority={i < 4} isLoggedIn={isLoggedIn} castingOpen={castingSet.has(w.id)} />
                   </div>
                 ))}
               </div>

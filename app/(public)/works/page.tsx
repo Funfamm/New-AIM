@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { getWorksWithOpenCastingRoles } from "@/lib/actions/casting";
 import WorksClient from "@/components/works-client";
 import FilmRail from "@/components/film-rail";
 import { getPublicContentRows } from "@/lib/curated-rows";
@@ -43,12 +44,13 @@ async function getWorks() {
 }
 
 export default async function WorksPage({ searchParams }: Props) {
-  const [heroWorks, works, { collection }, session, curatedRowsWorks] = await Promise.all([
+  const [heroWorks, works, { collection }, session, curatedRowsWorks, castingWorkIds] = await Promise.all([
     getWorksHero(),
     getWorks(),
     searchParams,
     auth(),
     getPublicContentRows("WORKS"),
+    getWorksWithOpenCastingRoles().then((s) => [...s]).catch(() => [] as string[]),
   ]);
 
   const userId     = session?.user?.id ?? null;
@@ -91,6 +93,7 @@ export default async function WorksPage({ searchParams }: Props) {
         collection={collection}
         isLoggedIn={isLoggedIn}
         featuredHeroItems={worksHeroItems.length > 0 ? worksHeroItems : undefined}
+        castingWorkIds={castingWorkIds}
       />
     </main>
   );

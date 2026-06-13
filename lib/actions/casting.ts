@@ -44,16 +44,39 @@ async function requireAuth() {
   return session.user;
 }
 
-async function getCastingEnabled(): Promise<boolean> {
-  const settings = await prisma.adminSettings.findFirst({ select: { showCasting: true } });
-  return settings?.showCasting ?? false;
+async function getCastingSettings() {
+  const settings = await prisma.adminSettings.findFirst({
+    select: { showCasting: true, castingBackgroundUrl: true },
+  });
+  return {
+    enabled: settings?.showCasting ?? false,
+    backgroundUrl: settings?.castingBackgroundUrl ?? null,
+  };
 }
 
-// ── Public: fetch open roles ──────────────────────────────────
+// ── Public: fetch open roles grouped by Work ──────────────────
 
-export async function getPublicCastingRoles() {
-  const enabled = await getCastingEnabled();
-  if (!enabled) return { enabled: false, roles: [] };
+export type PublicCastingRole = {
+  id: string; slug: string; title: string; description: string; isOpen: boolean;
+  requireGender: boolean; allowedGender: string | null;
+  requireAgeRange: boolean; minAge: number | null; maxAge: number | null;
+  requireVoiceSample: boolean;
+  applicationCount: number;
+  work: { id: string; title: string; slug: string; posterUrl: string | null } | null;
+};
+
+export type PublicCastingGroup = {
+  work: { id: string; title: string; slug: string; posterUrl: string | null } | null;
+  roles: PublicCastingRole[];
+};
+
+export async function getPublicCastingRoles(): Promise<{
+  enabled: boolean;
+  backgroundUrl: string | null;
+  groups: PublicCastingGroup[];
+}> {
+  const { enabled, backgroundUrl } = await getCastingSettings();
+  if (!enabled) return { enabled: false, backgroundUrl: null, groups: [] };
 
   const roles = await prisma.castingRole.findMany({
     where: { isOpen: true },
@@ -63,16 +86,53 @@ export async function getPublicCastingRoles() {
       requireGender: true, allowedGender: true,
       requireAgeRange: true, minAge: true, maxAge: true,
       requireVoiceSample: true,
+      _count: { select: { applications: true } },
+      work: { select: { id: true, title: true, slug: true, posterUrl: true } },
     },
   });
 
-  return { enabled: true, roles };
+  // Group by workId (null = "General Casting")
+  const groupMap = new Map<string | null, PublicCastingGroup>();
+
+  for (const r of roles) {
+    const key = r.work?.id ?? null;
+    if (!groupMap.has(key)) {
+      groupMap.set(key, { work: r.work ?? null, roles: [] });
+    }
+    groupMap.get(key)!.roles.push({
+      id: r.id, slug: r.slug, title: r.title, description: r.description,
+      isOpen: r.isOpen, requireGender: r.requireGender, allowedGender: r.allowedGender,
+      requireAgeRange: r.requireAgeRange, minAge: r.minAge, maxAge: r.maxAge,
+      requireVoiceSample: r.requireVoiceSample,
+      applicationCount: r._count.applications,
+      work: r.work ?? null,
+    });
+  }
+
+  // Projects first, then general (null) at end
+  const groups: PublicCastingGroup[] = [];
+  for (const [key, group] of groupMap) {
+    if (key !== null) groups.push(group);
+  }
+  if (groupMap.has(null)) groups.push(groupMap.get(null)!);
+
+  return { enabled: true, backgroundUrl, groups };
+}
+
+// ── Public: works with open casting roles (for badges) ───────
+
+export async function getWorksWithOpenCastingRoles(): Promise<Set<string>> {
+  const roles = await prisma.castingRole.findMany({
+    where: { isOpen: true, workId: { not: null } },
+    select: { workId: true },
+  });
+  return new Set(roles.map((r) => r.workId!));
 }
 
 // ── Public: fetch a single role ───────────────────────────────
 
 export async function getPublicCastingRole(slug: string) {
-  const enabled = await getCastingEnabled();
+  const { enabled } = await getCastingSettings();
   if (!enabled) return null;
 
   return prisma.castingRole.findUnique({
@@ -82,6 +142,7 @@ export async function getPublicCastingRole(slug: string) {
       requireGender: true, allowedGender: true,
       requireAgeRange: true, minAge: true, maxAge: true,
       requireVoiceSample: true,
+      work: { select: { id: true, title: true, slug: true, posterUrl: true } },
     },
   });
 }
@@ -166,7 +227,7 @@ export async function submitCastingApplication(
 ): Promise<{ ok: boolean; trackingToken?: string; error?: string }> {
   const user = await requireAuth();
 
-  const enabled = await getCastingEnabled();
+  const { enabled } = await getCastingSettings();
   if (!enabled) return { ok: false, error: "Casting is currently closed." };
 
   // Validate role exists and is open
@@ -635,7 +696,22 @@ export async function adminGetRoles() {
 
   return prisma.castingRole.findMany({
     orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
-    include: { _count: { select: { applications: true } } },
+    include: {
+      _count: { select: { applications: true } },
+      work: { select: { id: true, title: true, slug: true, posterUrl: true } },
+    },
+  });
+}
+
+// ── Admin: get works list for role form select ────────────────
+
+export async function adminGetWorksForSelect() {
+  await requireAdmin();
+
+  return prisma.work.findMany({
+    where: { status: { in: ["PUBLISHED", "UPCOMING", "IN_PRODUCTION", "DRAFT"] }, type: { not: "EPISODE" } },
+    orderBy: { title: "asc" },
+    select: { id: true, title: true, posterUrl: true },
   });
 }
 
@@ -646,6 +722,7 @@ export type RoleInput = {
   title:              string;
   description:        string;
   isOpen:             boolean;
+  workId?:            string;
   requireGender:      boolean;
   allowedGender?:     string;
   requireAgeRange:    boolean;
@@ -674,6 +751,7 @@ export async function adminCreateRole(
         title:              input.title.trim(),
         description:        input.description.trim(),
         isOpen:             input.isOpen,
+        workId:             input.workId || null,
         requireGender:      input.requireGender,
         allowedGender:      input.allowedGender?.trim() || null,
         requireAgeRange:    input.requireAgeRange,
@@ -713,6 +791,7 @@ export async function adminUpdateRole(
         ...(input.title ? { title: input.title.trim() } : {}),
         ...(input.description != null ? { description: input.description.trim() } : {}),
         ...(input.isOpen != null ? { isOpen: input.isOpen } : {}),
+        ...("workId" in input ? { workId: input.workId || null } : {}),
         ...(input.requireGender != null ? { requireGender: input.requireGender } : {}),
         ...(input.allowedGender != null ? { allowedGender: input.allowedGender.trim() || null } : {}),
         ...(input.requireAgeRange != null ? { requireAgeRange: input.requireAgeRange } : {}),

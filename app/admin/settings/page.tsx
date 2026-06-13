@@ -7,6 +7,7 @@ import {
   saveFeatureSettings,
   saveNotificationSettings,
   savePlaybackSettings,
+  saveCastingSettings,
   getSettings,
 } from "@/lib/actions/settings";
 import { SaveButton } from "./settings-save-button";
@@ -87,6 +88,7 @@ function SelectField({
 const TABS = [
   { key: "email",         label: "Email" },
   { key: "access",        label: "Access" },
+  { key: "casting",       label: "Casting" },
   { key: "features",      label: "Features" },
   { key: "notifications", label: "Notifications" },
   { key: "playback",      label: "Playback" },
@@ -219,6 +221,34 @@ export default async function SettingsPage({
         </form>
       )}
 
+      {/* ── Casting ── */}
+      {tab === "casting" && (
+        <form action={saveCastingSettings} className="stg-section">
+          <SectionHeader
+            title="Casting Page"
+            desc="Control public casting visibility and the casting page background image."
+          />
+          <div className="stg-features-grid">
+            <CheckRow
+              name="showCasting"
+              checked={s.showCasting}
+              label="Casting Page Published"
+              note="When enabled, /casting is public. When disabled, visitors see a closed state."
+            />
+          </div>
+          <TextField
+            name="castingBackgroundUrl"
+            label="Casting Background Image URL"
+            value={s.castingBackgroundUrl}
+            placeholder="https://… or leave blank for default cinematic background"
+            note="Optional — if blank, the cinematic default background is used."
+          />
+          <div className="stg-actions">
+            <SaveButton />
+          </div>
+        </form>
+      )}
+
       {/* ── Feature Visibility ── */}
       {tab === "features" && (
         <form action={saveFeatureSettings} className="stg-section">
@@ -229,7 +259,6 @@ export default async function SettingsPage({
           <div className="stg-features-grid">
             {([
               ["showNotifications",     "Notifications",       "Bell icon + notification centre"],
-              ["showCasting",           "Casting",             "Future — not yet built"],
               ["showScripts",           "Scripts",             "Future — not yet built"],
               ["showTraining",          "Training Hub",        "Future — not yet built"],
               ["showSponsors",          "Sponsors",            "Future — not yet built"],
