@@ -37,6 +37,7 @@ type FilmCardProps = {
   previewClipUrl?: string | null;
   priority?: boolean;
   watchHref?: string;
+  castingOpen?: boolean;
 };
 
 export default function FilmCard({
@@ -55,6 +56,7 @@ export default function FilmCard({
   previewClipUrl,
   priority = false,
   watchHref,
+  castingOpen = false,
 }: FilmCardProps) {
   // Prefer heroMobileUrl (9:16 portrait) for cards; fall back to posterUrl
   const cardImage = heroMobileUrl ?? posterUrl;
@@ -141,6 +143,13 @@ export default function FilmCard({
               <Lock size={11} aria-hidden="true" />
             </div>
           )
+        )}
+
+        {/* Casting Open badge — bottom-left */}
+        {castingOpen && (
+          <div className="fc-casting-badge" aria-label="Casting open">
+            Casting Open
+          </div>
         )}
       </div>
     </Link>

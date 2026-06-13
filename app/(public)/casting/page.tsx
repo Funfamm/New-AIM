@@ -6,11 +6,15 @@ import "./casting.css";
 
 export const metadata: Metadata = { title: "Casting — AIM Studio" };
 
+const DEFAULT_BG = "/images/casting-default-bg.jpg";
+
 export default async function CastingPage() {
-  const [{ enabled, roles }, session] = await Promise.all([
+  const [{ enabled, backgroundUrl, groups }, session] = await Promise.all([
     getPublicCastingRoles(),
     auth(),
   ]);
+
+  const bgImage = backgroundUrl ?? DEFAULT_BG;
 
   if (!enabled) {
     return (
@@ -27,60 +31,108 @@ export default async function CastingPage() {
     );
   }
 
+  const totalRoles = groups.reduce((sum, g) => sum + g.roles.length, 0);
+
   return (
     <main className="casting-page">
-      <section className="casting-hero">
-        <span className="casting-hero-rule" />
-        <p className="casting-eyebrow">Open Roles</p>
-        <h1 className="casting-hero-title">Casting Opportunities</h1>
-        <p className="casting-hero-sub">
-          AIM Studio is currently seeking talent for the roles below. Review each role and apply when ready.
-        </p>
+      {/* ── Hero ── */}
+      <section
+        className="casting-hero"
+        style={{ backgroundImage: `url(${bgImage})` }}
+      >
+        <div className="casting-hero-overlay" />
+        <div className="casting-hero-content">
+          <span className="casting-hero-rule" />
+          <p className="casting-eyebrow">Open Roles</p>
+          <h1 className="casting-hero-title">Casting Opportunities</h1>
+          <p className="casting-hero-sub">
+            Interested in joining an AIM Studio production? Review open roles below and apply when ready.
+          </p>
+        </div>
       </section>
 
-      {roles.length === 0 ? (
+      {/* ── Roles grouped by project ── */}
+      {totalRoles === 0 ? (
         <div className="casting-empty">
           <p>No roles are currently open. Check back soon.</p>
         </div>
       ) : (
-        <div className="casting-roles">
-          {roles.map((role) => (
-            <div key={role.id} className="casting-role-card">
-              <div className="casting-role-meta">
-                {role.requireGender && role.allowedGender && (
-                  <span className="casting-tag">{role.allowedGender}</span>
+        <div className="casting-groups">
+          {groups.map((group) => (
+            <section key={group.work?.id ?? "general"} className="casting-group">
+              {/* Project header */}
+              <div className="casting-group-header">
+                {group.work?.posterUrl && (
+                  <img
+                    src={group.work.posterUrl}
+                    alt={group.work.title}
+                    className="casting-group-poster"
+                  />
                 )}
-                {role.requireAgeRange && role.minAge != null && role.maxAge != null && (
-                  <span className="casting-tag">Ages {role.minAge}–{role.maxAge}</span>
-                )}
-                {role.requireVoiceSample && (
-                  <span className="casting-tag">Voice Sample Required</span>
-                )}
+                <div className="casting-group-info">
+                  <p className="casting-group-eyebrow">Production</p>
+                  <h2 className="casting-group-title">
+                    {group.work
+                      ? <Link href={`/works/${group.work.slug}`} className="casting-group-link">{group.work.title}</Link>
+                      : "General Casting"}
+                  </h2>
+                  <p className="casting-group-count">
+                    {group.roles.length} open role{group.roles.length !== 1 ? "s" : ""}
+                  </p>
+                </div>
               </div>
-              <h2 className="casting-role-title">{role.title}</h2>
-              <p className="casting-role-desc">{role.description.slice(0, 200)}{role.description.length > 200 ? "…" : ""}</p>
-              <div className="casting-role-actions">
-                <Link href={`/casting/${role.slug}`} className="casting-btn casting-btn--outline">
-                  View Details
-                </Link>
-                {session?.user ? (
-                  <Link href={`/casting/${role.slug}/apply`} className="casting-btn casting-btn--primary">
-                    Apply Now
-                  </Link>
-                ) : (
-                  <Link
-                    href={`/login?redirect=${encodeURIComponent(`/casting/${role.slug}/apply`)}`}
-                    className="casting-btn casting-btn--primary"
-                  >
-                    Sign In to Apply
-                  </Link>
-                )}
+
+              {/* Role cards */}
+              <div className="casting-roles">
+                {group.roles.map((role) => (
+                  <div key={role.id} className="casting-role-card">
+                    <div className="casting-role-meta">
+                      <span className="casting-tag casting-tag--open">Open</span>
+                      {role.requireGender && role.allowedGender && (
+                        <span className="casting-tag">{role.allowedGender}</span>
+                      )}
+                      {role.requireAgeRange && role.minAge != null && role.maxAge != null && (
+                        <span className="casting-tag">Ages {role.minAge}–{role.maxAge}</span>
+                      )}
+                      {role.requireVoiceSample && (
+                        <span className="casting-tag">Voice Required</span>
+                      )}
+                    </div>
+                    <h3 className="casting-role-title">{role.title}</h3>
+                    <p className="casting-role-desc">
+                      {role.description.slice(0, 200)}{role.description.length > 200 ? "…" : ""}
+                    </p>
+                    {role.applicationCount > 0 && (
+                      <p className="casting-role-appcount">
+                        {role.applicationCount} application{role.applicationCount !== 1 ? "s" : ""}
+                      </p>
+                    )}
+                    <div className="casting-role-actions">
+                      <Link href={`/casting/${role.slug}`} className="casting-btn casting-btn--outline">
+                        View Role
+                      </Link>
+                      {session?.user ? (
+                        <Link href={`/casting/${role.slug}/apply`} className="casting-btn casting-btn--primary">
+                          Apply Now
+                        </Link>
+                      ) : (
+                        <Link
+                          href={`/login?redirect=${encodeURIComponent(`/casting/${role.slug}/apply`)}`}
+                          className="casting-btn casting-btn--primary"
+                        >
+                          Sign In to Apply
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
+            </section>
           ))}
         </div>
       )}
 
+      {/* ── Before You Apply ── */}
       <section className="casting-policy-preview">
         <h2 className="casting-policy-title">Before You Apply</h2>
         <ul className="casting-policy-list">

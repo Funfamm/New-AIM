@@ -3,7 +3,7 @@ import Link from "next/link";
 import {
   Activity, Users, Eye, Shield, MonitorPlay,
   VideoIcon, Mail, KeyRound, Bell, AlertTriangle,
-  CheckCircle2, ArrowRight, Zap,
+  CheckCircle2, ArrowRight, Zap, UserCheck,
 } from "lucide-react";
 import type { Metadata } from "next";
 import GlobalSearch from "@/components/admin/global-search";
@@ -114,6 +114,52 @@ async function getSystemHealth() {
   };
 }
 
+async function getCastingStats() {
+  const now      = new Date();
+  const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60_000);
+
+  try {
+    const [
+      openRoles,
+      appsToday,
+      appsThisWeek,
+      readyForReview,
+      requirementsNotMet,
+      shortlisted,
+      selected,
+      withdrawn,
+      agentFailures,
+    ] = await Promise.all([
+      prisma.castingRole.count({ where: { isOpen: true } }),
+      prisma.castingApplication.count({ where: { createdAt: { gte: dayStart } } }),
+      prisma.castingApplication.count({ where: { createdAt: { gte: weekStart } } }),
+      prisma.castingApplication.count({ where: { status: "READY_FOR_ADMIN_REVIEW" } }),
+      prisma.castingApplication.count({ where: { status: "REQUIREMENTS_NOT_MET" } }),
+      prisma.castingApplication.count({ where: { status: "SHORTLISTED" } }),
+      prisma.castingApplication.count({ where: { status: "SELECTED" } }),
+      prisma.castingApplication.count({ where: { status: "WITHDRAWN" } }),
+      // Applications stuck under review for >30 min without a completed review = likely failed
+      prisma.castingApplication.count({
+        where: {
+          status: "UNDER_AGENT_REVIEW",
+          reviewStartedAt: { lt: new Date(now.getTime() - 30 * 60_000) },
+          agentReview: null,
+        },
+      }),
+    ]);
+    return {
+      ok: true, openRoles, appsToday, appsThisWeek,
+      readyForReview, requirementsNotMet, shortlisted, selected, withdrawn, agentFailures,
+    };
+  } catch {
+    return {
+      ok: false, openRoles: 0, appsToday: 0, appsThisWeek: 0,
+      readyForReview: 0, requirementsNotMet: 0, shortlisted: 0, selected: 0, withdrawn: 0, agentFailures: 0,
+    };
+  }
+}
+
 async function getNeedsAttention() {
   const stuckCutoff = new Date(Date.now() - 15 * 60_000);
 
@@ -201,16 +247,21 @@ export default async function AdminOverviewPage() {
       onlineMembers, viewsToday, watchStartsToday, openAlerts, recentUsers },
     health,
     attention,
-  ] = await Promise.all([getStats(), getSystemHealth(), getNeedsAttention()]);
+    casting,
+  ] = await Promise.all([getStats(), getSystemHealth(), getNeedsAttention(), getCastingStats()]);
 
   const greeting = getGreeting();
+
+  const castingAttentionCount =
+    (casting.ok ? casting.readyForReview + casting.requirementsNotMet + casting.agentFailures : 0);
 
   const totalAttentionItems =
     (attention.stuckVideoCount > 0 ? 1 : 0) +
     attention.failedVideoJobs.length +
     attention.failedSubJobs.length +
     attention.badKeys.length +
-    attention.openAlerts.length;
+    attention.openAlerts.length +
+    (castingAttentionCount > 0 ? 1 : 0);
 
   return (
     <div className="admin-page">
@@ -544,6 +595,56 @@ export default async function AdminOverviewPage() {
             );
           })()}
 
+          {/* Casting */}
+          {casting.ok && (
+            (() => {
+              const castingNeedsAction = casting.readyForReview + casting.requirementsNotMet + casting.agentFailures;
+              const status = healthStatus(casting.agentFailures, casting.readyForReview + casting.requirementsNotMet);
+              return (
+                <div className={`sh-card sh-card--${status}`}>
+                  <div className="sh-card-head">
+                    <span className="sh-card-label">
+                      <UserCheck size={9} />
+                      Casting
+                    </span>
+                    <span className={`sh-status-dot sh-status-dot--${status}`} />
+                  </div>
+                  <div className="sh-card-metrics">
+                    <div className="sh-metric">
+                      <span className="sh-metric-label">Open roles</span>
+                      <span className={`sh-metric-val ${casting.openRoles > 0 ? "sh-metric-val--ok" : "sh-metric-val--muted"}`}>{casting.openRoles}</span>
+                    </div>
+                    <div className="sh-metric">
+                      <span className="sh-metric-label">Apps today</span>
+                      <span className={`sh-metric-val ${casting.appsToday > 0 ? "sh-metric-val--ok" : "sh-metric-val--muted"}`}>{casting.appsToday}</span>
+                    </div>
+                    <div className="sh-metric">
+                      <span className="sh-metric-label">Ready to review</span>
+                      <span className={`sh-metric-val ${casting.readyForReview > 0 ? "sh-metric-val--warn" : "sh-metric-val--muted"}`}>{casting.readyForReview}</span>
+                    </div>
+                    <div className="sh-metric">
+                      <span className="sh-metric-label">Shortlisted</span>
+                      <span className={`sh-metric-val ${casting.shortlisted > 0 ? "sh-metric-val--ok" : "sh-metric-val--muted"}`}>{casting.shortlisted}</span>
+                    </div>
+                    <div className="sh-metric">
+                      <span className="sh-metric-label">AI failures</span>
+                      <span className={`sh-metric-val ${casting.agentFailures > 0 ? "sh-metric-val--danger" : "sh-metric-val--muted"}`}>{casting.agentFailures}</span>
+                    </div>
+                  </div>
+                  {castingNeedsAction > 0 ? (
+                    <Link href="/admin/casting?status=READY_FOR_ADMIN_REVIEW" className="sh-card-action">
+                      Review Queue ({casting.readyForReview}) <ArrowRight size={9} />
+                    </Link>
+                  ) : (
+                    <Link href="/admin/casting" className="sh-card-action">
+                      Casting Dashboard <ArrowRight size={9} />
+                    </Link>
+                  )}
+                </div>
+              );
+            })()
+          )}
+
         </div>
       </div>
 
@@ -653,6 +754,26 @@ export default async function AdminOverviewPage() {
                   <Link href="/admin/security" className="attn-item-action">Review</Link>
                 </div>
               ))}
+
+              {castingAttentionCount > 0 && (
+                <div className="attn-item">
+                  <div className="attn-item-left">
+                    <span className="attn-item-title">
+                      Casting: {casting.readyForReview > 0 ? `${casting.readyForReview} ready for review` : ""}
+                      {casting.readyForReview > 0 && casting.requirementsNotMet > 0 ? ", " : ""}
+                      {casting.requirementsNotMet > 0 ? `${casting.requirementsNotMet} requirements not met` : ""}
+                      {(casting.readyForReview > 0 || casting.requirementsNotMet > 0) && casting.agentFailures > 0 ? ", " : ""}
+                      {casting.agentFailures > 0 ? `${casting.agentFailures} AI review failure${casting.agentFailures === 1 ? "" : "s"}` : ""}
+                    </span>
+                    <span className="attn-item-detail">
+                      {casting.appsThisWeek} application{casting.appsThisWeek === 1 ? "" : "s"} this week · {casting.openRoles} open role{casting.openRoles === 1 ? "" : "s"}
+                    </span>
+                  </div>
+                  <Link href="/admin/casting" className="attn-item-action">
+                    Casting
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
         </div>

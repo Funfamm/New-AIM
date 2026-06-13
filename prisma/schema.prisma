@@ -380,6 +380,7 @@ model Work {
   videoProcessingJobs  VideoProcessingJob[]
   subtitles            Subtitle[]
   videoDisplaySettings WorkVideoDisplaySetting[]
+  castingRoles         CastingRole[]            @relation("WorkCastingRoles")
 
   @@map("works")
 }
@@ -781,6 +782,9 @@ model AdminSettings {
   defaultRequireLoginToViewTrailer Boolean @default(false)
   allowPublicProjectDetails        Boolean @default(true)
   showLockedContentInCatalog       Boolean @default(true)
+
+  // ── Casting ────────────────────────────────
+  castingBackgroundUrl  String?
 
   // ── Feature Visibility ─────────────────────
   showCasting           Boolean @default(false)
@@ -1389,6 +1393,9 @@ model CastingRole {
   description        String
   isOpen             Boolean  @default(true)
 
+  workId             String?
+  work               Work?    @relation("WorkCastingRoles", fields: [workId], references: [id], onDelete: SetNull)
+
   requireGender      Boolean  @default(false)
   allowedGender      String?  // "MALE" | "FEMALE" | "ANY"
 
@@ -1405,6 +1412,7 @@ model CastingRole {
 
   applications       CastingApplication[]
 
+  @@index([workId])
   @@map("casting_roles")
 }
 

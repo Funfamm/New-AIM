@@ -1,4 +1,5 @@
 import { requireAdmin } from "@/lib/auth-guard";
+import { adminGetWorksForSelect } from "@/lib/actions/casting";
 import Link from "next/link";
 import type { Metadata } from "next";
 import RoleForm from "../role-form";
@@ -8,6 +9,7 @@ export const metadata: Metadata = { title: "Admin — New Casting Role" };
 
 export default async function NewRolePage() {
   await requireAdmin();
+  const works = await adminGetWorksForSelect();
   return (
     <div className="ca-page">
       <div className="ca-header">
@@ -16,7 +18,7 @@ export default async function NewRolePage() {
           <h1 className="ca-title">New Role</h1>
         </div>
       </div>
-      <RoleForm />
+      <RoleForm works={works} />
     </div>
   );
 }

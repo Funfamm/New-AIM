@@ -54,10 +54,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "mediaType must be IMAGE or AUDIO." }, { status: 400 });
   }
 
-  // Build a private R2 key — not publicly guessable
-  const ext     = filename.split(".").pop()?.toLowerCase() ?? "";
-  const safeExt = ext.replace(/[^a-z0-9]/g, "");
-  const r2Key   = `casting/${session.user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${safeExt}`;
+  // Build a private R2 key organised by sanitized email
+  const ext          = filename.split(".").pop()?.toLowerCase() ?? "";
+  const safeExt      = ext.replace(/[^a-z0-9]/g, "");
+  const safeEmail    = (session.user.email ?? session.user.id)
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 60);
+  const subFolder    = mediaType === "AUDIO" ? "audio" : "images";
+  const ts           = Date.now();
+  const rand         = Math.random().toString(36).slice(2, 7);
+  const r2Key        = `private/casting/applicants/${safeEmail}/${ts}-${rand}/${subFolder}/${ts}.${safeExt}`;
 
   try {
     const uploadUrl = await getPresignedUrl(r2Key, mimeType, 600);

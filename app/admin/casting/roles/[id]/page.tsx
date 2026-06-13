@@ -1,4 +1,5 @@
 import { requireAdmin } from "@/lib/auth-guard";
+import { adminGetWorksForSelect } from "@/lib/actions/casting";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -14,7 +15,13 @@ export default async function EditRolePage({ params }: Props) {
   await requireAdmin();
   const { id } = await params;
 
-  const role = await prisma.castingRole.findUnique({ where: { id } });
+  const [role, works] = await Promise.all([
+    prisma.castingRole.findUnique({
+      where: { id },
+      include: { work: { select: { id: true, title: true, slug: true, posterUrl: true } } },
+    }),
+    adminGetWorksForSelect(),
+  ]);
   if (!role) notFound();
 
   return (
@@ -26,7 +33,7 @@ export default async function EditRolePage({ params }: Props) {
           <p className="ca-subtitle">{role.title}</p>
         </div>
       </div>
-      <RoleForm existing={role} />
+      <RoleForm existing={role} works={works} />
     </div>
   );
 }

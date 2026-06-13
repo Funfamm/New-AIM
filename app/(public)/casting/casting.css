@@ -7,7 +7,13 @@
 
 /* ── Page shell ─────────────────────────────────────────────── */
 
-.casting-page,
+.casting-page {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 64px 24px 128px;
+  overflow: hidden;
+}
+
 .casting-role-detail,
 .casting-apply-page,
 .casting-track-page {
@@ -67,11 +73,39 @@
   margin: 0;
 }
 
-/* ── Hero ────────────────────────────────────────────────────── */
+/* ── Hero — supports background image ───────────────────────── */
 
 .casting-hero {
-  padding: 32px 0 64px;
   position: relative;
+  min-height: 420px;
+  background-size: cover;
+  background-position: center 30%;
+  background-repeat: no-repeat;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+  margin: -64px -24px 0;
+}
+
+.casting-hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(10,10,10,0.35) 0%,
+    rgba(10,10,10,0.72) 60%,
+    rgba(10,10,10,0.96) 100%
+  );
+  z-index: 0;
+}
+
+.casting-hero-content {
+  position: relative;
+  z-index: 1;
+  padding: 64px 24px 56px;
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
 }
 
 .casting-hero-rule {
@@ -111,12 +145,78 @@
   max-width: 520px;
 }
 
+/* ── Project groups ──────────────────────────────────────────── */
+
+.casting-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 64px;
+  padding-top: 56px;
+}
+
+.casting-group {}
+
+.casting-group-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.casting-group-poster {
+  width: 56px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 2px;
+  flex-shrink: 0;
+  border: 1px solid rgba(255,255,255,0.07);
+}
+
+.casting-group-info { display: flex; flex-direction: column; gap: 4px; }
+
+.casting-group-eyebrow {
+  font-family: var(--font-body);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.28);
+  margin: 0;
+}
+
+.casting-group-title {
+  font-family: var(--font-display);
+  font-size: clamp(1.375rem, 3.5vw, 2rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--color-brand-white);
+  line-height: 1.1;
+  margin: 0;
+}
+
+.casting-group-link {
+  color: inherit;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.casting-group-link:hover { color: var(--color-brand-accent); }
+
+.casting-group-count {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: rgba(255,255,255,0.3);
+  margin: 0;
+}
+
 /* ── Role cards — stacked editorial list ─────────────────────── */
 
 .casting-roles {
   display: flex;
   flex-direction: column;
-  margin-bottom: 96px;
+  margin-bottom: 0;
   border: 1px solid rgba(255,255,255,0.06);
   border-radius: 4px;
   overflow: hidden;
@@ -160,6 +260,19 @@
   background: rgba(192,57,43,0.06);
   color: rgba(248,113,113,0.6);
   border-color: rgba(192,57,43,0.18);
+}
+
+.casting-tag--open {
+  background: rgba(74,222,128,0.07);
+  color: rgba(74,222,128,0.8);
+  border-color: rgba(74,222,128,0.15);
+}
+
+.casting-role-appcount {
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  color: rgba(255,255,255,0.22);
+  margin: -16px 0 20px;
 }
 
 .casting-role-title {
