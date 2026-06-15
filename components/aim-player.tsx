@@ -292,12 +292,18 @@ export default function AimPlayer({
   }
 
   function toggleFs() {
-    const el = wrapRef.current;
+    const el  = wrapRef.current;
+    const vid = videoRef.current;
     if (!el) return;
     if (document.fullscreenElement || (document as any).webkitFullscreenElement) {
       (document.exitFullscreen?.() ?? (document as any).webkitExitFullscreen?.())?.catch?.(() => {});
-    } else {
-      (el.requestFullscreen?.() ?? (el as any).webkitRequestFullscreen?.())?.catch?.(() => {});
+    } else if (el.requestFullscreen) {
+      el.requestFullscreen().catch(() => {});
+    } else if ((el as any).webkitRequestFullscreen) {
+      (el as any).webkitRequestFullscreen();
+    } else if (vid && (vid as any).webkitEnterFullscreen) {
+      // iOS Safari: only <video> element supports fullscreen
+      (vid as any).webkitEnterFullscreen();
     }
   }
 
