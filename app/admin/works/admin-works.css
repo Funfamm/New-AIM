@@ -108,3 +108,30 @@
   vertical-align: super;
   cursor: default;
 }
+
+/* ── Position controls ── */
+.td-pos { white-space: nowrap; padding-inline: 4px; }
+.pos-controls {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+}
+.pos-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 4px;
+  background: none; border: none;
+  color: rgba(255,255,255,0.38); cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  padding: 0;
+}
+.pos-btn:hover { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.85); }
+.pos-btn:active { background: rgba(255,255,255,0.18); }
+.pos-num {
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.35);
+  min-width: 22px;
+  text-align: center;
+  cursor: default;
+}
