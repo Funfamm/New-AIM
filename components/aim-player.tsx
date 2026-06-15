@@ -13,6 +13,7 @@ import {
 import { saveWatchProgress } from "@/lib/actions/progress";
 import { beacon } from "@/lib/beacon";
 import { likeWork, unlikeWork } from "@/lib/actions/likes";
+import { useToast } from "./toast-context";
 import NotifyMeCtaOverlay, { type CtaData } from "@/components/notify-cta-overlay";
 import { useHlsVideo } from "@/lib/use-hls-video";
 import "./aim-player.css";
@@ -149,6 +150,19 @@ export default function AimPlayer({
   // Reactions
   const [liked,     setLiked]     = useState(initialLiked);
   const [likeCount, setLikeCount] = useState(initialLikeCount);
+  const { showToast } = useToast();
+  const guestLikeKey = `aim-liked-${workId}`;
+
+  // Guest: restore liked state from localStorage on mount
+  useEffect(() => {
+    if (!isGuest) return;
+    try {
+      if (localStorage.getItem(guestLikeKey) === "1") {
+        setLiked(true);
+        setLikeCount((c) => c + 1);
+      }
+    } catch { /* localStorage unavailable */ }
+  }, [isGuest, guestLikeKey]);
 
   // ── HLS / video source management ────────────────────────────────────
   useHlsVideo(videoRef, src);
@@ -336,10 +350,17 @@ export default function AimPlayer({
 
   // ── Like ──────────────────────────────────────────────────────────────
   async function handleLike() {
-    if (isGuest) { router.push(`/login?from=/watch/${currentSlug}`); return; }
     const next = !liked;
     setLiked(next);
     setLikeCount((c) => c + (next ? 1 : -1));
+    if (isGuest) {
+      try {
+        if (next) localStorage.setItem(guestLikeKey, "1");
+        else localStorage.removeItem(guestLikeKey);
+      } catch { /* localStorage unavailable */ }
+      showToast(next ? "Liked" : "Like removed", next ? "success" : "info");
+      return;
+    }
     try {
       if (next) await likeWork(workId);
       else await unlikeWork(workId);
