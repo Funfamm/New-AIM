@@ -364,3 +364,15 @@ export async function resetPassword(formData: FormData) {
 
   redirect("/login?success=" + encodeURIComponent("Password updated. Please sign in with your new password."));
 }
+
+// ── Welcome-email magic link sign-in ─────────────────────────
+// Called by the /welcome-login page's auto-submit form.
+// Validates the HMAC token inside the credentials authorize callback.
+export async function signInWithWelcomeToken(formData: FormData) {
+  const uid   = (formData.get("uid")   as string)?.trim();
+  const token = (formData.get("token") as string)?.trim();
+  if (!uid || !token) {
+    redirect("/login");
+  }
+  await signIn("credentials", { userId: uid, welcomeToken: token, redirectTo: "/dashboard" });
+}

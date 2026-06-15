@@ -324,15 +324,23 @@ export async function sendSecurityAlertEmail(opts: {
 
 // ── Welcome email ──────────────────────────────────────────────
 
-export async function sendWelcomeEmail(to: string, name?: string | null): Promise<void> {
+export async function sendWelcomeEmail(to: string, name?: string | null, userId?: string): Promise<void> {
   const greeting = name ? `Welcome, ${name}` : "Welcome to AIM Studio";
-  const dashboardUrl = `${APP_URL}/dashboard`;
+
+  // Build magic-link URL if we have a userId so the CTA logs the user in automatically.
+  // Falls back to plain /dashboard (requires manual sign-in) if no userId is provided.
+  let ctaUrl = `${APP_URL}/dashboard`;
+  if (userId) {
+    const { generateWelcomeToken } = await import("@/lib/welcome-token");
+    const token = generateWelcomeToken(userId);
+    ctaUrl = `${APP_URL}/welcome-login?uid=${encodeURIComponent(userId)}&t=${encodeURIComponent(token)}`;
+  }
 
   const body = `
     <p style="margin:0 0 16px;font-size:14px;color:#6b7280;line-height:1.6;">
       Your account is ready. Start exploring our films, series, and creative work.
     </p>
-    <a href="${dashboardUrl}"
+    <a href="${ctaUrl}"
        style="display:inline-block;background:#e8c97e;color:#0a0a0a;font-size:14px;font-weight:600;
               text-decoration:none;padding:12px 28px;border-radius:6px;">
       Go to Dashboard
