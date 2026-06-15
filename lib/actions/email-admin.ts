@@ -587,6 +587,107 @@ export async function deleteSuppression(email: string) {
   revalidatePath("/admin/email");
 }
 
+// ── Queue management ──────────────────────────────────────────
+
+export async function retryQueueItem(id: string): Promise<{ ok: boolean; message: string }> {
+  await requireAdmin();
+  try {
+    await prisma.emailQueue.update({
+      where: { id },
+      data:  { status: "QUEUED", retryCount: 0, error: null, processedAt: null },
+    });
+    revalidatePath("/admin/email");
+    return { ok: true, message: "Item re-queued." };
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : "Failed." };
+  }
+}
+
+export async function bulkRetryQueueItems(ids: string[]): Promise<{ ok: boolean; count: number; message: string }> {
+  await requireAdmin();
+  if (!ids.length) return { ok: false, count: 0, message: "No items selected." };
+  try {
+    const { count } = await prisma.emailQueue.updateMany({
+      where: { id: { in: ids }, status: "FAILED" },
+      data:  { status: "QUEUED", retryCount: 0, error: null, processedAt: null },
+    });
+    revalidatePath("/admin/email");
+    return { ok: true, count, message: `${count} item${count === 1 ? "" : "s"} re-queued.` };
+  } catch (err) {
+    return { ok: false, count: 0, message: err instanceof Error ? err.message : "Failed." };
+  }
+}
+
+export async function bulkCancelQueueItems(ids: string[]): Promise<{ ok: boolean; count: number; message: string }> {
+  await requireAdmin();
+  if (!ids.length) return { ok: false, count: 0, message: "No items selected." };
+  try {
+    const { count } = await prisma.emailQueue.updateMany({
+      where: { id: { in: ids }, status: { in: ["QUEUED", "FAILED"] } },
+      data:  { status: "FAILED", error: "Cancelled by admin" },
+    });
+    revalidatePath("/admin/email");
+    return { ok: true, count, message: `${count} item${count === 1 ? "" : "s"} cancelled.` };
+  } catch (err) {
+    return { ok: false, count: 0, message: err instanceof Error ? err.message : "Failed." };
+  }
+}
+
+// ── Log management ────────────────────────────────────────────
+
+export async function bulkDeleteLogs(ids: string[]): Promise<{ ok: boolean; message: string }> {
+  await requireAdmin();
+  if (!ids.length) return { ok: false, message: "No logs selected." };
+  try {
+    const { count } = await prisma.emailLog.deleteMany({ where: { id: { in: ids } } });
+    revalidatePath("/admin/email");
+    return { ok: true, message: `${count} log${count === 1 ? "" : "s"} deleted.` };
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : "Failed." };
+  }
+}
+
+export async function clearOldLogs(days: number): Promise<{ ok: boolean; count: number; message: string }> {
+  await requireAdmin();
+  const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  try {
+    const { count } = await prisma.emailLog.deleteMany({ where: { createdAt: { lt: cutoff } } });
+    revalidatePath("/admin/email");
+    return { ok: true, count, message: `${count} log${count === 1 ? "" : "s"} older than ${days} days deleted.` };
+  } catch (err) {
+    return { ok: false, count: 0, message: err instanceof Error ? err.message : "Failed." };
+  }
+}
+
+// ── Suppression bulk management ───────────────────────────────
+
+export async function bulkRemoveSuppressions(emails: string[]): Promise<{ ok: boolean; count: number; message: string }> {
+  await requireAdmin();
+  if (!emails.length) return { ok: false, count: 0, message: "No addresses selected." };
+  try {
+    const { count } = await prisma.emailSuppression.updateMany({
+      where: { email: { in: emails }, active: true },
+      data:  { active: false },
+    });
+    revalidatePath("/admin/email");
+    return { ok: true, count, message: `${count} suppression${count === 1 ? "" : "s"} removed.` };
+  } catch (err) {
+    return { ok: false, count: 0, message: err instanceof Error ? err.message : "Failed." };
+  }
+}
+
+export async function bulkDeleteSuppressions(emails: string[]): Promise<{ ok: boolean; count: number; message: string }> {
+  await requireAdmin();
+  if (!emails.length) return { ok: false, count: 0, message: "No addresses selected." };
+  try {
+    const { count } = await prisma.emailSuppression.deleteMany({ where: { email: { in: emails } } });
+    revalidatePath("/admin/email");
+    return { ok: true, count, message: `${count} record${count === 1 ? "" : "s"} permanently deleted.` };
+  } catch (err) {
+    return { ok: false, count: 0, message: err instanceof Error ? err.message : "Failed." };
+  }
+}
+
 // Bulk import suppressions from pasted email list
 export async function bulkImportSuppression(formData: FormData) {
   await requireAdmin();

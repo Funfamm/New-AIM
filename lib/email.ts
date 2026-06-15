@@ -5,6 +5,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { premiumTransactionalEmail } from "@/lib/email-base";
+import { generateTrackingToken, injectTrackingPixel, wrapLinksWithTracking } from "@/lib/email-tracking";
 import type { EmailType, EmailProvider, Prisma } from "@prisma/client";
 
 const APP_URL    = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
@@ -60,19 +61,21 @@ async function logEmail(opts: {
   status: "SENT" | "FAILED" | "SUPPRESSED";
   error?: string;
   metadata?: Record<string, unknown>;
+  trackingToken?: string;
 }): Promise<void> {
   try {
     await prisma.emailLog.create({
       data: {
-        to:       opts.to,
-        from:     FROM_EMAIL,
-        subject:  opts.subject,
-        type:     opts.type,
-        provider: opts.provider,
-        status:   opts.status,
-        error:    opts.error ?? null,
-        metadata: opts.metadata != null ? (opts.metadata as Prisma.InputJsonValue) : undefined,
-        sentAt:   opts.status === "SENT" ? new Date() : null,
+        to:            opts.to,
+        from:          FROM_EMAIL,
+        subject:       opts.subject,
+        type:          opts.type,
+        provider:      opts.provider,
+        status:        opts.status,
+        error:         opts.error ?? null,
+        metadata:      opts.metadata != null ? (opts.metadata as Prisma.InputJsonValue) : undefined,
+        trackingToken: opts.trackingToken ?? null,
+        sentAt:        opts.status === "SENT" ? new Date() : null,
       },
     });
   } catch {
@@ -147,7 +150,7 @@ async function sendViaGraph(to: string, subject: string, html: string): Promise<
 // ── Dispatch ──────────────────────────────────────────────────
 
 export async function sendEmail(opts: SendOptions): Promise<void> {
-  const { to, subject, html, type, metadata } = opts;
+  const { to, subject, type, metadata } = opts;
   const toNorm = to.toLowerCase().trim();
   const isDev  = process.env.NODE_ENV !== "production";
 
@@ -162,6 +165,9 @@ export async function sendEmail(opts: SendOptions): Promise<void> {
     return;
   }
 
+  const trackingToken = generateTrackingToken();
+  const html = injectTrackingPixel(wrapLinksWithTracking(opts.html, trackingToken), trackingToken);
+
   const graphConfigured =
     process.env.AZURE_CLIENT_ID &&
     process.env.AZURE_CLIENT_SECRET &&
@@ -172,10 +178,10 @@ export async function sendEmail(opts: SendOptions): Promise<void> {
   if (!isDev) {
     try {
       await sendViaGraph(toNorm, subject, html);
-      await logEmail({ to: toNorm, subject, type, provider: "GRAPH", status: "SENT", metadata });
+      await logEmail({ to: toNorm, subject, type, provider: "GRAPH", status: "SENT", metadata, trackingToken });
     } catch (err) {
       const error = err instanceof Error ? err.message : String(err);
-      await logEmail({ to: toNorm, subject, type, provider: "GRAPH", status: "FAILED", error, metadata });
+      await logEmail({ to: toNorm, subject, type, provider: "GRAPH", status: "FAILED", error, metadata, trackingToken });
       throw err; // re-throw so callers can decide whether to surface the error
     }
     return;
@@ -185,10 +191,10 @@ export async function sendEmail(opts: SendOptions): Promise<void> {
   if (graphConfigured) {
     try {
       await sendViaGraph(toNorm, subject, html);
-      await logEmail({ to: toNorm, subject, type, provider: "GRAPH", status: "SENT", metadata });
+      await logEmail({ to: toNorm, subject, type, provider: "GRAPH", status: "SENT", metadata, trackingToken });
     } catch (err) {
       const error = err instanceof Error ? err.message : String(err);
-      await logEmail({ to: toNorm, subject, type, provider: "GRAPH", status: "FAILED", error, metadata });
+      await logEmail({ to: toNorm, subject, type, provider: "GRAPH", status: "FAILED", error, metadata, trackingToken });
       throw err;
     }
     return;
@@ -200,7 +206,7 @@ export async function sendEmail(opts: SendOptions): Promise<void> {
   console.log(`Subject: ${subject}`);
   console.log(`Body:    ${html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()}`);
   console.log("[END DEV EMAIL]\n");
-  await logEmail({ to: toNorm, subject, type, provider: "DEV_LOG", status: "SENT", metadata });
+  await logEmail({ to: toNorm, subject, type, provider: "DEV_LOG", status: "SENT", metadata, trackingToken });
 }
 
 // ── HTML helpers ──────────────────────────────────────────────
