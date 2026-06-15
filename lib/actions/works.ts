@@ -279,3 +279,62 @@ export async function deleteWork(id: string) {
   await prisma.work.delete({ where: { id } });
   revalidateAll();
 }
+
+// ── Reorder ───────────────────────────────────────────────────
+// Moves a work up/down within its type category, or to first/last.
+// "Up" = lower order number (appears earlier). All moves stay within same type.
+export async function reorderWork(
+  id: string,
+  direction: "up" | "down" | "first" | "last",
+) {
+  await requireAdmin();
+
+  const work = await prisma.work.findUnique({
+    where: { id },
+    select: { order: true, type: true },
+  });
+  if (!work) return;
+
+  const sameType = { type: work.type };
+
+  if (direction === "first") {
+    const min = await prisma.work.aggregate({ _min: { order: true }, where: sameType });
+    const minOrder = min._min.order ?? 0;
+    await prisma.work.update({ where: { id }, data: { order: minOrder - 1 } });
+
+  } else if (direction === "last") {
+    const max = await prisma.work.aggregate({ _max: { order: true }, where: sameType });
+    const maxOrder = max._max.order ?? 0;
+    await prisma.work.update({ where: { id }, data: { order: maxOrder + 1 } });
+
+  } else if (direction === "up") {
+    // Find the nearest same-type work with a lower order
+    const prev = await prisma.work.findFirst({
+      where: { ...sameType, order: { lt: work.order }, id: { not: id } },
+      orderBy: { order: "desc" },
+      select: { id: true, order: true },
+    });
+    if (prev) {
+      await prisma.$transaction([
+        prisma.work.update({ where: { id }, data: { order: prev.order } }),
+        prisma.work.update({ where: { id: prev.id }, data: { order: work.order } }),
+      ]);
+    }
+
+  } else if (direction === "down") {
+    // Find the nearest same-type work with a higher order
+    const next = await prisma.work.findFirst({
+      where: { ...sameType, order: { gt: work.order }, id: { not: id } },
+      orderBy: { order: "asc" },
+      select: { id: true, order: true },
+    });
+    if (next) {
+      await prisma.$transaction([
+        prisma.work.update({ where: { id }, data: { order: next.order } }),
+        prisma.work.update({ where: { id: next.id }, data: { order: work.order } }),
+      ]);
+    }
+  }
+
+  revalidateAll();
+}

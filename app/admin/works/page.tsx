@@ -1,9 +1,9 @@
 import { prisma } from "@/lib/prisma";
-import { setWorkStatus } from "@/lib/actions/works";
+import { setWorkStatus, reorderWork } from "@/lib/actions/works";
 import { DeleteWorkButton } from "@/components/delete-work-button";
 import Link from "next/link";
 import "./admin-works.css";
-import { Plus, Pencil, Eye, EyeOff, Heart, Share2, Film } from "lucide-react";
+import { Plus, Pencil, Eye, EyeOff, Heart, Share2, Film, ChevronsUp, ChevronsDown, ChevronUp, ChevronDown } from "lucide-react";
 import type { Metadata } from "next";
 import type { WorkType, WorkStatus } from "@prisma/client";
 import WorkerStatus from "@/components/admin/worker-status";
@@ -63,11 +63,12 @@ export default async function AdminWorksPage({
         ? { subtitles: { some: { jobs: { some: { status: "FAILED" } } } } }
         : {}),
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: [{ order: "asc" }, { createdAt: "desc" }],
     select: {
       id: true, slug: true, title: true, type: true, status: true,
       featured: true, showOnHome: true, clientName: true, genre: true,
       videoUrl: true, trailerUrl: true, previewClipUrl: true, createdAt: true,
+      order: true,
       episodes: { select: { id: true } },
     },
   });
@@ -176,6 +177,7 @@ export default async function AdminWorksPage({
               <th className="th-stat" title="Shares">
                 <Share2 size={12} />
               </th>
+              <th title="Position within category (lower = first)">Pos.</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -233,6 +235,31 @@ export default async function AdminWorksPage({
                       <span className="dash">—</span>
                     )}
                   </td>
+                  <td className="td-pos">
+                    <div className="pos-controls">
+                      <form action={reorderWork.bind(null, w.id, "first")}>
+                        <button type="submit" className="pos-btn" title="Move to first in category">
+                          <ChevronsUp size={12} />
+                        </button>
+                      </form>
+                      <form action={reorderWork.bind(null, w.id, "up")}>
+                        <button type="submit" className="pos-btn" title="Move up">
+                          <ChevronUp size={12} />
+                        </button>
+                      </form>
+                      <span className="pos-num" title={`Order value: ${w.order}`}>{w.order}</span>
+                      <form action={reorderWork.bind(null, w.id, "down")}>
+                        <button type="submit" className="pos-btn" title="Move down">
+                          <ChevronDown size={12} />
+                        </button>
+                      </form>
+                      <form action={reorderWork.bind(null, w.id, "last")}>
+                        <button type="submit" className="pos-btn" title="Move to last in category">
+                          <ChevronsDown size={12} />
+                        </button>
+                      </form>
+                    </div>
+                  </td>
                   <td>
                     <div className="action-btns">
                       <Link href={`/admin/works/${w.id}`} className="action-btn" title="Edit">
@@ -255,7 +282,7 @@ export default async function AdminWorksPage({
             })}
             {worksWithStats.length === 0 && (
               <tr>
-                <td colSpan={11}>
+                <td colSpan={12}>
                   {isFiltered ? (
                     <div className="admin-empty-state">
                       <div className="admin-empty-state-icon">
