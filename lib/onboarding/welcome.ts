@@ -66,7 +66,7 @@ export async function ensureWelcomeForUser(userId: string): Promise<void> {
       } else {
         try {
           console.log(`[welcome] sending welcome email to ${user.email} (userId: ${user.id})`);
-          await sendWelcomeEmail(user.email, user.name);
+          await sendWelcomeEmail(user.email, user.name, user.id);
           stampData.welcomeEmailSentAt = new Date();
           console.log(`[welcome] welcome email sent successfully to ${user.email}`);
         } catch (err) {

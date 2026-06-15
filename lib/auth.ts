@@ -60,10 +60,27 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     Credentials({
       name: "credentials",
       credentials: {
-        email:    { label: "Email",    type: "email" },
-        password: { label: "Password", type: "password" },
+        email:        { label: "Email",    type: "email" },
+        password:     { label: "Password", type: "password" },
+        userId:       { label: "",         type: "text" },
+        welcomeToken: { label: "",         type: "text" },
       },
       async authorize(credentials, request) {
+        // ── Magic link (welcome email) path ────────────────────
+        const welcomeToken = (credentials?.welcomeToken as string | undefined) ?? "";
+        const magicUserId  = (credentials?.userId       as string | undefined) ?? "";
+        if (welcomeToken && magicUserId) {
+          const { verifyWelcomeToken } = await import("@/lib/welcome-token");
+          if (!verifyWelcomeToken(magicUserId, welcomeToken)) return null;
+          const user = await prisma.user.findUnique({
+            where:  { id: magicUserId },
+            select: { id: true, email: true, name: true, role: true, tokenVersion: true, status: true },
+          });
+          if (!user || user.status === "SUSPENDED") return null;
+          return { id: user.id, email: user.email, name: user.name ?? null, role: user.role, tokenVersion: user.tokenVersion };
+        }
+
+        // ── Credentials (email + password) path ───────────────
         const email    = (credentials?.email    as string | undefined)?.toLowerCase().trim() ?? "";
         const password = (credentials?.password as string | undefined) ?? "";
 
