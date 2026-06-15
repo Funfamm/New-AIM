@@ -6,7 +6,7 @@
   display: flex;
   align-items: flex-end;
   padding-bottom: 3rem;
-  background-color: #050505;
+  background-color: var(--aim-bg, #070706);
 }
 @media (min-width: 768px) { .wc-hero { min-height: 540px; } }
 .wc-hero-bg {
@@ -95,10 +95,10 @@
 /* ── Tab bar — sticky with frosted glass ── */
 .wc-tabs-bar {
   position: sticky; top: 68px; z-index: 20;
-  background: rgba(10,10,10,0.85);
+  background: rgba(10, 9, 7, 0.88);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(255,255,255,0.04);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
 }
 .wc-tabs {
   display: flex; overflow-x: auto; scrollbar-width: none;

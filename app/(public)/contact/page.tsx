@@ -11,7 +11,7 @@ export default function ContactPage() {
     const subject = formData.get("subject") as string;
     const body = `Name: ${formData.get("name")}\nEmail: ${formData.get("email")}\n\nMessage:\n${formData.get("message")}`;
     
-    const mailtoLink = `mailto:hello@impactaistudio.com?subject=Contact Form: ${subject || "General Inquiry"}&body=${encodeURIComponent(body)}`;
+    const mailtoLink = `mailto:aimstudio@impactaistudio.com?subject=Contact Form: ${subject || "General Inquiry"}&body=${encodeURIComponent(body)}`;
     window.location.href = mailtoLink;
   };
 
@@ -85,8 +85,8 @@ export default function ContactPage() {
             <button type="submit" className="form-submit">Send Message</button>
             <p className="form-note">
               For urgent matters, email us directly:{" "}
-              <a href="mailto:hello@impactaistudio.com" className="form-note-link">
-                hello@impactaistudio.com
+              <a href="mailto:aimstudio@impactaistudio.com" className="form-note-link">
+                aimstudio@impactaistudio.com
               </a>
               <br />
               We typically respond within 48 hours.

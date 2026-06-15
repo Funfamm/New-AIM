@@ -33,12 +33,10 @@
   border: 1px solid rgba(255,255,255,0.11);
   background:
     linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%),
-    rgba(10,10,12,0.72);
+    rgba(10, 9, 7, 0.75);
   color: var(--color-brand-light);
   font-family: var(--font-body);
   font-size: 0.875rem;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   transition: border-color 0.15s;
 }
 .sub-input::placeholder {
@@ -67,8 +65,6 @@
   letter-spacing: 0.04em;
   cursor: pointer;
   white-space: nowrap;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
   transition: background 0.15s, border-color 0.15s, opacity 0.15s;
 }

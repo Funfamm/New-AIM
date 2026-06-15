@@ -14,7 +14,7 @@
 .nav-header::before {
   content: "";
   position: absolute; inset: 0;
-  background: rgba(10,10,10,0.85);
+  background: rgba(10, 9, 7, 0.88);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   pointer-events: none;

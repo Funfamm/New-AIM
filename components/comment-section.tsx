@@ -44,17 +44,18 @@ function timeAgo(d: Date): string {
 }
 
 function Avatar({ user, sm }: { user: CommentUser; sm?: boolean }) {
+  const [imgErr, setImgErr] = useState(false);
   const cls = `cmt-avatar${sm ? " cmt-avatar--sm" : ""}`;
-  const initials = (user.name ?? "?").charAt(0).toUpperCase();
-  if (user.image) {
+  const initial = (user.name?.trim() || "A").charAt(0).toUpperCase();
+  if (user.image && !imgErr) {
     return (
       <div className={cls}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={user.image} alt={user.name ?? "User"} loading="lazy" />
+        <img src={user.image} alt={user.name ?? "User"} loading="lazy" onError={() => setImgErr(true)} />
       </div>
     );
   }
-  return <div className={cls}>{initials}</div>;
+  return <div className={cls}>{initial}</div>;
 }
 
 // ── Report modal ──────────────────────────────────────────────

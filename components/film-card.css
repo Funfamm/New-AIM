@@ -24,7 +24,7 @@
   overflow: hidden;
   border-radius: var(--radius-md);
   background: var(--color-brand-surface);
-  border: 1px solid rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
   transition: border-color 0.3s;
 }
 .fc:hover .fc-poster {
@@ -42,7 +42,7 @@
   font-size: 4rem;
   font-weight: 700;
   color: rgba(42,42,42,0.6);
-  background: linear-gradient(135deg, #111 0%, #1a1a1a 100%);
+  background: linear-gradient(135deg, #0d0c0a 0%, #151412 100%);
 }
 
 /* Bottom gradient — deeper for readability */

@@ -92,9 +92,9 @@
   inset: 0;
   background: linear-gradient(
     180deg,
-    rgba(10,10,10,0.35) 0%,
-    rgba(10,10,10,0.72) 60%,
-    rgba(10,10,10,0.96) 100%
+    rgba(7,7,6,0.35) 0%,
+    rgba(7,7,6,0.72) 60%,
+    rgba(7,7,6,0.96) 100%
   );
   z-index: 0;
 }
@@ -223,16 +223,16 @@
 }
 
 .casting-role-card {
-  background: linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%);
+  background: linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.015) 100%);
   padding: 32px;
-  border-bottom: 1px solid rgba(255,255,255,0.05);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
   transition: background 0.2s;
 }
 
 .casting-role-card:last-child { border-bottom: none; }
 
 .casting-role-card:hover {
-  background: linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%);
+  background: linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.025) 100%);
 }
 
 .casting-role-meta {
@@ -378,12 +378,17 @@
 .casting-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; }
 
 .casting-btn--primary {
-  background: var(--color-brand-accent);
-  color: var(--color-brand-black);
+  background: linear-gradient(135deg, #f2d577, #c9a83d);
+  color: #050505;
+  border: 1px solid rgba(245, 213, 137, 0.55);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  box-shadow: 0 12px 30px rgba(201, 168, 61, 0.15);
 }
 .casting-btn--primary:hover:not(:disabled) {
-  filter: brightness(1.08);
+  filter: brightness(1.06);
   transform: translateY(-1px);
+  box-shadow: 0 16px 40px rgba(201, 168, 61, 0.22);
 }
 
 .casting-btn--outline {

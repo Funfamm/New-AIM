@@ -38,8 +38,9 @@
 }
 .form-input, .form-select, .form-textarea {
   font-family: var(--font-body); font-size: 0.9rem;
-  color: var(--color-brand-white); background: var(--color-brand-surface);
-  border: 1px solid var(--color-brand-border); border-radius: var(--radius-md);
+  color: var(--color-brand-white);
+  background: rgba(14, 13, 11, 0.65);
+  border: 1px solid rgba(255,255,255,0.09); border-radius: var(--radius-md);
   padding: 0.75rem 1rem; outline: none;
   transition: border-color var(--duration-fast), box-shadow var(--duration-normal);
   width: 100%; box-sizing: border-box;
@@ -60,12 +61,18 @@
 .form-footer { display: flex; flex-direction: column; gap: 1.25rem; }
 @media (min-width: 640px) { .form-footer { flex-direction: row; align-items: flex-start; gap: 2rem; } }
 .form-submit {
-  flex-shrink: 0; font-family: var(--font-body); font-size: 0.875rem; font-weight: 600;
-  letter-spacing: 0.04em; color: var(--color-brand-black); background: var(--color-brand-accent);
-  border: none; height: 52px; padding: 0 2rem; border-radius: var(--radius-sm); cursor: pointer;
+  flex-shrink: 0; font-family: var(--font-body); font-size: 0.875rem; font-weight: 800;
+  letter-spacing: 0.08em; color: #050505;
+  background: linear-gradient(135deg, #f2d577, #c9a83d);
+  border: 1px solid rgba(245, 213, 137, 0.55);
+  height: 52px; padding: 0 2rem; border-radius: 10px; cursor: pointer;
   transition: filter var(--duration-fast), box-shadow var(--duration-normal), transform var(--duration-fast); touch-action: manipulation;
 }
-.form-submit:hover { filter: brightness(1.06); box-shadow: var(--shadow-gold-subtle); transform: translateY(-1px); }
+.form-submit:hover {
+  filter: brightness(1.06);
+  box-shadow: 0 18px 40px rgba(201, 168, 61, 0.2);
+  transform: translateY(-1px);
+}
 .form-note {
   font-family: var(--font-body); font-size: 0.8rem;
   color: var(--color-brand-muted); line-height: 1.65; margin: 0; padding-top: 0.25rem;
