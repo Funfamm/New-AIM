@@ -99,9 +99,11 @@ async function getWork(slug: string) {
         },
       },
       // EPISODE: parent series controls access, intro timings, and content advisory
+      // TRAILER type: parent is the linked full film (status + videoUrl needed for upsell)
       parent: {
         select: {
           id: true, slug: true, title: true, requiresAuth: true,
+          status: true, videoUrl: true,
           introStart: true, introEnd: true, creditsStart: true,
           contentRating: true, contentDescriptors: true,
           episodes: {
@@ -451,8 +453,44 @@ export default async function WatchPage({ params, searchParams }: Props) {
                 </div>
               )}
 
-              {/* Non-series trailer → Full Film upsell */}
-              {isTrailer && work.type !== "TRAILER" && !isSeriesTrailer && work.videoUrl && (
+              {/* Non-series trailer → Full Film upsell (same work, e.g. FULL_FILM viewed as trailer) */}
+              {isTrailer && work.type !== "TRAILER" && !isSeriesTrailer && work.status === "PUBLISHED" && work.videoUrl && (
+                <div className="watch-upsell">
+                  {mainRequiresAuth && !session?.user ? (
+                    <>
+                      <Lock size={14} />
+                      <span>
+                        <Link href="/register">Create a free account</Link> to watch the full film.
+                      </span>
+                    </>
+                  ) : (
+                    <Link href={`/watch/${work.slug}?full=1`} className="watch-upsell-btn">
+                      Watch Full Film →
+                    </Link>
+                  )}
+                </div>
+              )}
+
+              {/* TRAILER type work → linked parent full film upsell */}
+              {work.type === "TRAILER" && work.parent?.status === "PUBLISHED" && work.parent.videoUrl && (
+                <div className="watch-upsell">
+                  {work.parent.requiresAuth && !session?.user ? (
+                    <>
+                      <Lock size={14} />
+                      <span>
+                        <Link href="/register">Create a free account</Link> to watch the full film.
+                      </span>
+                    </>
+                  ) : (
+                    <Link href={`/watch/${work.parent.slug}?full=1`} className="watch-upsell-btn">
+                      Watch Full Film →
+                    </Link>
+                  )}
+                </div>
+              )}
+
+              {/* Preview clip → Full Film upsell */}
+              {isPreview && work.status === "PUBLISHED" && work.videoUrl && (
                 <div className="watch-upsell">
                   {mainRequiresAuth && !session?.user ? (
                     <>
