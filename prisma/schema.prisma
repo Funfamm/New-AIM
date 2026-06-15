@@ -702,10 +702,13 @@ model EmailLog {
   type      EmailType
   provider  EmailProvider
   status    EmailStatus
-  error     String?       // error message on failure, null on success
-  metadata  Json?         // optional extra context
-  createdAt DateTime      @default(now())
-  sentAt    DateTime?     // set when status = SENT
+  error         String?   // error message on failure, null on success
+  metadata      Json?     // optional extra context
+  trackingToken String?   @unique
+  openedAt      DateTime?
+  clickedAt     DateTime?
+  createdAt     DateTime  @default(now())
+  sentAt        DateTime? // set when status = SENT
 
   @@index([to])
   @@index([type])

@@ -1,7 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { addSuppression } from "@/lib/actions/email-admin";
-import RemoveSuppressionButton from "./remove-suppression-button";
-import DeleteSuppressionButton from "./delete-suppression-button";
+import SuppressionBulk, { type SuppressionRow } from "./suppression-bulk";
 
 function fmtDate(d: Date) {
   return new Intl.DateTimeFormat("en-GB", {
@@ -28,6 +27,15 @@ export default async function TabSuppression({ error }: { error?: string }) {
     acc[key] = (acc[key] ?? 0) + 1;
     return acc;
   }, {} as Record<string, number>);
+
+  // Serialize Dates for client component
+  const activeRows: SuppressionRow[] = active.map((s) => ({
+    id:        s.id,
+    email:     s.email,
+    reason:    s.reason,
+    source:    s.source,
+    createdAt: s.createdAt.toISOString(),
+  }));
 
   return (
     <>
@@ -76,38 +84,13 @@ export default async function TabSuppression({ error }: { error?: string }) {
         </form>
       </section>
 
-      {/* ── Active suppressions ── */}
+      {/* ── Active suppressions (bulk-selectable) ── */}
       <section className="email-section">
         <h2 className="email-section-title">Active suppressions ({active.length.toLocaleString()})</h2>
-        {active.length === 0 ? (
-          <p className="email-empty">No active suppressions.</p>
-        ) : (
-          <div className="email-log-wrap">
-            <div className="email-log-scroll">
-              <table className="email-sup-table">
-                <thead>
-                  <tr><th>Email</th><th>Reason</th><th>Source</th><th>Added</th><th></th></tr>
-                </thead>
-                <tbody>
-                  {active.map((s) => (
-                    <tr key={s.id}>
-                      <td>{s.email}</td>
-                      <td className="elog-provider">{s.reason ?? "—"}</td>
-                      <td className="elog-provider">{s.source ?? "—"}</td>
-                      <td className="elog-date">{fmtDate(s.createdAt)}</td>
-                      <td>
-                        <span className="esup-actions">
-                          <RemoveSuppressionButton email={s.email} />
-                          <DeleteSuppressionButton email={s.email} />
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+        {active.length > 0 && (
+          <p className="email-hint">Select rows to bulk remove or permanently delete.</p>
         )}
+        <SuppressionBulk rows={activeRows} />
       </section>
 
       {/* ── Previously removed ── */}
@@ -115,7 +98,7 @@ export default async function TabSuppression({ error }: { error?: string }) {
         <section className="email-section">
           <h2 className="email-section-title">Previously removed ({inactive.length})</h2>
           <p className="email-hint">
-            These addresses were suppressed and then manually re-enabled. They can receive emails again.
+            These addresses were suppressed then manually re-enabled. They can receive emails again.
           </p>
           <div className="email-log-wrap">
             <div className="email-log-scroll">

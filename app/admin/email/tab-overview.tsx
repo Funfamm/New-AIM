@@ -1,3 +1,4 @@
+import type React from "react";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { CheckCircle, XCircle, MinusCircle, Clock } from "lucide-react";
@@ -18,13 +19,17 @@ function fmtDate(d: Date) {
 }
 
 export default async function TabOverview() {
-  const [recentLogs, suppCount, queuedCount, bulkSettings] = await Promise.all([
+  const [recentLogs, suppCount, queuedCount, bulkSettings, engagement] = await Promise.all([
     prisma.emailLog.findMany({ orderBy: { createdAt: "desc" }, take: 8 }),
     prisma.emailSuppression.count({ where: { active: true } }),
     prisma.emailQueue.count({ where: { status: "QUEUED" } }),
     prisma.adminSettings.findUnique({
       where:  { id: "singleton" },
       select: { primaryBulkProvider: true },
+    }),
+    prisma.emailLog.aggregate({
+      _count: { _all: true, openedAt: true, clickedAt: true },
+      where:  { status: "SENT" },
     }),
   ]);
 
@@ -48,8 +53,13 @@ export default async function TabOverview() {
     activeBulkProvider === "GRAPH" ? graphConfigured :
     activeBulkProvider === "ACS"   ? acsConfigured   : false;
 
-  const sentCount   = recentLogs.filter((l) => l.status === "SENT").length;
-  const failedCount = recentLogs.filter((l) => l.status === "FAILED").length;
+  const sentCount    = recentLogs.filter((l) => l.status === "SENT").length;
+  const failedCount  = recentLogs.filter((l) => l.status === "FAILED").length;
+  const totalSent    = engagement._count._all   ?? 0;
+  const totalOpened  = engagement._count.openedAt  ?? 0;
+  const totalClicked = engagement._count.clickedAt ?? 0;
+  const openRate  = totalSent > 0 ? Math.round((totalOpened  / totalSent) * 100) : 0;
+  const clickRate = totalSent > 0 ? Math.round((totalClicked / totalSent) * 100) : 0;
 
   return (
     <>
@@ -169,6 +179,37 @@ export default async function TabOverview() {
             <span className="email-type-badge email-type-badge--future">Future</span>
           </div>
         </div>
+      </section>
+
+      {/* ── Engagement ── */}
+      <section className="email-section">
+        <h2 className="email-section-title">Engagement (all-time)</h2>
+        <div className="email-stats" style={{ marginBottom: 0 }}>
+          <div className="email-stat" style={{ "--estat-glow": "rgba(74,222,128,0.12)" } as React.CSSProperties}>
+            <span className="email-stat-val email-stat-val--green">{openRate}%</span>
+            <span className="email-stat-label">Open rate</span>
+          </div>
+          <div className="email-stat" style={{ "--estat-glow": "rgba(226,184,101,0.12)" } as React.CSSProperties}>
+            <span className="email-stat-val" style={{ color: "#e8c97e" }}>{clickRate}%</span>
+            <span className="email-stat-label">Click-through</span>
+          </div>
+          <div className="email-stat">
+            <span className="email-stat-val">{totalSent.toLocaleString()}</span>
+            <span className="email-stat-label">Emails tracked</span>
+          </div>
+          <div className="email-stat">
+            <span className="email-stat-val email-stat-val--muted">{totalOpened.toLocaleString()}</span>
+            <span className="email-stat-label">Opened</span>
+          </div>
+          <div className="email-stat">
+            <span className="email-stat-val email-stat-val--muted">{totalClicked.toLocaleString()}</span>
+            <span className="email-stat-label">CTA clicked</span>
+          </div>
+        </div>
+        <p className="email-hint" style={{ marginTop: "0.75rem" }}>
+          Open rates undercount Apple Mail / Outlook users (privacy protection). Click-through is the reliable signal.
+          <Link href="/admin/email?tab=logs" className="email-view-all" style={{ marginLeft: "0.5rem" }}>View full log →</Link>
+        </p>
       </section>
 
       {/* ── Recent sends ── */}

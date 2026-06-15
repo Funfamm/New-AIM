@@ -20,6 +20,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { buildUnsubscribeUrl, buildPreferencesUrl } from "@/lib/unsubscribe";
+import { generateTrackingToken, injectTrackingPixel, wrapLinksWithTracking } from "@/lib/email-tracking";
 import type { EmailType, EmailProvider, Prisma } from "@prisma/client";
 
 const APP_URL   = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
@@ -612,11 +613,14 @@ export async function processEmailQueueBatch(limit = 50): Promise<ProcessResult>
   let failed = 0;
 
   for (const item of items) {
+    const trackingToken = generateTrackingToken();
+    const trackedHtml   = injectTrackingPixel(wrapLinksWithTracking(item.bodyHtml, trackingToken), trackingToken);
+
     try {
       if (providerKey === "acs") {
-        await sendViaAcs({ to: item.to, subject: item.subject, html: item.bodyHtml });
+        await sendViaAcs({ to: item.to, subject: item.subject, html: trackedHtml });
       } else if (providerKey === "graph") {
-        await sendViaBulkGraph({ to: item.to, subject: item.subject, html: item.bodyHtml });
+        await sendViaBulkGraph({ to: item.to, subject: item.subject, html: trackedHtml });
       } else {
         throw new Error("SMTP bulk sending requires additional server configuration. Switch to ACS or Graph.");
       }
@@ -628,7 +632,7 @@ export async function processEmailQueueBatch(limit = 50): Promise<ProcessResult>
 
       await logBulkSend({
         to: item.to, subject: item.subject, type: item.type,
-        status: "SENT", campaignId: item.campaignId, provider: logProvider,
+        status: "SENT", campaignId: item.campaignId, provider: logProvider, trackingToken,
       });
 
       sent++;
@@ -774,13 +778,14 @@ async function sendViaAcs(opts: {
 // ── Email log helper for bulk sends ──────────────────────────
 
 async function logBulkSend(opts: {
-  to:          string;
-  subject:     string;
-  type:        EmailType;
-  status:      "SENT" | "FAILED";
-  error?:      string;
-  campaignId?: string | null;
-  provider?:   EmailProvider;
+  to:            string;
+  subject:       string;
+  type:          EmailType;
+  status:        "SENT" | "FAILED";
+  error?:        string;
+  campaignId?:   string | null;
+  provider?:     EmailProvider;
+  trackingToken?: string;
 }): Promise<void> {
   try {
     const provider = opts.provider ?? "ACS";
@@ -790,15 +795,16 @@ async function logBulkSend(opts: {
 
     await prisma.emailLog.create({
       data: {
-        to:       opts.to,
+        to:            opts.to,
         from,
-        subject:  opts.subject,
-        type:     opts.type,
+        subject:       opts.subject,
+        type:          opts.type,
         provider,
-        status:   opts.status,
-        error:    opts.error ?? null,
-        metadata: opts.campaignId ? { campaignId: opts.campaignId } : undefined,
-        sentAt:   opts.status === "SENT" ? new Date() : null,
+        status:        opts.status,
+        error:         opts.error ?? null,
+        metadata:      opts.campaignId ? { campaignId: opts.campaignId } : undefined,
+        trackingToken: opts.trackingToken ?? null,
+        sentAt:        opts.status === "SENT" ? new Date() : null,
       },
     });
   } catch {
