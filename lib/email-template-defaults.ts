@@ -14,14 +14,19 @@ export const T = {
 <html lang="en">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#0a0a0a;font-family:system-ui,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0a;padding:40px 16px;">
-    <tr><td align="center">
-      <table width="100%" style="max-width:480px;background:#111111;border:1px solid #2a2a2a;border-radius:12px;padding:40px 32px;">
-        <tr><td>
-          <p style="margin:0 0 24px;font-size:20px;font-weight:700;color:#f9fafb;letter-spacing:-0.3px;">AIM<span style="color:#e8c97e;">Studio</span></p>
+  <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:#0a0a0a;">
+    <tr><td align="center" style="padding:40px 16px;">
+      <table width="100%" cellpadding="0" cellspacing="0" role="presentation"
+             style="max-width:600px;background:#111111;border:1px solid #2a2a2a;border-radius:8px;">
+        <tr><td style="padding:22px 32px;border-bottom:2px solid #e8c97e;">
+          <p style="margin:0;font-size:18px;font-weight:700;color:#f9fafb;letter-spacing:-0.4px;">AIM<span style="color:#e8c97e;">Studio</span></p>
+        </td></tr>
+        <tr><td style="padding:32px 32px 28px;">
           ${inner}
-          <hr style="margin:28px 0;border:none;border-top:1px solid #2a2a2a;">
-          <p style="margin:0;font-size:11px;color:#4b5563;line-height:1.6;letter-spacing:0.06em;text-transform:uppercase;">AIM Studio &nbsp;&middot;&nbsp; Don&rsquo;t look away.</p>
+        </td></tr>
+        <tr><td style="padding:18px 32px;background:#0a0a0a;border-top:1px solid #1a1a1a;border-radius:0 0 8px 8px;">
+          <p style="margin:0;font-size:11px;color:#4b5563;line-height:1.6;letter-spacing:0.03em;">AIM Studio &nbsp;&middot;&nbsp; Don&rsquo;t look away.</p>
+          <p style="margin:4px 0 0;font-size:11px;color:#374151;line-height:1.6;">You are receiving this email because you have an account on AIM Studio.</p>
         </td></tr>
       </table>
     </td></tr>
@@ -33,18 +38,22 @@ export const T = {
 <html lang="en">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#0a0a0a;font-family:system-ui,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0a;padding:40px 16px;">
-    <tr><td align="center">
-      <table width="100%" style="max-width:480px;background:#111111;border:1px solid #2a2a2a;border-radius:12px;padding:40px 32px;">
-        <tr><td>
-          <p style="margin:0 0 24px;font-size:20px;font-weight:700;color:#f9fafb;letter-spacing:-0.3px;">AIM<span style="color:#e8c97e;">Studio</span></p>
+  <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:#0a0a0a;">
+    <tr><td align="center" style="padding:40px 16px;">
+      <table width="100%" cellpadding="0" cellspacing="0" role="presentation"
+             style="max-width:600px;background:#111111;border:1px solid #2a2a2a;border-radius:8px;">
+        <tr><td style="padding:22px 32px;border-bottom:2px solid #e8c97e;">
+          <p style="margin:0;font-size:18px;font-weight:700;color:#f9fafb;letter-spacing:-0.4px;">AIM<span style="color:#e8c97e;">Studio</span></p>
+        </td></tr>
+        <tr><td style="padding:32px 32px 28px;">
           ${inner}
-          <hr style="margin:28px 0;border:none;border-top:1px solid #2a2a2a;">
-          <p style="margin:0 0 8px;font-size:11px;color:#4b5563;line-height:1.6;letter-spacing:0.06em;text-transform:uppercase;">AIM Studio &nbsp;&middot;&nbsp; Don&rsquo;t look away.</p>
+        </td></tr>
+        <tr><td style="padding:18px 32px;background:#0a0a0a;border-top:1px solid #1a1a1a;border-radius:0 0 8px 8px;">
+          <p style="margin:0 0 5px;font-size:11px;color:#4b5563;line-height:1.6;letter-spacing:0.03em;">AIM Studio &nbsp;&middot;&nbsp; Don&rsquo;t look away.</p>
           <p style="margin:0;font-size:11px;color:#374151;line-height:1.6;">
-            <a href="{{preferencesUrl}}" style="color:#374151;">Manage preferences</a>
+            <a href="{{preferencesUrl}}" style="color:#4b5563;text-decoration:underline;">Manage preferences</a>
             &nbsp;&middot;&nbsp;
-            <a href="{{unsubscribeUrl}}" style="color:#374151;">Unsubscribe</a>
+            <a href="{{unsubscribeUrl}}" style="color:#4b5563;text-decoration:underline;">Unsubscribe</a>
           </p>
         </td></tr>
       </table>

@@ -11,10 +11,11 @@ import TabLogs        from "./tab-logs";
 import TabQueue       from "./tab-queue";
 import TabImport      from "./tab-import";
 import TabSettings    from "./tab-settings";
+import TabTest        from "./tab-test";
 
 export const metadata: Metadata = { title: "Email — Admin" };
 
-type Tab = "overview" | "suppression" | "logs" | "queue" | "import" | "settings";
+type Tab = "overview" | "suppression" | "logs" | "queue" | "import" | "settings" | "test";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "overview",    label: "Overview"    },
@@ -23,6 +24,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "queue",       label: "Queue"       },
   { id: "import",      label: "Import"      },
   { id: "settings",    label: "Settings"    },
+  { id: "test",        label: "Test Email"  },
 ];
 
 type Props = {
@@ -42,7 +44,7 @@ export default async function AdminEmailPage({ searchParams }: Props) {
 
   const params  = await searchParams;
   const rawTab  = (params.tab ?? "overview") as Tab;
-  const tab: Tab = TABS.some((t) => t.id === rawTab) ? rawTab : "overview";
+  const tab: Tab = (TABS.some((t) => t.id === rawTab) ? rawTab : "overview") as Tab;
 
   // Logs tab filters
   const rawStatus    = (params.status ?? "ALL").toUpperCase();
@@ -78,6 +80,7 @@ export default async function AdminEmailPage({ searchParams }: Props) {
       {tab === "queue"       && <TabQueue />}
       {tab === "import"      && <TabImport imported={imported} skipped={skipped} error={error} />}
       {tab === "settings"    && <TabSettings />}
+      {tab === "test"        && <TabTest />}
     </div>
   );
 }
