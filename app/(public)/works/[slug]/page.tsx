@@ -352,7 +352,6 @@ export default async function WorkDetailPage({ params }: Props) {
                   initialLiked={isLiked}
                   likeCount={likeCount}
                   isGuest={isGuest}
-                  slug={work.slug}
                 />
                 <ShareButton title={work.title} slug={work.slug} workId={work.id} />
 

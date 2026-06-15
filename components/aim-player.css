@@ -454,7 +454,8 @@
 }
 
 /* ── Fullscreen ──────────────────────────────── */
-:fullscreen .aim-player,
-:-webkit-full-screen .aim-player {
-  position: fixed; inset: 0; width: 100vw; height: 100vh;
+/* .aim-player IS the fullscreen element — use element:fullscreen, not :fullscreen descendant */
+.aim-player:fullscreen,
+.aim-player:-webkit-full-screen {
+  position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 9999;
 }
