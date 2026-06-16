@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth-guard";
 import { auth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { rateLimit } from "@/lib/rate-limit";
 import type { CtaType } from "@prisma/client";
 
 
@@ -100,6 +101,10 @@ export async function notifyMeSignup(
 
   if (!resolvedEmail || !resolvedEmail.includes("@"))
     return { ok: false, error: "Please enter a valid email address." };
+
+  // Rate limit: 10 signup attempts per email per hour
+  const rl = rateLimit(`ncta:${resolvedEmail}`, 10, 60 * 60 * 1000);
+  if (!rl.allowed) return { ok: false, error: "Too many requests. Please try again later." };
 
   // Check suppression list — silently succeed so we don't leak suppression status
   const suppressed = await prisma.emailSuppression.findUnique({

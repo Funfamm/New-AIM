@@ -6,6 +6,7 @@ import { requireAdmin } from "@/lib/auth-guard";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { runAuditionReview } from "@/lib/casting/casting-ai-client";
+import { writeAudit } from "@/lib/audit";
 import {
   sendCastingReceived,
   sendCastingRequirementsNotMet,
@@ -430,6 +431,14 @@ export async function triggerAgentReview(applicationId: string): Promise<void> {
       where: { id: applicationId },
       data: { status: "SUBMITTED", reviewStartedAt: null, updatedAt: new Date() },
     });
+    // Log failure so admin can see it in the audit trail
+    writeAudit({
+      actorId:    "SYSTEM",
+      actorEmail: "system",
+      targetId:   applicationId,
+      action:     "AGENT_REVIEW_FAILED",
+      detail:     String(result.error).slice(0, 500),
+    }).catch(() => {});
     return;
   }
 
@@ -628,6 +637,14 @@ export async function adminUpdateApplicationStatus(
   } else if (newStatus === "NOT_SELECTED") {
     sendCastingNotSelected(emailArgs).catch(() => {});
   }
+
+  writeAudit({
+    actorId:    admin.id,
+    actorEmail: admin.email ?? "",
+    targetId:   applicationId,
+    action:     `CASTING_${newStatus}`,
+    detail:     reason ?? undefined,
+  }).catch(() => {});
 
   revalidatePath("/admin/casting");
   revalidatePath(`/admin/casting/${applicationId}`);
