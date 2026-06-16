@@ -35,6 +35,45 @@
 - `DATABASE_URL` in `.env` should point to the pooler. The direct URL is only needed for migrations (`prisma migrate deploy`).
 - The Prisma client is a singleton in `lib/prisma.ts` — do not instantiate new PrismaClient instances per request.
 
+### How to get the pooler URL (Neon)
+
+1. Open [console.neon.tech](https://console.neon.tech) → your project → **Connection Details**.
+2. In the connection string selector, choose **Pooled connection** (not Direct).
+3. The pooler URL looks like: `postgresql://user:pass@ep-xxx-pooler.region.aws.neon.tech/dbname?sslmode=require`
+4. Set this as `DATABASE_URL` in Vercel → Settings → Environment Variables.
+5. For migrations only, use the **Direct connection** URL via `DIRECT_URL` in Prisma schema:
+
+```prisma
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")      // pooler — used by app
+  directUrl = env("DIRECT_URL")        // direct — used by prisma migrate deploy
+}
+```
+
+## Backups & Point-in-Time Restore (PITR)
+
+### Enabling PITR on Neon
+
+1. Open [console.neon.tech](https://console.neon.tech) → your project.
+2. Go to **Settings** → **Storage** — verify that **Point-in-Time Restore** is available and active (included on paid plans).
+3. Neon retains up to 7 days of history on the Free plan, 30 days on paid plans.
+
+### Testing restore (do this quarterly)
+
+1. In Neon console → **Restore** → select a timestamp from 24h ago.
+2. Neon creates a new branch from that point in time.
+3. Verify the branch database contains the expected data.
+4. Delete the test branch after verification.
+5. Log the test date in the incident log.
+
+### Pre-operation snapshot
+
+Before any large data migration or destructive operation:
+1. In Neon console → **Branches** → **Create branch** → name it `backup-YYYY-MM-DD`.
+2. Run the migration.
+3. If the migration succeeds, delete the branch. If it fails, restore from the branch.
+
 ## Query Safety
 
 - Every `findMany` must have a `take` limit. Default maximum: 500 rows unless there is an explicit pagination pattern.

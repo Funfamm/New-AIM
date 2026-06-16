@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { requireAdmin } from "@/lib/auth-guard";
 import { revalidatePath } from "next/cache";
+import { rateLimit } from "@/lib/rate-limit";
 import type { CommentReportReason, CommentReportStatus } from "@prisma/client";
 
 const MAX_BODY    = 1000;
@@ -91,6 +92,10 @@ export async function createComment(
 ): Promise<{ ok: boolean; error?: string; comment?: { id: string; body: string; createdAt: Date } }> {
   const session = await auth();
   if (!session?.user?.id) return { ok: false, error: "Sign in to comment." };
+
+  // Rate limit: 10 comments per user per minute
+  const rl = rateLimit(`comment:${session.user.id}`, 10, 60 * 1000);
+  if (!rl.allowed) return { ok: false, error: "You are posting too quickly. Please wait a moment." };
 
   const clean = sanitize(body);
   const maxLen = parentId ? MAX_REPLY : MAX_BODY;
