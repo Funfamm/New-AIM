@@ -5,9 +5,10 @@ import { premiumTransactionalEmail } from "@/lib/email-base";
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
 type BaseArgs = {
-  to:        string;
-  name:      string;
-  roleTitle: string;
+  to:         string;
+  name:       string;
+  roleTitle:  string;
+  posterUrl?: string | null;
 };
 
 // ── HTML helpers ──────────────────────────────────────────────
@@ -39,8 +40,8 @@ function cta(href: string, label: string): string {
 
 // Wraps the casting body HTML in the shared premium layout.
 // Uses premiumTransactionalEmail (transactional — no unsubscribe footer).
-function castingEmail(title: string, bodyHtml: string, label = "Casting"): string {
-  return premiumTransactionalEmail({ title, bodyHtml, label });
+function castingEmail(title: string, bodyHtml: string, label = "Casting", imageUrl?: string | null): string {
+  return premiumTransactionalEmail({ title, bodyHtml, label, imageUrl: imageUrl ?? undefined });
 }
 
 // ── 1. Application received ───────────────────────────────────
@@ -60,6 +61,8 @@ export async function sendCastingReceived(args: BaseArgs & { trackingToken: stri
       ${cta(trackUrl, "Track My Application")}
       ${note("You will receive an email when your application status changes.")}
       `,
+      "Casting",
+      args.posterUrl,
     ),
     metadata: { roleTitle: args.roleTitle },
   });
@@ -97,6 +100,7 @@ export async function sendCastingRequirementsNotMet(
       ${note("We appreciate your time and interest in working with AIM Studio.")}
       `,
       "Casting",
+      args.posterUrl,
     ),
     metadata: { roleTitle: args.roleTitle },
   });
@@ -110,6 +114,7 @@ export async function sendCastingReadyForReview(args: {
   roleTitle:      string;
   applicationId:  string;
   score:          number;
+  posterUrl?:     string | null;
 }) {
   const adminUrl = `${APP_URL}/admin/casting/${args.applicationId}`;
   await sendEmail({
@@ -144,6 +149,7 @@ export async function sendCastingReadyForReview(args: {
       ${cta(adminUrl, "Review Application")}
       `,
       "Admin — Casting",
+      args.posterUrl,
     ),
     metadata: { roleTitle: args.roleTitle, score: args.score },
   });
@@ -165,6 +171,8 @@ export async function sendCastingShortlisted(args: BaseArgs & { trackingToken: s
       ${p("Our team will be in touch with you soon regarding next steps. Please keep an eye on your inbox.")}
       ${cta(trackUrl, "View Application Status")}
       `,
+      "Casting",
+      args.posterUrl,
     ),
     metadata: { roleTitle: args.roleTitle },
   });
@@ -187,6 +195,8 @@ export async function sendCastingContacted(args: BaseArgs & { trackingToken: str
       ${note("Please respond through the contact channel our team used to reach you.")}
       ${cta(trackUrl, "View Application Status")}
       `,
+      "Casting",
+      args.posterUrl,
     ),
     metadata: { roleTitle: args.roleTitle },
   });
@@ -209,6 +219,8 @@ export async function sendCastingSelected(args: BaseArgs & { trackingToken: stri
       ${cta(trackUrl, "View Application Status")}
       ${note("We look forward to working with you.")}
       `,
+      "Casting",
+      args.posterUrl,
     ),
     metadata: { roleTitle: args.roleTitle },
   });
@@ -229,6 +241,8 @@ export async function sendCastingNotSelected(args: BaseArgs) {
       ${p("After careful consideration, we have decided to move forward with another candidate for this particular role. This decision reflects the specific requirements of this production and is not a reflection of your talent.")}
       ${note("We encourage you to follow AIM Studio for future casting opportunities.")}
       `,
+      "Casting",
+      args.posterUrl,
     ),
     metadata: { roleTitle: args.roleTitle },
   });
@@ -248,6 +262,8 @@ export async function sendCastingWithdrawn(args: BaseArgs) {
       ${p(`This confirms that your application for <strong style="color:#e5e7eb;">${esc(args.roleTitle)}</strong> has been successfully withdrawn.`)}
       ${note("Thank you for your interest in AIM Studio. We hope to see you apply for future roles.")}
       `,
+      "Casting",
+      args.posterUrl,
     ),
     metadata: { roleTitle: args.roleTitle },
   });

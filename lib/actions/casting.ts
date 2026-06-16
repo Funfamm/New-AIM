@@ -233,7 +233,7 @@ export async function submitCastingApplication(
   // Validate role exists and is open
   const role = await prisma.castingRole.findUnique({
     where: { id: input.roleId },
-    select: { id: true, isOpen: true, title: true, requireVoiceSample: true },
+    select: { id: true, isOpen: true, title: true, requireVoiceSample: true, work: { select: { posterUrl: true } } },
   });
   if (!role || !role.isOpen) return { ok: false, error: "This role is not currently accepting applications." };
 
@@ -332,6 +332,7 @@ export async function submitCastingApplication(
     name:          input.name.trim(),
     roleTitle:     role.title,
     trackingToken: application.trackingToken,
+    posterUrl:     role.work?.posterUrl ?? null,
   }).catch(() => {});
 
   // Trigger agent review in background (non-blocking)
@@ -351,7 +352,7 @@ export async function withdrawApplication(
 
   const app = await prisma.castingApplication.findUnique({
     where: { trackingToken: token },
-    select: { id: true, userId: true, status: true, name: true, email: true, role: { select: { title: true } } },
+    select: { id: true, userId: true, status: true, name: true, email: true, role: { select: { title: true, work: { select: { posterUrl: true } } } } },
   });
 
   if (!app) return { ok: false, error: "Application not found." };
@@ -365,7 +366,7 @@ export async function withdrawApplication(
     data: { status: "WITHDRAWN", withdrawnAt: new Date(), updatedAt: new Date() },
   });
 
-  sendCastingWithdrawn({ to: app.email, name: app.name, roleTitle: app.role.title }).catch(() => {});
+  sendCastingWithdrawn({ to: app.email, name: app.name, roleTitle: app.role.title, posterUrl: app.role.work?.posterUrl ?? null }).catch(() => {});
 
   revalidatePath(`/casting/applications/track/${token}`);
   return { ok: true };
@@ -377,7 +378,7 @@ export async function triggerAgentReview(applicationId: string): Promise<void> {
   const app = await prisma.castingApplication.findUnique({
     where: { id: applicationId },
     include: {
-      role: true,
+      role: { include: { work: { select: { posterUrl: true } } } },
       media: { orderBy: { sortOrder: "asc" } },
     },
   });
@@ -479,6 +480,7 @@ export async function triggerAgentReview(applicationId: string): Promise<void> {
           roleTitle:     app.role.title,
           applicationId: app.id,
           score:         result.overallScore,
+          posterUrl:     app.role.work?.posterUrl ?? null,
         }).catch(() => {});
       }
     }
@@ -495,12 +497,13 @@ export async function triggerAgentReview(applicationId: string): Promise<void> {
     });
 
     sendCastingRequirementsNotMet({
-      to:           app.email,
-      name:         app.name,
-      roleTitle:    app.role.title,
-      reasons:      result.missingItems,
+      to:            app.email,
+      name:          app.name,
+      roleTitle:     app.role.title,
+      reasons:       result.missingItems,
       trackingToken: app.trackingToken,
       canResubmit,
+      posterUrl:     app.role.work?.posterUrl ?? null,
     }).catch(() => {});
   }
 
@@ -598,7 +601,7 @@ export async function adminUpdateApplicationStatus(
     where: { id: applicationId },
     select: {
       id: true, name: true, email: true, status: true, trackingToken: true,
-      role: { select: { title: true } },
+      role: { select: { title: true, work: { select: { posterUrl: true } } } },
     },
   });
   if (!app) return { ok: false, error: "Application not found." };
@@ -615,7 +618,7 @@ export async function adminUpdateApplicationStatus(
   });
 
   // Send decision emails
-  const emailArgs = { to: app.email, name: app.name, roleTitle: app.role.title };
+  const emailArgs = { to: app.email, name: app.name, roleTitle: app.role.title, posterUrl: app.role.work?.posterUrl ?? null };
   if (newStatus === "SHORTLISTED") {
     sendCastingShortlisted({ ...emailArgs, trackingToken: app.trackingToken }).catch(() => {});
   } else if (newStatus === "CONTACTED") {

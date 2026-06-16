@@ -150,6 +150,11 @@ export default function VideoPlayer({
           const video = videoRef.current;
           if (video) save(Math.floor(video.duration));
           beacon("WATCH_COMPLETE", { workId });
+          if (cta && !ctaShownRef.current) {
+            ctaShownRef.current = true;
+            setCtaVisible(true);
+            beacon("CTA_IMPRESSION", { workId, metadata: { ctaId: cta.id } });
+          }
         }}
       />
 

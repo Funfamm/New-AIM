@@ -266,8 +266,18 @@ export default async function WatchPage({ params, searchParams }: Props) {
   const isSeriesTrailer = work.type === "SERIES" && !!trailer;
   const seriesEpisodes  = isSeriesTrailer ? work.episodes : [];
 
-  // Notify Me CTA
-  let rawCta = work.notifyMeCta?.isEnabled && !isEmbed ? work.notifyMeCta : null;
+  // Notify Me CTA gate:
+  // • Full film published → only fire on the full film watch, not trailer/preview
+  // • Full film NOT published yet (project only has trailer/preview) → fire on trailer/preview
+  // • Series with episodes → only fire on the last episode
+  // • Series with no episodes yet → fire on the series trailer page
+  const isFullFilmWatch = !isTrailer && !isPreview && !isEpisode;
+  const fullFilmAvailable = !isEpisode && work.status === "PUBLISHED" && !!work.videoUrl;
+  const seriesEpisodesAvailable = work.type === "SERIES" && work.episodes.length > 0;
+  const onTrailerOrPreviewOnly = (isTrailer || isPreview) && !fullFilmAvailable && !seriesEpisodesAvailable;
+  let rawCta = (isFullFilmWatch || isLastEp || onTrailerOrPreviewOnly) && work.notifyMeCta?.isEnabled && !isEmbed
+    ? work.notifyMeCta
+    : null;
   if (!rawCta && isLastEp && work.parent?.id) {
     const seriesCta = await prisma.notifyMeCta.findUnique({
       where: { workId: work.parent.id },
