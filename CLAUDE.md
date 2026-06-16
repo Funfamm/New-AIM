@@ -83,6 +83,24 @@ Fonts are loaded via `next/font/google` in `app/layout.tsx` (weights: Cormorant 
 
 ---
 
+## Engineering & Safety Standards
+
+These documents are the authoritative standards for all work on AIM Studio Lite. Read the relevant doc before starting any task in that domain.
+
+| Document | When to read |
+|---|---|
+| `docs/SOFTWARE_ENGINEERING.md` | Before any feature work — the master standard |
+| `docs/SECURITY_STANDARD.md` | Auth, permissions, input validation, secrets, headers |
+| `docs/DATABASE_SAFETY.md` | Schema changes, migrations, queries, transactions |
+| `docs/SCALING_STANDARD.md` | Performance, background jobs, CDN, service splits |
+| `docs/DEPLOYMENT_CHECKLIST.md` | Before every PR merge and production release |
+| `docs/INCIDENT_RESPONSE.md` | When something breaks in production |
+| `docs/AI_AGENT_SAFETY.md` | Rules for all AI/LLM coding sessions — read every session |
+
+**Definition of Done** (from `docs/SOFTWARE_ENGINEERING.md`): a feature is not complete until it works for users, works on mobile, handles errors, is secure, does not break scaling rules, is tested, is observable, and can be rolled back.
+
+---
+
 ## Core rules
 
 1. **Only install a package when necessary for the current feature.** Check if plain TypeScript suffices first. Never install speculatively.
@@ -98,6 +116,9 @@ Fonts are loaded via `next/font/google` in `app/layout.tsx` (weights: Cormorant 
 11. **Keep all UI work premium, cinematic, mobile-first, and 4G-friendly.** The standard is Netflix-level browsing, Apple-level spacing, A24-level restraint. If a change looks template-generic, it does not meet the standard.
 12. **Always follow `docs/BRAND_COPY_GUIDE_V2.md` for all public-facing copy.** This supersedes `docs/BRAND_COPY_GUIDE.md`. Use exact words from the guide — do not paraphrase or invent new copy. Never use buzzwords (revolutionize, disrupt, leverage, synergize, AI-powered, AI-driven). Section 3 (Future) must not be built yet; Section 1 is cleared for V1.
 13. **Always follow `docs/ADMIN_DASHBOARD_BLUEPRINT.md` for all admin UI work.** Before any admin redesign or new admin module, read Sections 1–4. Do not build modules listed in Section 2 (Future). Propose a phase plan before touching multiple admin areas at once.
+14. **Never print, log, or output environment variable values.** Check names only; redact values. See `docs/AI_AGENT_SAFETY.md`.
+15. **Schema changes use `migrate deploy`, never `db:push` on production.** Test migrations on a branch database first. See `docs/DATABASE_SAFETY.md`.
+16. **All admin actions must verify session and role server-side.** Middleware alone is not sufficient — call `requireAdmin()` inside every Server Action. See `docs/SECURITY_STANDARD.md`.
 
 ---
 
