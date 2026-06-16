@@ -1,0 +1,191 @@
+{
+  "platform": "AIM Studio Lite",
+  "status": "production-ready",
+  "modules": {
+    "auth": {
+      "status": "complete",
+      "description": "Credentials + Google OAuth, JWT, roles, password reset, security events",
+      "key_files": [
+        "lib/auth.ts",
+        "lib/actions/auth.ts",
+        "lib/security.ts",
+        "app/(auth)/login/page.tsx",
+        "app/(auth)/register/page.tsx"
+      ]
+    },
+    "video": {
+      "status": "complete",
+      "description": "HLS playback, R2/CDN, skip intro/credits, speed, subtitles, watch progress, clip mode",
+      "key_files": [
+        "components/video-player.tsx",
+        "components/episode-player.tsx",
+        "components/aim-player.tsx",
+        "lib/use-hls-video.ts",
+        "lib/actions/progress.ts",
+        "app/(public)/watch/[slug]/page.tsx"
+      ]
+    },
+    "works": {
+      "status": "complete",
+      "description": "Film/series CRUD, episodes, trailers, previews, publishing workflow",
+      "key_files": [
+        "app/admin/works/",
+        "lib/actions/works.ts",
+        "app/(public)/works/[slug]/page.tsx"
+      ]
+    },
+    "subtitles": {
+      "status": "complete",
+      "description": "Upload, translate, VTT generation, per-language tracks",
+      "key_files": [
+        "lib/subtitles/",
+        "app/admin/works/[id]/subtitles/"
+      ]
+    },
+    "notify_me_cta": {
+      "status": "complete",
+      "description": "Per-work CTA with smart gate (full film / last episode / trailer-only), onEnded trigger",
+      "key_files": [
+        "components/notify-cta-overlay.tsx",
+        "lib/actions/notify-cta.ts",
+        "app/admin/notify-me-ctas/",
+        "app/(public)/watch/[slug]/page.tsx"
+      ]
+    },
+    "casting": {
+      "status": "complete",
+      "description": "Roles, applications, AI agent review, admin decisions, 8 status emails with poster",
+      "key_files": [
+        "lib/actions/casting.ts",
+        "lib/casting/casting-emails.ts",
+        "lib/casting/casting-ai-client.ts",
+        "app/admin/casting/",
+        "app/(public)/casting/"
+      ]
+    },
+    "email_transactional": {
+      "status": "complete",
+      "description": "Microsoft Graph sender, open/click tracking, suppression check, log",
+      "key_files": [
+        "lib/email.ts",
+        "lib/email-base.ts",
+        "lib/email-tracking.ts",
+        "app/api/email/open/route.ts",
+        "app/api/email/click/route.ts"
+      ]
+    },
+    "email_bulk": {
+      "status": "complete",
+      "description": "ACS/Graph bulk sender, EmailQueue table, queue processor, suppression enforced",
+      "key_files": [
+        "lib/bulk-email.ts",
+        "lib/actions/outreach.ts",
+        "app/admin/outreach/"
+      ]
+    },
+    "email_admin": {
+      "status": "complete",
+      "description": "Queue (retry/cancel/bulk), logs (delete/clear-old, open/click tracking), suppression (bulk), templates, engagement stats",
+      "key_files": [
+        "app/admin/email/",
+        "lib/actions/email-admin.ts"
+      ]
+    },
+    "comments": {
+      "status": "complete",
+      "description": "Nested comments (1 level), likes, reports, admin moderation, rate limited",
+      "key_files": [
+        "lib/actions/comments.ts",
+        "components/comment-section.tsx",
+        "app/admin/comments/"
+      ]
+    },
+    "analytics": {
+      "status": "complete",
+      "description": "Beacon events, visitor sessions, watch events, admin overview",
+      "key_files": [
+        "lib/analytics.ts",
+        "lib/beacon.ts",
+        "app/admin/analytics/",
+        "app/api/analytics/route.ts"
+      ]
+    },
+    "users_admin": {
+      "status": "complete",
+      "description": "User list, role management, suspension, audit log",
+      "key_files": [
+        "lib/actions/users-admin.ts",
+        "app/admin/users/"
+      ]
+    },
+    "security": {
+      "status": "complete",
+      "description": "Login throttle (DB-backed), security events, device tracking, audit log, security alerts",
+      "key_files": [
+        "lib/security.ts",
+        "lib/audit.ts",
+        "prisma/schema.prisma (LoginAttempt, SecurityEvent, AdminAuditLog)"
+      ]
+    },
+    "rate_limiting": {
+      "status": "complete",
+      "description": "In-memory sliding window (per-instance). Applied: comments, notify-me. Login uses DB-backed checkLoginThrottle.",
+      "key_files": [
+        "lib/rate-limit.ts"
+      ],
+      "known_gap": "Per-instance only. Upgrade to Upstash Redis for cross-instance coordination."
+    },
+    "security_headers": {
+      "status": "complete",
+      "description": "CSP, X-Frame-Options, HSTS, Referrer-Policy, Permissions-Policy on all responses",
+      "key_files": [
+        "next.config.ts"
+      ]
+    },
+    "ci": {
+      "status": "complete",
+      "description": "GitHub Actions: lint + tsc + npm audit on every PR and push to main",
+      "key_files": [
+        ".github/workflows/ci.yml"
+      ]
+    },
+    "hls_media": {
+      "status": "complete",
+      "description": "R2 bucket, CDN delivery, private/public path split, correct Content-Type and CORS",
+      "key_files": [
+        "lib/r2.ts",
+        "app/api/hls/"
+      ]
+    },
+    "watchlist": {
+      "status": "complete",
+      "description": "Save/unsave works, dashboard saved tab",
+      "key_files": [
+        "lib/actions/watchlist.ts",
+        "components/save-button.tsx"
+      ]
+    },
+    "likes": {
+      "status": "complete",
+      "description": "Like/unlike works and comments",
+      "key_files": [
+        "lib/actions/likes.ts"
+      ]
+    },
+    "dashboard": {
+      "status": "complete",
+      "description": "User dashboard: continue watching, saved, notifications, settings",
+      "key_files": [
+        "app/dashboard/"
+      ]
+    }
+  },
+  "out_of_scope_v1": [
+    "push_notifications",
+    "payment_subscription",
+    "i18n",
+    "watch_party",
+    "advanced_analytics",
+    "rag_memory"
+  ]
+}
