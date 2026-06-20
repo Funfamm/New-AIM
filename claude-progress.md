@@ -100,21 +100,30 @@ Full-platform audit fixes applied (see `docs/lite-hls-streaming-audit.md` §11�
 - **F-04 worker secret** — `lib/worker-auth.ts` now uses `crypto.timingSafeEqual`.
 - **F-05 Turnstile** — `app/api/subscribe/route.ts` now fails **closed** on siteverify network error.
 - **F-06 PII logs** — removed `console.log` of user email/id from `lib/auth.ts`.
-- **F-07 crossOrigin** — `crossOrigin="anonymous"` on all `<video>` (aim/episode/video players). **Depends on R2 CORS being live** (see streaming audit §6/§11.1).
-- **F-08 HLS errors** — `lib/use-hls-video.ts` retries recoverable errors, surfaces fatal via new `components/player-load-error.tsx` overlay wired into all 3 players.
-- **F-11 prefetch** — hls.js dynamic import marked `webpackPrefetch`.
-- **F-13 CTA key** — `ctaSignedKey()` helper scopes the notify-CTA localStorage key per user email.
 - **F-14 error pages** — added branded `app/not-found.tsx`; hardened `app/error.tsx` (no longer leaks raw `error.message`, adds Home link).
-- **F-16 ABR** — multi-bitrate HLS ladder requirement documented (streaming audit §11.4).
-- **F-01 (CODE-COMPLETE, pending deploy)** — playback gate built. App signs a short-lived path-scoped token (`lib/playback-token.ts`) and rewrites the full-film `src` through `lib/playback-url.ts` when a work has `requiresAuth` + the gate env vars are set; otherwise serves the public URL unchanged (inert, zero behaviour change). Cloudflare Worker in `worker/playback-gate/` validates the token, serves from R2, and propagates the token onto HLS child playlists. Token-in-URL design runs on free `*.workers.dev` (no DNS change). To activate: deploy the Worker, set `PLAYBACK_GATE_BASE_URL` + `PLAYBACK_SIGNING_KEY` on Vercel + Worker. Plan: `docs/lite-playback-gate-plan.md`; deploy steps: `worker/playback-gate/README.md`.
 
-`npx tsc --noEmit` passes (app and Worker).
+### REVERTED 2026-06-20 (broke video playback)
+
+`crossOrigin="anonymous"` (F-07) requires R2 CORS to echo the app origin; CORS was not
+configured, so it broke ALL video playback for guests and members. The whole playback
+layer was reverted to the pre-audit state to restore working video:
+
+- **F-01 playback gate — REMOVED.** `lib/playback-token.ts`, `lib/playback-url.ts`, the watch-page wiring, and `worker/playback-gate/` all deleted. Videos serve from the public CDN exactly as before. The Cloudflare Worker `aim-playback-gate` was deployed during testing — delete it from the CF dashboard (or `wrangler delete`) if not already removed.
+- **F-07 crossOrigin — REVERTED** on all 3 players (the actual cause of the breakage).
+- **F-08 HLS errors / `player-load-error` — REVERTED** (player files restored).
+- **F-11 hls.js prefetch — REVERTED.**
+- **F-13 CTA key scoping — REVERTED** (touched only the unused legacy players + overlay).
+- **F-16 ABR doc — REVERTED** (streaming-audit doc restored to pre-audit version).
+
+Still in place (not video-related): F-02 CSP, F-03 image hosts, F-04 worker secret, F-05 Turnstile, F-06 PII logs, F-14 error pages.
+
+`npx tsc --noEmit` passes.
 
 ---
 
 ## Known Gaps (open)
 
-- **F-01 Playback access control — code-complete, NOT yet activated.** Gate is built and inert; full films on `requiresAuth` works will only be deliverable to signed-in members once the Cloudflare Worker (`worker/playback-gate/`) is deployed and `PLAYBACK_GATE_BASE_URL` + `PLAYBACK_SIGNING_KEY` are set on Vercel. Until then, films still serve from the public CDN (current behaviour). Deploy steps: `worker/playback-gate/README.md`.
+- **F-01 Playback access control — OPEN, reverted.** The token-gate approach broke playback (R2 CORS not configured for `crossOrigin`) and was removed. Films are served from public CDN URLs again — access is gated at the page, not the file. Any future attempt MUST first configure R2 CORS to allow the app origin, then verify trailer + full-film playback before touching `crossOrigin`/signing.
 - Rate limiting is per-instance (in-memory). Works against burst abuse. Does not coordinate across Vercel instances. Upgrade path: Upstash Redis + `@upstash/ratelimit`.
 - No end-to-end tests. TypeScript + lint + tsc are the only automated checks.
 - CSP uses `'unsafe-inline'` for scripts (required by Next.js). Tighten with nonces when Next.js supports it cleanly.
