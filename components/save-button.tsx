@@ -4,8 +4,9 @@ import { useState, useTransition } from "react";
 import { Bookmark, BookmarkCheck } from "lucide-react";
 import { saveWork, unsaveWork } from "@/lib/actions/watchlist";
 import { useToast } from "./toast-context";
-// CSS imported at route level (app/(public)/works/[slug]/page.tsx) to avoid
-// late-loading during client-side navigation.
+// Co-locate the CSS with the component so the pill styles always load with it,
+// preventing unstyled-box flashes on client-side navigation (e.g. on hero overlays).
+import "./action-buttons.css";
 
 type Props = {
   workId: string;
