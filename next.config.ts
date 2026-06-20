@@ -46,10 +46,10 @@ const securityHeaders = [
       isDev
         ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
         : "script-src 'self' 'unsafe-inline'",
-      // Tailwind uses inline styles; Google Fonts stylesheet
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      // Google Fonts webfont files
-      "font-src 'self' https://fonts.gstatic.com",
+      // Tailwind uses inline styles. Fonts are self-hosted via next/font, so no
+      // external Google Fonts origins are required.
+      "style-src 'self' 'unsafe-inline'",
+      "font-src 'self'",
       // Images from R2 CDN + data URIs + blob for video thumbnails
       "img-src 'self' data: blob: https:",
       // HLS video segments from R2 CDN

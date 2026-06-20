@@ -20,8 +20,7 @@ const manrope = Manrope({
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  // Pinch-zoom intentionally allowed (accessibility): no maximumScale/userScalable lock.
 };
 
 export const metadata: Metadata = {
