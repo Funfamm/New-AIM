@@ -292,7 +292,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           // for returning users it exits immediately after checking the
           // welcomeEmailSentAt / welcomeNotificationSentAt timestamps.
           // Uses dbUser.id (database CUID) — user.id can be the Google sub.
-          console.log(`[auth] Google signIn: calling ensureWelcomeForUser for ${dbUser.email} (dbId: ${dbUser.id})`);
+          // No PII (email/id) is logged here — keeps production logs clean.
           await ensureWelcomeForUser(dbUser.id).catch(() => {});
 
           void prisma.user.update({
@@ -371,7 +371,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           // callback (which uses the correct DB id from an email lookup). This is
           // a safety net in case signIn was skipped or the user wasn't found there.
           if (dbUser) {
-            console.log(`[auth] jwt OAuth: ensureWelcomeForUser backstop for dbId ${dbUser.id}`);
             await ensureWelcomeForUser(dbUser.id).catch(() => {});
           }
         } else {
@@ -495,9 +494,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     // ensureWelcomeForUser is idempotent so duplicate calls from signIn/jwt are safe.
     async createUser({ user }) {
       if (user.id) {
-        console.log(`[auth] events.createUser fired for userId: ${user.id}, email: ${user.email}`);
-        await ensureWelcomeForUser(user.id).catch((err) => {
-          console.error(`[auth] events.createUser welcome failed:`, err);
+        // No PII logged — only a non-identifying failure marker on error.
+        await ensureWelcomeForUser(user.id).catch(() => {
+          console.error("[auth] events.createUser welcome flow failed");
         });
       }
     },

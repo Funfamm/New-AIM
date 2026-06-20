@@ -79,3 +79,19 @@
 }
 .form-note-link { color: var(--color-brand-accent); text-decoration: none; }
 .form-note-link:hover { text-decoration: underline; }
+.form-submit:disabled { opacity: 0.6; cursor: not-allowed; transform: none; filter: none; }
+.form-error {
+  font-family: var(--font-body); font-size: 0.85rem;
+  color: var(--color-brand-red); margin: 0 0 1rem;
+}
+.contact-success {
+  padding: 3rem 0; display: flex; flex-direction: column; gap: 0.75rem;
+}
+.contact-success-title {
+  font-family: var(--font-display); font-size: 2rem; font-weight: 700;
+  color: var(--color-brand-white); margin: 0;
+}
+.contact-success-body {
+  font-family: var(--font-body); font-size: 1rem;
+  color: var(--color-brand-muted); margin: 0 0 1.5rem;
+}

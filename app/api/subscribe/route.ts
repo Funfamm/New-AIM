@@ -91,10 +91,13 @@ async function verifyTurnstile(
 
     return data.success === true;
   } catch (err) {
+    // Fail CLOSED: if we cannot confirm the challenge, reject rather than let
+    // unverified (potentially bot) traffic through. AbortSignal.timeout(8000)
+    // bounds the wait so a slow siteverify does not hang the request.
     if (process.env.NODE_ENV !== "production") {
-      console.warn("[subscribe] Turnstile siteverify unreachable — failing open", err);
+      console.warn("[subscribe] Turnstile siteverify unreachable — failing closed", err);
     }
-    return true;
+    return false;
   }
 }
 

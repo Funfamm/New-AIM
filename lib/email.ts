@@ -33,6 +33,7 @@ const BYPASS_SUPPRESSION_TYPES = new Set<EmailType>([
   "PASSWORD_RESET",
   "SECURITY_ALERT",
   "ADMIN_ALERT",
+  "CONTACT_FORM",
   "ACCOUNT",
   "WELCOME", // transactional account confirmation — must not be blocked by marketing suppression
 ]);

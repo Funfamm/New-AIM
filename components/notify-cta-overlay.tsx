@@ -30,6 +30,13 @@ const TYPE_BADGE: Record<string, string> = {
   POST_RELEASE: "What's Next",
 };
 
+// Per-user localStorage key for "already signed up to this CTA" state.
+// Scoped by email so one user's dismissal on a shared browser does not
+// suppress the CTA for a different user who signs in later.
+export function ctaSignedKey(ctaId: string, email?: string | null): string {
+  return `aim_cta_signed_${ctaId}_${(email ?? "guest").toLowerCase()}`;
+}
+
 export default function NotifyMeCtaOverlay({ cta, onDismiss, ctaUser }: Props) {
   const [email, setEmail]   = useState("");
   const [name, setName]     = useState("");
@@ -48,7 +55,7 @@ export default function NotifyMeCtaOverlay({ cta, onDismiss, ctaUser }: Props) {
         setError(res.error ?? "Something went wrong.");
         return;
       }
-      try { localStorage.setItem(`aim_cta_signed_${cta.id}`, "1"); } catch {}
+      try { localStorage.setItem(ctaSignedKey(cta.id, submittedEmail), "1"); } catch {}
       beacon("CTA_SIGNUP", { workId: cta.workId, metadata: { ctaId: cta.id } });
       setDone(true);
       setTimeout(onDismiss, 2400);

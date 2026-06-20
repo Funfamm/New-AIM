@@ -132,6 +132,7 @@ enum EmailType {
   NEW_RELEASE
   NEW_EPISODE
   ADMIN_ALERT
+  CONTACT_FORM              // inbound contact form submission — forwarded to studio inbox
   SECURITY_ALERT            // sent on suspicious events
   FUTURE_CAMPAIGN
   ANNOUNCEMENT              // studio-wide broadcast
