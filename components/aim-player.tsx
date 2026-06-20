@@ -15,6 +15,7 @@ import { beacon } from "@/lib/beacon";
 import { likeWork, unlikeWork } from "@/lib/actions/likes";
 import { useToast } from "./toast-context";
 import NotifyMeCtaOverlay, { type CtaData } from "@/components/notify-cta-overlay";
+import PlayerLoadError from "@/components/player-load-error";
 import { useHlsVideo } from "@/lib/use-hls-video";
 import "./aim-player.css";
 
@@ -140,6 +141,7 @@ export default function AimPlayer({
   const [ratingOn,    setRatingOn]    = useState(false);
   const [upNext,      setUpNext]      = useState<number | null>(null);
   const [ctaVisible,  setCtaVisible]  = useState(false);
+  const [loadError,   setLoadError]   = useState(false);
 
   // Clip
   const [clipSt,    setClipSt]    = useState(0);
@@ -165,7 +167,7 @@ export default function AimPlayer({
   }, [isGuest, guestLikeKey]);
 
   // ── HLS / video source management ────────────────────────────────────
-  useHlsVideo(videoRef, src);
+  useHlsVideo(videoRef, src, () => setLoadError(true));
 
   // ── Mount: detect env, listen for fullscreen ─────────────────────────
   useEffect(() => {
@@ -447,11 +449,14 @@ export default function AimPlayer({
         className="watch-video aim-player-video"
         preload="metadata"
         playsInline
+        crossOrigin="anonymous"
         controlsList="nodownload"
         poster={poster}
         style={brightness !== 100 ? { filter: `brightness(${brightness}%)` } : undefined}
         onClick={ctaVisible ? undefined : toggleControls}
+        onError={() => setLoadError(true)}
         onPlay={() => {
+          setLoadError(false);
           setPlaying(true);
           if (!hasStarted.current) {
             hasStarted.current = true;
@@ -664,6 +669,9 @@ export default function AimPlayer({
       {cta && ctaVisible && (
         <NotifyMeCtaOverlay cta={cta} onDismiss={() => setCtaVisible(false)} ctaUser={ctaUser} />
       )}
+
+      {/* ── Load error ── */}
+      {loadError && <PlayerLoadError onRetry={() => window.location.reload()} />}
 
       {/* ══════════════════════════════════════════════════════════════════ */}
       {/* Controls overlay — always pointer-events:none on backdrop;        */}

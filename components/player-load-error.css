@@ -1,0 +1,42 @@
+/* Player load-error overlay — fills the player area (which is position:relative). */
+.player-load-error {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  text-align: center;
+  padding: 1.5rem;
+  background: rgba(10, 9, 8, 0.92);
+}
+.player-load-error-title {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-brand-white);
+  margin: 0;
+}
+.player-load-error-body {
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--color-brand-muted);
+  margin: 0 0 0.75rem;
+}
+.player-load-error-btn {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #050505;
+  background: linear-gradient(135deg, #f2d577, #c9a83d);
+  border: none;
+  border-radius: 8px;
+  padding: 0.6rem 1.6rem;
+  cursor: pointer;
+}
+.player-load-error-btn:hover {
+  filter: brightness(1.06);
+}

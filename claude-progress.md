@@ -91,8 +91,30 @@ _Nothing currently in progress._
 
 ---
 
+## Audit Hardening — 2026-06-20
+
+Full-platform audit fixes applied (see `docs/lite-hls-streaming-audit.md` §11–12 for streaming detail):
+
+- **F-02 CSP** — `'unsafe-eval'` now dropped in production (dev-only). `next.config.ts`.
+- **F-03 image hosts** — `next/image` `remotePatterns` changed from `**` wildcard to a closed allowlist derived from `R2_PUBLIC_BASE_URL` + `*.r2.dev`, `*.r2.cloudflarestorage.com`, `lh3.googleusercontent.com`. (Dev note: `scripts/seed-work.mjs` uses an Unsplash demo poster that is no longer whitelisted — seed posters should point at R2.)
+- **F-04 worker secret** — `lib/worker-auth.ts` now uses `crypto.timingSafeEqual`.
+- **F-05 Turnstile** — `app/api/subscribe/route.ts` now fails **closed** on siteverify network error.
+- **F-06 PII logs** — removed `console.log` of user email/id from `lib/auth.ts`.
+- **F-07 crossOrigin** — `crossOrigin="anonymous"` on all `<video>` (aim/episode/video players). **Depends on R2 CORS being live** (see streaming audit §6/§11.1).
+- **F-08 HLS errors** — `lib/use-hls-video.ts` retries recoverable errors, surfaces fatal via new `components/player-load-error.tsx` overlay wired into all 3 players.
+- **F-11 prefetch** — hls.js dynamic import marked `webpackPrefetch`.
+- **F-13 CTA key** — `ctaSignedKey()` helper scopes the notify-CTA localStorage key per user email.
+- **F-14 error pages** — added branded `app/not-found.tsx`; hardened `app/error.tsx` (no longer leaks raw `error.message`, adds Home link).
+- **F-16 ABR** — multi-bitrate HLS ladder requirement documented (streaming audit §11.4).
+- **F-01 (CODE-COMPLETE, pending deploy)** — playback gate built. App signs a short-lived path-scoped token (`lib/playback-token.ts`) and rewrites the full-film `src` through `lib/playback-url.ts` when a work has `requiresAuth` + the gate env vars are set; otherwise serves the public URL unchanged (inert, zero behaviour change). Cloudflare Worker in `worker/playback-gate/` validates the token, serves from R2, and propagates the token onto HLS child playlists. Token-in-URL design runs on free `*.workers.dev` (no DNS change). To activate: deploy the Worker, set `PLAYBACK_GATE_BASE_URL` + `PLAYBACK_SIGNING_KEY` on Vercel + Worker. Plan: `docs/lite-playback-gate-plan.md`; deploy steps: `worker/playback-gate/README.md`.
+
+`npx tsc --noEmit` passes (app and Worker).
+
+---
+
 ## Known Gaps (open)
 
+- **F-01 Playback access control — code-complete, NOT yet activated.** Gate is built and inert; full films on `requiresAuth` works will only be deliverable to signed-in members once the Cloudflare Worker (`worker/playback-gate/`) is deployed and `PLAYBACK_GATE_BASE_URL` + `PLAYBACK_SIGNING_KEY` are set on Vercel. Until then, films still serve from the public CDN (current behaviour). Deploy steps: `worker/playback-gate/README.md`.
 - Rate limiting is per-instance (in-memory). Works against burst abuse. Does not coordinate across Vercel instances. Upgrade path: Upstash Redis + `@upstash/ratelimit`.
 - No end-to-end tests. TypeScript + lint + tsc are the only automated checks.
 - CSP uses `'unsafe-inline'` for scripts (required by Next.js). Tighten with nonces when Next.js supports it cleanly.

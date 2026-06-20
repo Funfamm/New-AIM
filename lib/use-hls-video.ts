@@ -11,14 +11,23 @@ import type HlsType from "hls.js";
  * - .m3u8 on Chrome/Edge/Firefox: dynamically imports hls.js, creates an
  *   HLS instance, and destroys it on cleanup.
  *
+ * Recoverable hls.js errors (network/media) are retried automatically.
+ * An unrecoverable fatal error invokes `onError` so the player can surface a
+ * visible message instead of a frozen black frame. Native (Safari/MP4)
+ * playback failures are reported separately via the <video> onError handler.
+ *
  * The consuming component must NOT set src={...} on the <video> element —
  * this hook owns src assignment.
  */
 export function useHlsVideo(
   videoRef: React.RefObject<HTMLVideoElement | null>,
-  src: string
+  src: string,
+  onError?: () => void
 ): void {
   const hlsRef = useRef<HlsType | null>(null);
+  // Keep the latest onError without re-running the effect when it changes.
+  const onErrorRef = useRef(onError);
+  onErrorRef.current = onError;
 
   useEffect(() => {
     const video = videoRef.current;
@@ -40,7 +49,9 @@ export function useHlsVideo(
     let cancelled = false;
 
     void (async () => {
-      const { default: Hls } = await import("hls.js");
+      // webpackPrefetch hints the browser to fetch the hls.js chunk during idle
+      // time so first-play latency is reduced on supported browsers.
+      const { default: Hls } = await import(/* webpackPrefetch: true */ "hls.js");
       if (cancelled) return;
 
       if (!Hls.isSupported()) {
@@ -51,6 +62,27 @@ export function useHlsVideo(
 
       const hls = new Hls({ enableWorker: true });
       hlsRef.current = hls;
+
+      hls.on(Hls.Events.ERROR, (_event, data) => {
+        if (!data.fatal) return;
+        switch (data.type) {
+          case Hls.ErrorTypes.NETWORK_ERROR:
+            // Transient network issue — ask hls.js to resume loading.
+            hls.startLoad();
+            break;
+          case Hls.ErrorTypes.MEDIA_ERROR:
+            // Recoverable decode/buffer stall.
+            hls.recoverMediaError();
+            break;
+          default:
+            // Unrecoverable — tear down and surface the error.
+            hls.destroy();
+            hlsRef.current = null;
+            onErrorRef.current?.();
+            break;
+        }
+      });
+
       hls.loadSource(src);
       hls.attachMedia(video);
     })();

@@ -24,6 +24,7 @@ import { getOrCreateSession, trackEvent } from "@/lib/analytics";
 import { listPublishedSubtitles } from "@/lib/subtitles/subtitle-repo";
 import { getVttUrl } from "@/lib/subtitles/vtt-storage";
 import { getLangName } from "@/lib/subtitles/subtitle-languages";
+import { resolvePlaybackUrl } from "@/lib/playback-url";
 
 const WORK_TYPE_LABEL: Record<string, string> = {
   FULL_FILM: "Film", SHORT_FILM: "Short Film", SERIES: "Series",
@@ -204,6 +205,15 @@ export default async function WatchPage({ params, searchParams }: Props) {
   const isEmbed   = isYouTube || isVimeo;
   const embedUrl  = videoUrl ? toEmbedUrl(videoUrl) : null;
 
+  // Playback gate (F-01): for works an admin marked sign-in-required, hand the player a
+  // short-lived tokenised URL served by the Cloudflare Worker instead of the raw public
+  // CDN URL. Inert (returns the raw URL) until the gate env vars are set. Trailers and
+  // previews are intentionally left public and never gated.
+  const gateThisVideo = !!videoUrl && !isEmbed && !isTrailer && !isPreview && mainRequiresAuth;
+  const playbackSrc   = videoUrl
+    ? (gateThisVideo ? resolvePlaybackUrl(videoUrl) : videoUrl)
+    : null;
+
   // Resume position (0 if completed — player restarts from beginning)
   const initialSeconds = session?.user && !isEmbed && !isTrailer && work.id
     ? await getWatchProgress(work.id)
@@ -375,7 +385,7 @@ export default async function WatchPage({ params, searchParams }: Props) {
             <div className="watch-player-wrap">
               {videoUrl && !isEmbed ? (
                 <AimPlayer
-                  src={videoUrl}
+                  src={playbackSrc!}
                   poster={work.posterUrl ?? undefined}
                   workId={work.id}
                   isTrailer={isTrailer}

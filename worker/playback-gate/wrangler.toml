@@ -1,0 +1,18 @@
+name = "aim-playback-gate"
+main = "src/index.ts"
+compatibility_date = "2026-06-01"
+
+# Bind the SAME R2 bucket the app uses (value of R2_BUCKET_NAME).
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "REPLACE_WITH_YOUR_R2_BUCKET_NAME"
+
+[vars]
+# Where to bounce requests that arrive without a valid token.
+WATCH_REDIRECT_BASE = "https://impactaistudio.com"
+# Origin allowed to fetch the gated media (your app origin) — used for CORS.
+ALLOWED_ORIGIN = "https://impactaistudio.com"
+
+# PLAYBACK_SIGNING_KEY is a SECRET — never put it here. Set it with:
+#   npx wrangler secret put PLAYBACK_SIGNING_KEY
+# It MUST be the exact same value as PLAYBACK_SIGNING_KEY in the Vercel app.

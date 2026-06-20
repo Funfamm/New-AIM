@@ -1,5 +1,30 @@
 import type { NextConfig } from "next";
 
+const isDev = process.env.NODE_ENV !== "production";
+
+// ── Image host allowlist ──────────────────────────────────────────────
+// Closed allowlist instead of a wildcard so the Next.js image optimizer
+// cannot be used as an SSRF/abuse proxy for arbitrary external hosts.
+// The R2 public host is derived from the configured base URL so this
+// always matches whatever CDN domain is in use, plus the static hosts
+// the app actually loads images from (Google OAuth avatars, R2 dev URLs).
+function r2ImageHost(): { protocol: "https"; hostname: string } | null {
+  const base = process.env.R2_PUBLIC_BASE_URL || process.env.R2_PUBLIC_URL || "";
+  if (!base) return null;
+  try {
+    return { protocol: "https", hostname: new URL(base).hostname };
+  } catch {
+    return null;
+  }
+}
+
+const imageRemotePatterns = [
+  r2ImageHost(),
+  { protocol: "https" as const, hostname: "*.r2.dev" },
+  { protocol: "https" as const, hostname: "*.r2.cloudflarestorage.com" },
+  { protocol: "https" as const, hostname: "lh3.googleusercontent.com" }, // Google OAuth avatars
+].filter((p): p is { protocol: "https"; hostname: string } => p !== null);
+
 const securityHeaders = [
   // Clickjacking protection — no iframing of AIM Studio pages
   { key: "X-Frame-Options",        value: "DENY" },
@@ -15,8 +40,12 @@ const securityHeaders = [
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      // Next.js requires unsafe-inline for hydration scripts; unsafe-eval for dev HMR
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      // Next.js requires unsafe-inline for hydration scripts. unsafe-eval is only
+      // needed by the dev-mode React Refresh runtime — it is dropped in production
+      // so an injected payload cannot use eval()/new Function() to execute.
+      isDev
+        ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
+        : "script-src 'self' 'unsafe-inline'",
       // Tailwind uses inline styles; Google Fonts stylesheet
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       // Google Fonts webfont files
@@ -42,12 +71,7 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   images: {
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "**",
-      },
-    ],
+    remotePatterns: imageRemotePatterns,
   },
   experimental: {
     viewTransition: true,
