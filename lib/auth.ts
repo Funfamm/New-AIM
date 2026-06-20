@@ -37,6 +37,11 @@ const ACCESS_TOKEN_TTL   = 15 * 60 * 1000;            // 15 min in ms
 const REFRESH_TOKEN_TTL  = 30 * 24 * 60 * 60 * 1000;  // 30 days in ms
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  // Trust the deployment Host header so Auth.js derives callback/cookie URLs from
+  // the actual request host. Safe behind Vercel (it sets a correct Host) and is the
+  // recommended explicit setting for custom domains — avoids host-detection
+  // "Configuration" errors.
+  trustHost: true,
   adapter: PrismaAdapter(prisma),
   session: {
     strategy:  "jwt",
