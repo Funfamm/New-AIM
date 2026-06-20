@@ -17,8 +17,6 @@
 import { prisma } from "@/lib/prisma";
 import { sendWelcomeEmail } from "@/lib/email";
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-
 /**
  * Ensure the welcome email and welcome notification have been sent exactly once
  * for this user. Safe to call on every sign-in — idempotent checks prevent
@@ -89,7 +87,10 @@ export async function ensureWelcomeForUser(userId: string): Promise<void> {
             type:   "ACCOUNT",
             title:  "Welcome to AIM Studio",
             body:   "Start watching, save your favorite works, and continue where you left off.",
-            href:   `${APP_URL}/works`,
+            // Relative path only — an absolute URL here causes router.push to hard-navigate
+            // cross-origin (apex vs www vs preview host), dropping the session cookie and
+            // logging the user out. All other in-app notifications use relative hrefs.
+            href:   "/works",
             read:   false,
           },
         });
