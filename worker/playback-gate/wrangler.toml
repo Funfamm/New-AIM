@@ -5,7 +5,7 @@ compatibility_date = "2026-06-01"
 # Bind the SAME R2 bucket the app uses (value of R2_BUCKET_NAME).
 [[r2_buckets]]
 binding = "BUCKET"
-bucket_name = "REPLACE_WITH_YOUR_R2_BUCKET_NAME"
+bucket_name = "aim-platform-videos"
 
 [vars]
 # Where to bounce requests that arrive without a valid token.
