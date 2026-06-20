@@ -4,8 +4,7 @@ import { useRef, useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { saveWatchProgress } from "@/lib/actions/progress";
 import { beacon } from "@/lib/beacon";
-import NotifyMeCtaOverlay, { type CtaData, ctaSignedKey } from "./notify-cta-overlay";
-import PlayerLoadError from "./player-load-error";
+import NotifyMeCtaOverlay, { type CtaData } from "./notify-cta-overlay";
 import { useHlsVideo } from "@/lib/use-hls-video";
 
 type Props = {
@@ -51,16 +50,15 @@ export default function EpisodePlayer({
   const [speed,          setSpeed]          = useState(1);
   const [speedOpen,      setSpeedOpen]      = useState(false);
   const [controlsOn,     setControlsOn]     = useState(false);
-  const [loadError,      setLoadError]      = useState(false);
 
-  useHlsVideo(videoRef, src, () => setLoadError(true));
+  useHlsVideo(videoRef, src);
 
   useEffect(() => {
     if (!cta) return;
     try {
-      if (localStorage.getItem(ctaSignedKey(cta.id, ctaUser?.email))) ctaShownRef.current = true;
+      if (localStorage.getItem(`aim_cta_signed_${cta.id}`)) ctaShownRef.current = true;
     } catch {}
-  }, [cta, ctaUser?.email]);
+  }, [cta]);
 
   function save(seconds: number) {
     void saveWatchProgress(workId, seconds, durationMinutes);
@@ -130,12 +128,9 @@ export default function EpisodePlayer({
         preload="metadata"
         controls
         playsInline
-        crossOrigin="anonymous"
         controlsList="nodownload"
         poster={poster}
-        onError={() => setLoadError(true)}
         onPlay={() => {
-          setLoadError(false);
           if (!hasStarted.current) {
             hasStarted.current = true;
             beacon("EPISODE_START", { workId });
@@ -268,8 +263,6 @@ export default function EpisodePlayer({
       {cta && ctaVisible && (
         <NotifyMeCtaOverlay cta={cta} onDismiss={() => setCtaVisible(false)} ctaUser={ctaUser} />
       )}
-
-      {loadError && <PlayerLoadError onRetry={() => window.location.reload()} />}
     </div>
   );
 }
