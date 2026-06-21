@@ -23,7 +23,7 @@ Capture is fire-and-forget and never throws. Each occurrence is **scrubbed** (`l
 Every error tagged with `firstRelease`/`lastRelease` (`VERCEL_GIT_COMMIT_SHA` → `VERCEL_DEPLOYMENT_ID`) and `environment` (`VERCEL_ENV`) via `lib/monitoring/release.ts` — so you can see which deploy introduced or last saw an issue.
 
 ## Alerting (`lib/monitoring/alert.ts`)
-DB-backed per-fingerprint dedupe (`lastAlertedAt`, atomic `updateMany`) — correct across all serverless instances. Three signals: **new**, **regression**, **spike** (hourly bucket ≥ `ERROR_SPIKE_PER_HOUR`). Delivery: email (to `ADMIN_ALERT_EMAIL` / admin-settings) + optional Slack-compatible webhook.
+DB-backed per-fingerprint dedupe (`lastAlertedAt`, atomic `updateMany`) — correct across all serverless instances. Three signals: **new**, **regression**, **spike** (hourly bucket ≥ `ERROR_SPIKE_PER_HOUR`). Delivery: email (to `ADMIN_ALERT_EMAIL` / admin-settings) + optional Slack-compatible webhook + an **in-app admin bell** notification (a `SYSTEM` notification per admin, linking to the error) for **new** and **regression** signals — the sidebar bell count then shows errors waiting to be resolved.
 
 ## Crons (`vercel.json`, Bearer `CRON_SECRET`)
 - `GET /api/cron/error-digest` (09:00 UTC) — open totals, new-in-24h, regressions, top-by-volume → email. Skips when all-clear.
