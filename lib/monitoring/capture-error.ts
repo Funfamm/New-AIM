@@ -119,7 +119,7 @@ export function captureError(error: unknown, ctx: CaptureContext = {}): void {
               lastUserId:  ctx.userId ?? null,
               lastRelease: RELEASE,
               ...(isRegression
-                ? { status: "NEW", regressed: true, regressedAt: new Date(), resolved: false, resolvedAt: null }
+                ? { status: "NEW", regressed: true, regressedAt: new Date(), resolvedAt: null }
                 : {}),
               ...(metadata !== undefined ? { metadata } : {}),
             },

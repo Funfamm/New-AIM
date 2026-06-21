@@ -11,13 +11,12 @@ function idFrom(formData: FormData): string {
   return String(formData.get("id") ?? "").trim();
 }
 
-// `status` is the source of truth; `resolved` is kept in sync until it's dropped
-// (two-step). Centralised here so every transition dual-writes consistently.
+// `status` is the source of truth. (The legacy `resolved` boolean is being retired —
+// step 1 of the two-step drop stops writing it here; resolvedAt/resolvedBy stay.)
 function statusPatch(status: ErrorStatus, adminId: string | null) {
   const resolving = status === "RESOLVED";
   return {
     status,
-    resolved:   resolving,
     resolvedAt: resolving ? new Date() : null,
     resolvedBy: resolving ? adminId : null,
     ...(status === "MUTED" ? {} : { mutedUntil: null }),
@@ -66,7 +65,7 @@ export async function muteError(formData: FormData) {
   const hours = Math.min(24 * 30, Math.max(1, Number(formData.get("hours")) || 24));
   await prisma.errorLog.update({
     where: { id },
-    data:  { status: "MUTED", mutedUntil: new Date(Date.now() + hours * 3_600_000), resolved: false, resolvedAt: null, resolvedBy: null },
+    data:  { status: "MUTED", mutedUntil: new Date(Date.now() + hours * 3_600_000), resolvedAt: null, resolvedBy: null },
   }).catch(() => {});
   void writeAudit({ actorId: admin.id ?? "", actorEmail: admin.email ?? "", action: "ERROR_MUTE", targetId: id, detail: `${hours}h` });
   revalidate(id);
