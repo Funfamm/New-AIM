@@ -1,5 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
+import { RELEASE, ENVIRONMENT } from "@/lib/monitoring/release";
+import { bumpBucket } from "@/lib/monitoring/buckets";
 import type { Prisma, ErrorLevel, ErrorSource } from "@prisma/client";
 
 // In-house error monitoring — capture point.
@@ -25,6 +27,10 @@ type CaptureContext = {
 const WINDOW_MS = 10_000;     // at most one DB write per fingerprint per 10s per instance
 const MAX_KEYS  = 5_000;      // bound the throttle map on long-lived instances
 const lastWrite = new Map<string, number>();
+
+// An hourly occurrence count at or above this fires a spike alert (alert is itself
+// deduped per-fingerprint in lib/monitoring/alert, so it can't flood).
+const SPIKE_PER_HOUR = Math.max(5, Number(process.env.ERROR_SPIKE_PER_HOUR) || 50);
 
 // Collapse the variable parts of a message so similar errors share one group.
 function normalizeMessage(msg: string): string {
@@ -66,37 +72,65 @@ export function captureError(error: unknown, ctx: CaptureContext = {}): void {
       const stack   = (ctx.stack ?? (error instanceof Error ? error.stack : null) ?? null)?.slice(0, 8000) ?? null;
       const metadata = ctx.metadata != null ? (ctx.metadata as Prisma.InputJsonValue) : undefined;
 
+      const alertable = level === "ERROR" || level === "FATAL";
+
       try {
         // New error group → INSERT (and alert).
         await prisma.errorLog.create({
           data: {
-            fingerprint: fp,
-            level, source, message, stack,
-            route:      route || null,
-            method:     ctx.method ?? null,
-            lastUserId: ctx.userId ?? null,
+            fingerprint:  fp,
+            level, source, status: "NEW", message, stack,
+            route:        route || null,
+            method:       ctx.method ?? null,
+            lastUserId:   ctx.userId ?? null,
+            firstRelease: RELEASE,
+            lastRelease:  RELEASE,
+            environment:  ENVIRONMENT,
             metadata,
           },
         });
-        if (level === "ERROR" || level === "FATAL") {
+        await bumpBucket(fp);
+        if (alertable) {
           const { alertNewError } = await import("@/lib/monitoring/alert");
-          void alertNewError({ level, source, message, route: route || null });
+          void alertNewError({ fingerprint: fp, level, source, message, route: route || null });
         }
       } catch (e) {
-        // Existing group (unique fingerprint) → INCREMENT and refresh.
+        // Existing group (unique fingerprint) → INCREMENT, refresh, detect regression.
         if ((e as { code?: string })?.code === "P2002") {
+          // Read the prior status so a resolved error that returns is flagged a regression,
+          // and so intentionally IGNORED/MUTED groups are not reopened.
+          const prior = await prisma.errorLog
+            .findUnique({ where: { fingerprint: fp }, select: { status: true } })
+            .catch(() => null);
+          const isRegression = prior?.status === "RESOLVED";
+          const suppressed   = prior?.status === "IGNORED" || prior?.status === "MUTED";
+
           await prisma.errorLog.update({
             where: { fingerprint: fp },
             data: {
-              count:      { increment: 1 },
-              lastSeenAt: new Date(),
+              count:       { increment: 1 },
+              lastSeenAt:  new Date(),
               message, stack,
-              lastUserId: ctx.userId ?? null,
-              resolved:   false,   // a resolved error that recurs is reopened
-              resolvedAt: null,
+              lastUserId:  ctx.userId ?? null,
+              lastRelease: RELEASE,
+              ...(isRegression
+                ? { status: "NEW", regressed: true, regressedAt: new Date(), resolved: false, resolvedAt: null }
+                : {}),
               ...(metadata !== undefined ? { metadata } : {}),
             },
           }).catch(() => {});
+
+          const bucketCount = await bumpBucket(fp);
+
+          if (alertable && !suppressed) {
+            const alert = await import("@/lib/monitoring/alert");
+            if (isRegression) {
+              void alert.alertRegression({ fingerprint: fp, level, source, message, route: route || null, release: RELEASE });
+            }
+            if (bucketCount !== null && bucketCount >= SPIKE_PER_HOUR) {
+              void alert.alertSpike({ fingerprint: fp, level, source, message, route: route || null, count: bucketCount });
+            }
+          }
         }
         // Any other error (e.g. table absent before the migration runs) is swallowed.
       }

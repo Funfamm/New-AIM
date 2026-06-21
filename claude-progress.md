@@ -119,6 +119,51 @@ Still in place (not video-related): F-02 CSP, F-03 image hosts, F-04 worker secr
 
 `npx tsc --noEmit` passes.
 
+### Error Monitoring v2 — Phase 1 (Sentry-class foundation) — 2026-06-20
+
+Plan: `~/.claude/plans/jazzy-twirling-zebra.md` (3 phases; this is Phase 1). Industry-standard,
+phased, additive. **Needs migration applied** — `prisma/migrations/20260620200000_error_monitoring_v2`
+(build runs `prisma migrate deploy` before `next build`, so it self-applies on Vercel; do NOT ship
+the code without the migration or capture silently no-ops on the missing `status` column).
+
+Schema (`prisma/schema.prisma`): new `ErrorStatus` enum (NEW/ACKNOWLEDGED/RESOLVED/IGNORED/MUTED);
+`ErrorLog` gains `status`, `firstRelease`/`lastRelease`/`environment`, `regressed`/`regressedAt`,
+`lastAlertedAt`, `assignedToId`/`assignedToEmail`, `mutedUntil`, `notes[]`. New tables
+`error_event_buckets` (hourly occurrence rollup — one row per fingerprint/hour, powers sparkline +
+spike detection without row-per-event) and `error_notes` (Phase 2 triage). `resolved` boolean kept
+and dual-written; dropped later (two-step). Migration backfills `status` from `resolved`.
+
+Capture (`lib/monitoring/capture-error.ts`, new `lib/monitoring/release.ts` + `buckets.ts`):
+tags every error with release (`VERCEL_GIT_COMMIT_SHA`/`VERCEL_DEPLOYMENT_ID`) + env (`VERCEL_ENV`);
+**regression detection** (a RESOLVED group that recurs → `regressed`, reopened, alerted; IGNORED/MUTED
+intentionally not reopened); upserts the hourly bucket and fires a **spike** alert at
+`ERROR_SPIKE_PER_HOUR` (default 50).
+
+Alerting (`lib/monitoring/alert.ts`): replaced leaky in-memory cooldown with **DB-backed per-fingerprint
+dedupe** (`lastAlertedAt`, atomic `updateMany`, cross-instance safe); three signals (new/regression/spike);
+optional **Slack-compatible webhook** via `ERROR_ALERT_WEBHOOK_URL` (no-op if unset). Cooldown
+`ERROR_ALERT_COOLDOWN_MIN` (default 30).
+
+UI: new **detail page** `app/admin/errors/[id]/page.tsx` (24h + 7d occurrence sparklines via inline SVG —
+no chart lib; status/release/regressed, first/last seen, stack/context, copy report, resolve/reopen/delete);
+list rows now link to detail + show 24h mini-sparkline (one batched `seriesBatch` query, take≤500),
+release tag, regressed badge. Shared `format.ts` (timeAgo/fmtAbs/formatReport) + `sparkline.tsx`.
+
+New env (all optional): `ERROR_SPIKE_PER_HOUR`, `ERROR_ALERT_COOLDOWN_MIN`, `ERROR_ALERT_WEBHOOK_URL`.
+`npx tsc --noEmit` passes. (Local `next lint` has no eslint config installed → skipped; CI lints.)
+**Phase 2** = triage workflow (status/ack/ignore/mute/assign/notes) + search/sort/time-range.
+**Phase 3** = digest + retention crons + PII scrubbing + drop legacy `resolved`.
+
+### Error Monitor UI upgrade — 2026-06-20
+
+`/admin/errors` made more Sentry-like (backend grouping/fingerprint/count already existed).
+New client component `app/admin/errors/copy-button.tsx` (clipboard with execCommand fallback).
+`page.tsx`: per-error **Copy** button + **Copy all (N)** header button that put a clean
+plain-text report (level, message, route, occurrences, first/last seen, fingerprint, stack,
+metadata) on the clipboard for pasting into chat. Added a recurrence meta line under each
+error (occurrence count, first-seen relative time, short fingerprint). CSS additions in
+`errors-admin.css`. `npx tsc --noEmit` passes. No schema/data-model change.
+
 ### CSP regression fix — 2026-06-20
 
 The F-02 CSP tightening broke the footer Turnstile widget: the checkbox disappeared and
