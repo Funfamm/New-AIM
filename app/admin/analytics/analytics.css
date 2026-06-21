@@ -664,6 +664,7 @@
 }
 .vi-auth-tag--member     { background: rgba(74,222,128,0.1);  color: #4ade80; }
 .vi-auth-tag--registered { background: rgba(232,201,126,0.12); color: var(--color-brand-accent); }
+.vi-auth-tag--stuck      { background: rgba(232,115,111,0.14); color: #e8736f; }
 
 /* ── Session journey (expanded) ── */
 .vi-journey {
