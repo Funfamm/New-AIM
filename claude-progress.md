@@ -140,9 +140,11 @@ Phase 3 (ops hardening):
   `error-retention` (03:00 UTC; `ERROR_RETENTION_DAYS`=30 groups, `ERROR_BUCKET_RETENTION_DAYS`=90 buckets).
 - **Deferred (deliberate):** dropping the legacy `resolved` column — two-step, a later migration once nothing reads it.
 
-UI: re-themed from dark → **light neumorphic** per user request (was "i dont want something dark anymore").
-`errors-admin.css` is now a light soft-UI panel (base #e8eaf1, white/gray dual shadows, deep-gold accent #9a7416)
-floating on the dark admin shell. Uses non-token hexes — soft-UI needs custom shadow colors; explicitly requested.
+UI: neumorphic, iterated on user feedback. Final = **cool-slate mid-dark** soft-UI panel
+(`errors-admin.css`): base #2b3039, cool dual shadows (#21252c / #353c47), soft off-white text
+(#ecedf3, not pure white — low eye strain), muted gold accent #e0c084. (History: started dark
+near-black → user wanted light → light was too glaring → settled on cool slate "not too black".)
+Uses non-token hexes — soft-UI needs custom shadow colors; explicitly requested.
 
 `npx tsc --noEmit` passes.
 
