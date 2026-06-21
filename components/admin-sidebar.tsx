@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { LayoutDashboard, Clapperboard, Users, BarChart2, Mail, Settings, ScrollText, LogOut, Menu, X, ArrowLeft, BellRing, Shield, Megaphone, Database, MessageSquare, TrendingUp, Rss, Layers, KeyRound, Bell, Video } from "lucide-react";
+import { LayoutDashboard, Clapperboard, Users, BarChart2, Mail, Settings, ScrollText, LogOut, Menu, X, ArrowLeft, BellRing, Shield, Megaphone, Database, MessageSquare, TrendingUp, Rss, Layers, KeyRound, Bell, Video, AlertTriangle } from "lucide-react";
 import { logoutUser } from "@/lib/actions/auth";
 import "./admin-sidebar.css";
 
@@ -24,6 +24,7 @@ const NAV = [
   { href: "/admin/settings",  label: "Settings",    icon: Settings },
   { href: "/admin/data",      label: "Data",        icon: Database },
   { href: "/admin/audit",     label: "Audit Log",   icon: ScrollText },
+  { href: "/admin/errors",    label: "Errors",      icon: AlertTriangle },
 ];
 
 export default function AdminSidebar({ unreadNotifications = 0 }: { unreadNotifications?: number }) {

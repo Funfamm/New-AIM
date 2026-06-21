@@ -121,6 +121,20 @@ Still in place (not video-related): F-02 CSP, F-03 image hosts, F-04 worker secr
 
 ---
 
+## Error Monitoring (in-house) — 2026-06-20
+
+Self-hosted error monitor (no Sentry). Built scalable: occurrences AGGREGATE by
+`fingerprint` (one `error_logs` row per unique error group; repeats increment a
+counter) + a per-instance storm throttle, so it can't flood the DB.
+
+- Schema: `ErrorLog` model + `ErrorLevel`/`ErrorSource` enums; migration `20260620190000_add_error_logs` (additive, auto-applied by the `build` script's `prisma migrate deploy`).
+- Capture: `lib/monitoring/capture-error.ts` (`captureError`, fire-and-forget, create-or-increment, normalizes message for grouping).
+- Server errors: `instrumentation.ts` `onRequestError` (Next 15 hook — render/route/action).
+- Client errors: `components/client-error-reporter.tsx` (window error + unhandledrejection) → `app/api/monitoring/client-error` (rate-limited); plus `app/error.tsx` boundary beacons render errors.
+- Alerts: `lib/monitoring/alert.ts` emails admin on NEW critical groups (ADMIN_ALERT, throttled).
+- Admin: `app/admin/errors` (filter by status/level, resolve/reopen/delete, clear-resolved, pagination) + sidebar link.
+- Limitation vs Sentry: no client source-map de-minification, no perf tracing. Server stacks are readable.
+
 ## Known Gaps (open)
 
 - **F-01 Playback access control — OPEN, reverted.** The token-gate approach broke playback (R2 CORS not configured for `crossOrigin`) and was removed. Films are served from public CDN URLs again — access is gated at the page, not the file. Any future attempt MUST first configure R2 CORS to allow the app origin, then verify trailer + full-film playback before touching `crossOrigin`/signing.

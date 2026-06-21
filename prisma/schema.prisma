@@ -239,6 +239,20 @@ enum VideoJobStatus {
   CANCELLED
 }
 
+enum ErrorLevel {
+  WARN
+  ERROR
+  FATAL
+}
+
+enum ErrorSource {
+  SERVER
+  CLIENT
+  API
+  ACTION
+  WORKER
+}
+
 // ─────────────────────────────────────────────
 // USER
 // ─────────────────────────────────────────────
@@ -907,6 +921,36 @@ model SecurityEvent {
   @@index([email])
   @@index([createdAt])
   @@map("security_events")
+}
+
+// ─────────────────────────────────────────────
+// ERROR LOG — in-house error monitoring.
+// Occurrences aggregate by `fingerprint` (one row per unique error group), so an
+// error storm increments a counter instead of inserting unbounded rows.
+// ─────────────────────────────────────────────
+
+model ErrorLog {
+  id          String      @id @default(cuid())
+  fingerprint String      @unique
+  level       ErrorLevel  @default(ERROR)
+  source      ErrorSource @default(SERVER)
+  message     String
+  stack       String?
+  route       String?
+  method      String?
+  count       Int         @default(1)
+  resolved    Boolean     @default(false)
+  resolvedAt  DateTime?
+  resolvedBy  String?
+  lastUserId  String?
+  metadata    Json?
+  firstSeenAt DateTime    @default(now())
+  lastSeenAt  DateTime    @default(now())
+
+  @@index([resolved, lastSeenAt])
+  @@index([level, lastSeenAt])
+  @@index([lastSeenAt])
+  @@map("error_logs")
 }
 
 // ─────────────────────────────────────────────

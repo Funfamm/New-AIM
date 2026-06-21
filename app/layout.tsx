@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Cormorant_Garamond, Manrope } from "next/font/google";
 import AnalyticsBeacon from "@/components/analytics-beacon";
+import ClientErrorReporter from "@/components/client-error-reporter";
 import "./globals.css";
 
 const cormorant = Cormorant_Garamond({
@@ -73,6 +74,7 @@ export default function RootLayout({
       <body>
         {children}
         <AnalyticsBeacon />
+        <ClientErrorReporter />
       </body>
     </html>
   );

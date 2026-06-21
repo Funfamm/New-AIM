@@ -14,6 +14,16 @@ export default function Error({
     // Log for diagnostics. The raw message is never shown to the user below,
     // so internal details (stack, query text, ids) do not leak to the client.
     console.error(error);
+    // Report the boundary error to the in-house monitor (render errors don't
+    // surface via window.onerror). Best-effort, never blocks.
+    try {
+      const payload = JSON.stringify({
+        message: (error?.message || "Render error") + (error?.digest ? ` [${error.digest}]` : ""),
+        stack:   error?.stack?.slice(0, 4000),
+        route:   typeof location !== "undefined" ? location.pathname : undefined,
+      });
+      navigator.sendBeacon?.("/api/monitoring/client-error", new Blob([payload], { type: "application/json" }));
+    } catch { /* ignore */ }
   }, [error]);
 
   return (
