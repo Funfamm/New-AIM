@@ -324,7 +324,7 @@ export async function sendWelcomeEmail(to: string, name?: string | null, userId?
   let ctaUrl = `${APP_URL}/dashboard`;
   if (userId) {
     const { generateWelcomeToken } = await import("@/lib/welcome-token");
-    const token = generateWelcomeToken(userId);
+    const token = await generateWelcomeToken(userId);
     ctaUrl = `${APP_URL}/welcome-login?uid=${encodeURIComponent(userId)}&t=${encodeURIComponent(token)}`;
   }
 

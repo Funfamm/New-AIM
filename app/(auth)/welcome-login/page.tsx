@@ -18,7 +18,7 @@ export default async function WelcomeLoginPage({
 
   const { uid, t } = await searchParams;
 
-  if (!uid || !t || !verifyWelcomeToken(uid, t)) {
+  if (!uid || !t || !(await verifyWelcomeToken(uid, t))) {
     redirect(
       "/login?error=" +
         encodeURIComponent("This link has expired or is invalid. Please sign in below.")

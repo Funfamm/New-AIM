@@ -4,7 +4,6 @@
 // Both use the same trackingToken stored on the EmailLog row.
 
 import { prisma } from "@/lib/prisma";
-import crypto from "crypto";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 

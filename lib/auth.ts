@@ -76,7 +76,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const magicUserId  = (credentials?.userId       as string | undefined) ?? "";
         if (welcomeToken && magicUserId) {
           const { verifyWelcomeToken } = await import("@/lib/welcome-token");
-          if (!verifyWelcomeToken(magicUserId, welcomeToken)) return null;
+          if (!(await verifyWelcomeToken(magicUserId, welcomeToken))) return null;
           const user = await prisma.user.findUnique({
             where:  { id: magicUserId },
             select: { id: true, email: true, name: true, role: true, tokenVersion: true, status: true },
@@ -96,10 +96,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // Dynamic import keeps node:crypto out of the Edge bundle
         const sec = await import("@/lib/security");
 
-        const ipHash        = raw.ip ? sec.hashValue(raw.ip)  : undefined;
-        const userAgentHash = raw.ua ? sec.hashValue(raw.ua)  : undefined;
+        const ipHash        = raw.ip ? await sec.hashValue(raw.ip)  : undefined;
+        const userAgentHash = raw.ua ? await sec.hashValue(raw.ua)  : undefined;
         const fpHash        = raw.ua
-          ? sec.buildFingerprintHash({ userAgent: raw.ua, acceptLanguage: raw.lang, country: raw.country })
+          ? await sec.buildFingerprintHash({ userAgent: raw.ua, acceptLanguage: raw.lang, country: raw.country })
           : undefined;
         const parsed = sec.parseUserAgent(raw.ua);
 
@@ -313,7 +313,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             });
             const isNew = await sec.upsertUserDevice({
               userId:          dbUser.id,
-              fingerprintHash: sec.hashValue(`google|${dbUser.id}|oauth`),
+              fingerprintHash: await sec.hashValue(`google|${dbUser.id}|oauth`),
               browser:         "Google OAuth",
               os:              "Unknown",
               deviceType:      "UNKNOWN",
@@ -390,7 +390,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         try {
           const { hashValue } = await import("@/lib/security");
           const raw  = crypto.randomUUID();
-          const hash = hashValue(raw);
+          const hash = await hashValue(raw);
           await prisma.refreshToken.create({
             data: {
               userId:    token.id as string,
@@ -455,7 +455,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             // Rotate: delete the used token, create a fresh one
             const { hashValue } = await import("@/lib/security");
             const newRaw  = crypto.randomUUID();
-            const newHash = hashValue(newRaw);
+            const newHash = await hashValue(newRaw);
             await prisma.$transaction([
               prisma.refreshToken.delete({ where: { id: refreshRec.id } }),
               prisma.refreshToken.create({

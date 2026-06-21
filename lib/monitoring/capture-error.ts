@@ -1,5 +1,4 @@
 import "server-only";
-import { createHash } from "crypto";
 import { prisma } from "@/lib/prisma";
 import type { Prisma, ErrorLevel, ErrorSource } from "@prisma/client";
 
@@ -38,8 +37,11 @@ function normalizeMessage(msg: string): string {
     .trim();
 }
 
-function fingerprintFor(level: string, source: string, route: string, normMsg: string): string {
-  return createHash("sha256").update(`${level}|${source}|${route}|${normMsg}`).digest("hex").slice(0, 32);
+async function fingerprintFor(level: string, source: string, route: string, normMsg: string): Promise<string> {
+  const data = new TextEncoder().encode(`${level}|${source}|${route}|${normMsg}`);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, "0")).join("").slice(0, 32);
 }
 
 export function captureError(error: unknown, ctx: CaptureContext = {}): void {
@@ -51,7 +53,7 @@ export function captureError(error: unknown, ctx: CaptureContext = {}): void {
 
       const rawMessage = (error instanceof Error ? error.message : String(error)) || "Unknown error";
       const normMsg    = normalizeMessage(rawMessage);
-      const fp         = fingerprintFor(level, source, route, normMsg);
+      const fp         = await fingerprintFor(level, source, route, normMsg);
 
       // Per-instance storm throttle.
       const now  = Date.now();

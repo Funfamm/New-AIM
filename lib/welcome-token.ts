@@ -3,23 +3,39 @@
 // Token format: "${issuedAt}.${hmac}" where issuedAt is a Unix ms timestamp.
 // TTL: 72 hours. Not single-use — the trade-off is acceptable for welcome emails.
 
-import { createHmac } from "crypto";
-
 const SECRET = process.env.AUTH_SECRET ?? "";
 const TTL_MS = 72 * 60 * 60 * 1000; // 72 hours
 
-function hmac(userId: string, iat: string): string {
-  return createHmac("sha256", SECRET)
-    .update(`welcome:${userId}:${iat}`)
-    .digest("hex");
+function hexEncode(buffer: ArrayBuffer): string {
+  return Array.from(new Uint8Array(buffer))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 }
 
-export function generateWelcomeToken(userId: string): string {
+async function getHmacKey(): Promise<CryptoKey> {
+  const enc = new TextEncoder();
+  return crypto.subtle.importKey(
+    "raw",
+    enc.encode(SECRET),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+}
+
+async function hmac(userId: string, iat: string): Promise<string> {
+  const key = await getHmacKey();
+  const enc = new TextEncoder();
+  const sig = await crypto.subtle.sign("HMAC", key, enc.encode(`welcome:${userId}:${iat}`));
+  return hexEncode(sig);
+}
+
+export async function generateWelcomeToken(userId: string): Promise<string> {
   const iat = Date.now().toString();
-  return `${iat}.${hmac(userId, iat)}`;
+  return `${iat}.${await hmac(userId, iat)}`;
 }
 
-export function verifyWelcomeToken(userId: string, token: string): boolean {
+export async function verifyWelcomeToken(userId: string, token: string): Promise<boolean> {
   try {
     const dotIdx = token.indexOf(".");
     if (dotIdx === -1) return false;
@@ -27,7 +43,7 @@ export function verifyWelcomeToken(userId: string, token: string): boolean {
     const sig    = token.slice(dotIdx + 1);
     const iat    = Number(iatStr);
     if (!iat || Date.now() - iat > TTL_MS) return false;
-    const expected = hmac(userId, iatStr);
+    const expected = await hmac(userId, iatStr);
     // Constant-time compare to prevent timing attacks
     if (expected.length !== sig.length) return false;
     let diff = 0;
