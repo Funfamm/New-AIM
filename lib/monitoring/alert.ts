@@ -126,10 +126,44 @@ async function webhookAlert(kind: AlertKind, i: AlertInput): Promise<void> {
   }
 }
 
+// In-app bell notification for admins. Fires for new errors and regressions
+// (things that need resolving) — not spikes. Creates one SYSTEM notification per
+// admin so the sidebar bell count increments; links straight to the error.
+async function notifyAdmins(kind: AlertKind, i: AlertInput): Promise<void> {
+  if (kind === "spike") return;
+  try {
+    const admins = await prisma.user.findMany({
+      where:  { role: { in: ["ADMIN", "SUPER_ADMIN"] }, status: "ACTIVE" },
+      select: { id: true },
+      take:   100,
+    });
+    if (admins.length === 0) return;
+
+    const row = await prisma.errorLog
+      .findUnique({ where: { fingerprint: i.fingerprint }, select: { id: true } })
+      .catch(() => null);
+    const href  = row ? `/admin/errors/${row.id}` : "/admin/errors";
+    const title = kind === "regression" ? `Error regressed — ${i.level}` : `New ${i.level} to resolve`;
+
+    await prisma.notification.createMany({
+      data: admins.map((a) => ({
+        userId: a.id,
+        type:   "SYSTEM" as const,
+        title,
+        body:   i.message.slice(0, 160),
+        href,
+        read:   false,
+      })),
+    });
+  } catch {
+    // notifications must never throw
+  }
+}
+
 async function dispatch(kind: AlertKind, i: AlertInput): Promise<void> {
   try {
     if (!(await claimAlertSlot(i.fingerprint))) return;
-    await Promise.allSettled([emailAlert(kind, i), webhookAlert(kind, i)]);
+    await Promise.allSettled([emailAlert(kind, i), webhookAlert(kind, i), notifyAdmins(kind, i)]);
   } catch {
     // alerting must never throw
   }
