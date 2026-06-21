@@ -2,6 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import { RELEASE, ENVIRONMENT } from "@/lib/monitoring/release";
 import { bumpBucket } from "@/lib/monitoring/buckets";
+import { scrubText, scrubJson } from "@/lib/monitoring/scrub";
 import type { Prisma, ErrorLevel, ErrorSource } from "@prisma/client";
 
 // In-house error monitoring — capture point.
@@ -58,7 +59,10 @@ export function captureError(error: unknown, ctx: CaptureContext = {}): void {
       const route  = (ctx.route ?? "").slice(0, 300);
 
       const rawMessage = (error instanceof Error ? error.message : String(error)) || "Unknown error";
-      const normMsg    = normalizeMessage(rawMessage);
+      // Scrub PII/secrets BEFORE fingerprinting: keeps secrets out of the store and
+      // collapses per-user variants (e.g. "failed for a@b.com") into one group.
+      const scrubbed   = scrubText(rawMessage);
+      const normMsg    = normalizeMessage(scrubbed);
       const fp         = await fingerprintFor(level, source, route, normMsg);
 
       // Per-instance storm throttle.
@@ -68,9 +72,10 @@ export function captureError(error: unknown, ctx: CaptureContext = {}): void {
       if (lastWrite.size > MAX_KEYS) lastWrite.clear();
       lastWrite.set(fp, now);
 
-      const message = rawMessage.slice(0, 1000);
-      const stack   = (ctx.stack ?? (error instanceof Error ? error.stack : null) ?? null)?.slice(0, 8000) ?? null;
-      const metadata = ctx.metadata != null ? (ctx.metadata as Prisma.InputJsonValue) : undefined;
+      const message  = scrubbed.slice(0, 1000);
+      const rawStack = ctx.stack ?? (error instanceof Error ? error.stack : null) ?? null;
+      const stack    = rawStack ? scrubText(rawStack).slice(0, 8000) : null;
+      const metadata = ctx.metadata != null ? (scrubJson(ctx.metadata) as Prisma.InputJsonValue) : undefined;
 
       const alertable = level === "ERROR" || level === "FATAL";
 
