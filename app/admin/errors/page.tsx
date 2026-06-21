@@ -1,6 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth-guard";
 import { resolveError, reopenError, deleteError, clearResolvedErrors } from "./error-actions";
+import { CopyButton } from "./copy-button";
+import { Sparkline } from "./sparkline";
+import { formatReport, timeAgo } from "./format";
+import { seriesBatch, HOUR_MS } from "@/lib/monitoring/buckets";
 import Link from "next/link";
 import { AlertTriangle, Check, RotateCcw, Trash2, Inbox } from "lucide-react";
 import type { Metadata } from "next";
@@ -13,15 +17,6 @@ export const dynamic = "force-dynamic";
 const PAGE_SIZE = 25;
 
 type SP = { filter?: string; level?: string; page?: string };
-
-function timeAgo(d: Date): string {
-  const s = Math.floor((Date.now() - d.getTime()) / 1000);
-  if (s < 60) return `${s}s ago`;
-  const m = Math.floor(s / 60); if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60); if (h < 24) return `${h}h ago`;
-  const days = Math.floor(h / 24); if (days < 7) return `${days}d ago`;
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-}
 
 export default async function ErrorMonitorPage({ searchParams }: { searchParams: Promise<SP> }) {
   await requireAdmin();
@@ -54,6 +49,9 @@ export default async function ErrorMonitorPage({ searchParams }: { searchParams:
   }
 
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const allReport = rows.map(formatReport).join(`\n\n${"─".repeat(60)}\n\n`);
+  // One batched query for the 24h trend of every visible error group.
+  const sparks = await seriesBatch(rows.map((r) => r.fingerprint), 24, HOUR_MS);
   const qs = (over: Partial<SP>) => {
     const base: Record<string, string | undefined> = { filter, level, page: String(page), ...over };
     const merged: Record<string, string> = {};
@@ -97,11 +95,16 @@ export default async function ErrorMonitorPage({ searchParams }: { searchParams:
                 <Link key={l} href={qs({ level: l, page: "1" })} className={`errmon-tab errmon-tab--${l.toLowerCase()}${level === l ? " errmon-tab--on" : ""}`}>{l}</Link>
               ))}
             </div>
-            {filter === "resolved" && total > 0 && (
-              <form action={clearResolvedErrors} className="errmon-clear-form">
-                <button type="submit" className="errmon-clear-btn"><Trash2 size={13} /> Clear all resolved</button>
-              </form>
-            )}
+            <div className="errmon-filter-actions">
+              {rows.length > 0 && (
+                <CopyButton text={allReport} label={`Copy all (${rows.length})`} title="Copy every error on this page" />
+              )}
+              {filter === "resolved" && total > 0 && (
+                <form action={clearResolvedErrors} className="errmon-clear-form">
+                  <button type="submit" className="errmon-clear-btn"><Trash2 size={13} /> Clear all resolved</button>
+                </form>
+              )}
+            </div>
           </div>
 
           {rows.length === 0 ? (
@@ -117,12 +120,22 @@ export default async function ErrorMonitorPage({ searchParams }: { searchParams:
                     <div className="errmon-item-top">
                       <span className={`errmon-badge errmon-badge--${e.level.toLowerCase()}`}>{e.level}</span>
                       <span className="errmon-source">{e.source}</span>
+                      {e.regressed && <span className="errmon-regressed" title="A resolved error has returned">REGRESSED</span>}
                       {e.count > 1 && <span className="errmon-count">×{e.count}</span>}
                       {e.resolved && <span className="errmon-resolved-tag">resolved</span>}
+                      {e.lastRelease && <span className="errmon-tagchip" title="Last release this was seen on">{e.lastRelease}</span>}
                       <span className="errmon-time">{timeAgo(new Date(e.lastSeenAt))}</span>
                     </div>
-                    <p className="errmon-message">{e.message}</p>
+                    <Link href={`/admin/errors/${e.id}`} className="errmon-message errmon-message-link">{e.message}</Link>
                     {e.route && <p className="errmon-route">{e.method ? `${e.method} ` : ""}{e.route}</p>}
+                    <div className="errmon-meta">
+                      <span><strong className="errmon-meta-num">{e.count}</strong> {e.count === 1 ? "occurrence" : "occurrences"}</span>
+                      <span className="errmon-meta-dot">·</span>
+                      <span>first seen {timeAgo(new Date(e.firstSeenAt))}</span>
+                      <span className="errmon-meta-dot">·</span>
+                      <span className="errmon-fp" title="Group fingerprint — same value means the same recurring issue">{e.fingerprint.slice(0, 8)}</span>
+                      <Sparkline points={sparks.get(e.fingerprint) ?? []} width={120} height={24} className="errmon-row-spark" />
+                    </div>
                     {(e.stack || e.metadata) && (
                       <details className="errmon-details">
                         <summary>Stack / context</summary>
@@ -132,6 +145,7 @@ export default async function ErrorMonitorPage({ searchParams }: { searchParams:
                     )}
                   </div>
                   <div className="errmon-item-actions">
+                    <CopyButton text={formatReport(e)} title="Copy this error" />
                     {e.resolved ? (
                       <form action={reopenError}><input type="hidden" name="id" value={e.id} />
                         <button className="errmon-act" title="Reopen"><RotateCcw size={14} /></button>

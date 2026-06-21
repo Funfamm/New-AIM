@@ -253,6 +253,16 @@ enum ErrorSource {
   WORKER
 }
 
+// Triage workflow state for an error group. `resolved` boolean is retained and
+// kept in sync during the transition; reads migrate to `status` over time.
+enum ErrorStatus {
+  NEW
+  ACKNOWLEDGED
+  RESOLVED
+  IGNORED
+  MUTED
+}
+
 // ─────────────────────────────────────────────
 // USER
 // ─────────────────────────────────────────────
@@ -934,6 +944,7 @@ model ErrorLog {
   fingerprint String      @unique
   level       ErrorLevel  @default(ERROR)
   source      ErrorSource @default(SERVER)
+  status      ErrorStatus @default(NEW)
   message     String
   stack       String?
   route       String?
@@ -944,13 +955,57 @@ model ErrorLog {
   resolvedBy  String?
   lastUserId  String?
   metadata    Json?
+  // Release / deploy tracking — which ship first saw and last saw this error.
+  firstRelease String?
+  lastRelease  String?
+  environment  String?
+  // Regression — set when a RESOLVED/IGNORED group recurs.
+  regressed    Boolean   @default(false)
+  regressedAt  DateTime?
+  // Cross-instance alert dedupe (replaces leaky in-memory cooldown).
+  lastAlertedAt DateTime?
+  // Ownership + snooze.
+  assignedToId    String?
+  assignedToEmail String?
+  mutedUntil      DateTime?
   firstSeenAt DateTime    @default(now())
   lastSeenAt  DateTime    @default(now())
+
+  notes ErrorNote[]
 
   @@index([resolved, lastSeenAt])
   @@index([level, lastSeenAt])
   @@index([lastSeenAt])
+  @@index([status, lastSeenAt])
   @@map("error_logs")
+}
+
+// Hourly occurrence rollup — one row per (fingerprint, hour) so the sparkline and
+// spike detection never store a row per event. Pruned by the retention cron.
+model ErrorEventBucket {
+  id          String   @id @default(cuid())
+  fingerprint String
+  bucketStart DateTime
+  count       Int      @default(1)
+
+  @@unique([fingerprint, bucketStart])
+  @@index([fingerprint, bucketStart])
+  @@index([bucketStart])
+  @@map("error_event_buckets")
+}
+
+// Triage notes / activity on an error group.
+model ErrorNote {
+  id          String   @id @default(cuid())
+  errorId     String
+  error       ErrorLog @relation(fields: [errorId], references: [id], onDelete: Cascade)
+  authorId    String
+  authorEmail String
+  body        String
+  createdAt   DateTime @default(now())
+
+  @@index([errorId, createdAt])
+  @@map("error_notes")
 }
 
 // ─────────────────────────────────────────────
