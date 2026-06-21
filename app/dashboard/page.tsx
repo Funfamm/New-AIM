@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
 import { getDashboardSavedWorks, unsaveWork } from "@/lib/actions/watchlist";
 import { getUserNotifications, markAllNotificationsRead, getUnreadNotificationCount } from "@/lib/actions/notifications";
 import { logoutUser } from "@/lib/actions/auth";
@@ -36,6 +37,9 @@ function NotifIcon({ type }: { type: string }) {
 
 export default async function DashboardPage() {
   const session = await auth();
+  // Guard before any data action runs — those throw "Not authenticated" without a
+  // user id, which would crash the render instead of sending the user to sign in.
+  if (!session?.user?.id) redirect("/login?from=/dashboard");
 
   const [savedWorks, notifications, unreadCount] = await Promise.all([
     getDashboardSavedWorks(),
