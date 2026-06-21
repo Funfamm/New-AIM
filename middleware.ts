@@ -7,7 +7,10 @@ import { NextResponse } from "next/server";
 
 export default auth((req) => {
   const { nextUrl, auth: session } = req;
-  const isLoggedIn = !!session?.user;
+  // Require a real user id — not just a `user` object. Server data actions key off
+  // `session.user.id`, so a session with `user` but no `id` must be treated as logged
+  // out here, or it slips through and crashes protected pages with "Not authenticated".
+  const isLoggedIn = !!session?.user?.id;
   const role = session?.user?.role;
   const isAdmin = role === "ADMIN" || role === "SUPER_ADMIN";
 
