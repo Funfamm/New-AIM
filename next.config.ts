@@ -43,9 +43,10 @@ const securityHeaders = [
       // Next.js requires unsafe-inline for hydration scripts. unsafe-eval is only
       // needed by the dev-mode React Refresh runtime — it is dropped in production
       // so an injected payload cannot use eval()/new Function() to execute.
+      // Cloudflare Turnstile loads its challenge script from challenges.cloudflare.com.
       isDev
-        ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
-        : "script-src 'self' 'unsafe-inline'",
+        ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com"
+        : "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com",
       // Tailwind uses inline styles. Fonts are self-hosted via next/font, so no
       // external Google Fonts origins are required.
       "style-src 'self' 'unsafe-inline'",
@@ -56,8 +57,8 @@ const securityHeaders = [
       "media-src 'self' blob: https:",
       // API fetches — allow all HTTPS (Graph, ACS, analytics)
       "connect-src 'self' https: wss:",
-      // No iframes allowed
-      "frame-src 'none'",
+      // Turnstile renders its challenge inside an iframe from challenges.cloudflare.com.
+      "frame-src https://challenges.cloudflare.com",
       "frame-ancestors 'none'",
       // No Flash/plugins
       "object-src 'none'",
