@@ -119,6 +119,16 @@ Still in place (not video-related): F-02 CSP, F-03 image hosts, F-04 worker secr
 
 `npx tsc --noEmit` passes.
 
+### CSP regression fix — 2026-06-20
+
+The F-02 CSP tightening broke the footer Turnstile widget: the checkbox disappeared and
+"Join the list" stayed permanently disabled (button needs a Turnstile token). `script-src`
+omitted `https://challenges.cloudflare.com` (so `api.js` never loaded → `window.turnstile`
+undefined → widget never mounted) and `frame-src` was `'none'` (blocks the challenge iframe).
+Fix in `next.config.ts`: added `https://challenges.cloudflare.com` to `script-src` (dev + prod)
+and set `frame-src https://challenges.cloudflare.com`. `connect-src` already allowed it via
+`https:`. `npx tsc --noEmit` passes.
+
 ---
 
 ## Error Monitoring (in-house) — 2026-06-20
