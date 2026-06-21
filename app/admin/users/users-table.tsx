@@ -451,7 +451,7 @@ export function UsersTable({ users, isFiltered, sessionRole }: Props) {
                   {u.status === "SUSPENDED" ? (
                     <span
                       className="ustatus-badge ustatus-badge--suspended"
-                      title={u.suspendedAt ? `Suspended ${new Date(u.suspendedAt).toLocaleDateString()}` : "Suspended"}
+                      title={u.suspendedAt ? `Suspended ${new Date(u.suspendedAt).toLocaleDateString("en-GB", { timeZone: "UTC" })}` : "Suspended"}
                     >
                       Suspended
                     </span>
@@ -481,7 +481,7 @@ export function UsersTable({ users, isFiltered, sessionRole }: Props) {
                   {u.lastLoginAt ? (
                     <>
                       {new Date(u.lastLoginAt).toLocaleDateString("en-GB", {
-                        day: "2-digit", month: "short", year: "numeric",
+                        day: "2-digit", month: "short", year: "numeric", timeZone: "UTC",
                       })}
                       {u.lastLoginProvider && (
                         <div className="ucell-login-via">{u.lastLoginProvider}</div>
@@ -495,7 +495,7 @@ export function UsersTable({ users, isFiltered, sessionRole }: Props) {
                 {/* Joined */}
                 <td className="ucell-date">
                   {new Date(u.createdAt).toLocaleDateString("en-GB", {
-                    day: "2-digit", month: "short", year: "numeric",
+                    day: "2-digit", month: "short", year: "numeric", timeZone: "UTC",
                   })}
                 </td>
 
