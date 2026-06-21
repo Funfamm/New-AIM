@@ -3,7 +3,13 @@ import { useState } from "react";
 import type { CSSProperties } from "react";
 import "./synopsis-toggle.css";
 
-export default function SynopsisToggle({ text }: { text: string }) {
+export default function SynopsisToggle({
+  text,
+  className = "detail-desc",
+}: {
+  text: string;
+  className?: string;
+}) {
   const [expanded, setExpanded] = useState(false);
 
   const clampStyle: CSSProperties = expanded
@@ -18,7 +24,7 @@ export default function SynopsisToggle({ text }: { text: string }) {
 
   return (
     <div className="synopsis-wrap">
-      <p className="detail-desc" style={clampStyle}>
+      <p className={className} style={clampStyle}>
         {text}
       </p>
       <button
@@ -26,7 +32,7 @@ export default function SynopsisToggle({ text }: { text: string }) {
         aria-expanded={expanded}
         className="synopsis-toggle"
       >
-        {expanded ? "Less" : "More"}
+        {expanded ? "Show Less" : "Show More"}
       </button>
     </div>
   );

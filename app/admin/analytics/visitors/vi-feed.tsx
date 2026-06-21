@@ -2,6 +2,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { RefreshCw, ChevronDown, ChevronRight, ChevronUp } from "lucide-react";
+import { countryName } from "@/lib/country-names";
 
 /* ── Types ── */
 
@@ -244,6 +245,14 @@ export default function ViFeed({
               const lastPg  = s.events.filter(e => e.path && e.type === "PAGE_VIEW").pop()?.path
                               ?? s.landingPage;
 
+              const registered = !s.userId && s.events.some((e) => e.type === "SIGN_UP");
+
+              // Real human (this feed is bots-excluded) who opened the login/register page
+              // but never became authenticated this session — a possible sign-in problem.
+              const triedAuth     = s.events.some((e) => e.type === "PAGE_VIEW" && (e.path === "/login" || e.path === "/register"));
+              const completedAuth = !!s.userId || s.events.some((e) => e.type === "SIGN_IN" || e.type === "SIGN_UP");
+              const stuckAtLogin  = triedAuth && !completedAuth;
+
               return (
                 <div key={s.id} className={`vi-session${isOpen ? " vi-session--open" : ""}`}>
                   <button className="vi-session-row" onClick={() => toggleExpand(s.id)} aria-expanded={isOpen}>
@@ -283,7 +292,7 @@ export default function ViFeed({
 
                     {/* Geo */}
                     <span className="vi-session-geo">
-                      {[s.city, s.country].filter(Boolean).join(", ") || "—"}
+                      {[s.city, s.country ? countryName(s.country) : null].filter(Boolean).join(", ") || "—"}
                     </span>
 
                     {/* Last page */}
@@ -300,9 +309,16 @@ export default function ViFeed({
                     {/* Event count */}
                     <span className="vi-session-count">{s.events.length} ev</span>
 
+                    {/* Sign-in trouble flag — real visitor who hit login but didn't get in */}
+                    {stuckAtLogin && (
+                      <span className="vi-auth-tag vi-auth-tag--stuck" title="Opened the login/register page but did not complete sign-in this session">
+                        sign-in not completed
+                      </span>
+                    )}
+
                     {/* Auth tag */}
-                    <span className={`vi-auth-tag${s.userId ? " vi-auth-tag--member" : ""}`}>
-                      {s.userId ? "Member" : "Guest"}
+                    <span className={`vi-auth-tag${s.userId ? " vi-auth-tag--member" : registered ? " vi-auth-tag--registered" : ""}`}>
+                      {s.userId ? "Member" : registered ? "Registered" : "Guest"}
                     </span>
                   </button>
 
@@ -344,7 +360,7 @@ export default function ViFeed({
               const userId = e.session?.userId ?? null;
               const user   = userId ? userMap[userId] ?? null : null;
               const geo    = e.session
-                ? [e.session.city, e.session.country].filter(Boolean).join(", ") || "—"
+                ? [e.session.city, e.session.country ? countryName(e.session.country) : null].filter(Boolean).join(", ") || "—"
                 : "—";
 
               return (

@@ -13,9 +13,15 @@ type Work = {
   heroMobileUrl: string | null;
   heroDesktopUrl: string | null;
   genre: string | null;
+  genres: string[];
   requiresAuth: boolean;
+  requiresLoginToViewTrailer?: boolean | null;
   type: string;
   status: string;
+  videoUrl?: string | null;
+  trailerUrl?: string | null;
+  previewClipUrl?: string | null;
+  heroPreviewDuration?: number | null;
 };
 
 type Tab =
@@ -49,7 +55,7 @@ const TAB_LABELS: Record<Tab, string> = {
 const TAB_TYPES: Record<Tab, string[] | null> = {
   ALL:       null,
   UPCOMING:  null,   // filtered by status, not type
-  FILMS:     ["SHORT_FILM", "FULL_FILM"],
+  FILMS:     ["FULL_FILM"],
   SERIES:    ["SERIES"],
   SHORTS:    ["SHORT_FILM"],
   COMMERCIAL:["COMMERCIAL"],
@@ -59,21 +65,30 @@ const TAB_TYPES: Record<Tab, string[] | null> = {
   CASE_STUDY:["CASE_STUDY"],
 };
 
+const INITIAL_VISIBLE = 12;
+const LOAD_MORE_STEP = 12;
+
 // Maps ?collection= URL param → Tab key
 const COLLECTION_TO_TAB: Record<string, Tab> = {
-  all:         "ALL",
-  upcoming:    "UPCOMING",
-  films:       "FILMS",
-  series:      "SERIES",
-  shorts:      "SHORTS",
-  commercials: "COMMERCIAL",
-  branding:    "BRANDING",
-  campaigns:   "CAMPAIGNS",
+  all:           "ALL",
+  upcoming:      "UPCOMING",
+  films:         "FILMS",
+  series:        "SERIES",
+  shorts:        "SHORTS",
+  commercials:   "COMMERCIAL",
+  branding:      "BRANDING",
+  campaigns:     "CAMPAIGNS",
+  trailers:      "TRAILERS",
+  "case-studies":"CASE_STUDY",
 };
 
-// Rails shown in ALL view — SHORTS omitted (subset of FILMS)
-const RAILS: { key: Tab; title: string; eyebrow: string }[] = [
-  { key: "FILMS",      title: "Films",        eyebrow: "— Short & Feature" },
+// Rails shown in ALL view.
+// statusFilter: filter by work status instead of type (used for Upcoming).
+type Rail = { key: Tab; title: string; eyebrow: string; statusFilter?: string[] };
+const RAILS: Rail[] = [
+  { key: "UPCOMING",   title: "Upcoming",     eyebrow: "— Coming Soon",       statusFilter: ["UPCOMING", "IN_PRODUCTION"] },
+  { key: "FILMS",      title: "Films",        eyebrow: "— Feature Length" },
+  { key: "SHORTS",     title: "Shorts",       eyebrow: "— Short Films" },
   { key: "SERIES",     title: "Series",       eyebrow: "— Multi-Episode" },
   { key: "COMMERCIAL", title: "Commercial",   eyebrow: "— Branded Content" },
   { key: "BRANDING",   title: "Branding",     eyebrow: "— Visual Identity" },
@@ -82,18 +97,32 @@ const RAILS: { key: Tab; title: string; eyebrow: string }[] = [
   { key: "CASE_STUDY", title: "Case Studies", eyebrow: "— Strategy & Insight" },
 ];
 
+type FeaturedHeroItem = {
+  posterUrl: string;
+  title: string;
+  slug: string;
+  heroMobileUrl?: string | null;
+  heroDesktopUrl?: string | null;
+  previewClipUrl?: string | null;
+  previewClipDuration?: number | null;
+};
+
 type Props = {
   works: Work[];
   collection?: string;
   isLoggedIn?: boolean;
+  featuredHeroItems?: FeaturedHeroItem[];
+  castingWorkIds?: string[];
 };
 
-export default function WorksClient({ works, collection, isLoggedIn = false }: Props) {
+export default function WorksClient({ works, collection, isLoggedIn = false, featuredHeroItems, castingWorkIds = [] }: Props) {
+  const castingSet = useMemo(() => new Set(castingWorkIds), [castingWorkIds]);
   const [tab, setTab] = useState<Tab>(() => {
     if (collection && COLLECTION_TO_TAB[collection]) return COLLECTION_TO_TAB[collection];
     return "ALL";
   });
   const [query, setQuery] = useState("");
+  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE);
 
   // Sync URL collection param → tab on navigation
   useEffect(() => {
@@ -104,24 +133,30 @@ export default function WorksClient({ works, collection, isLoggedIn = false }: P
     setTab(next);
   }, [collection]);
 
+  // Reset visible count whenever the active filter or search changes
+  useEffect(() => {
+    setVisibleCount(INITIAL_VISIBLE);
+  }, [tab, query]);
+
   // Published works — used for hero, rails, and tab filtering
   const publishedWorks = useMemo(() => works.filter((w) => w.status === "PUBLISHED"), [works]);
 
-  // Up to 5 published works with poster art for the hero backdrop rotation
-  const heroItems = useMemo(
-    () =>
-      publishedWorks
-        .filter((w) => w.posterUrl != null)
-        .slice(0, 5)
-        .map((w) => ({
-          posterUrl: w.posterUrl!,
-          title: w.title,
-          slug: w.slug,
-          heroMobileUrl: w.heroMobileUrl,
-          heroDesktopUrl: w.heroDesktopUrl,
-        })),
-    [publishedWorks]
-  );
+  // Admin-selected works hero items take priority; fall back to auto-select from published works.
+  const heroItems = useMemo(() => {
+    if (featuredHeroItems && featuredHeroItems.length > 0) return featuredHeroItems;
+    return publishedWorks
+      .filter((w) => !!(w.posterUrl ?? w.heroMobileUrl ?? w.heroDesktopUrl))
+      .slice(0, 5)
+      .map((w) => ({
+        posterUrl:      (w.posterUrl ?? w.heroMobileUrl ?? w.heroDesktopUrl)!,
+        title:          w.title,
+        slug:           w.slug,
+        heroMobileUrl:       w.heroMobileUrl,
+        heroDesktopUrl:      w.heroDesktopUrl,
+        previewClipUrl:      w.previewClipUrl ?? null,
+        previewClipDuration: w.heroPreviewDuration ?? null,
+      }));
+  }, [featuredHeroItems, publishedWorks]);
 
   const visibleTabs = useMemo<Tab[]>(() => {
     const hasUpcoming = works.some((w) => UPCOMING_STATUSES.has(w.status));
@@ -138,7 +173,7 @@ export default function WorksClient({ works, collection, isLoggedIn = false }: P
   }, [works, publishedWorks]);
 
   const filtered = useMemo(() => {
-    // UPCOMING tab: filter by status regardless of query
+    // UPCOMING tab: filter by status
     if (tab === "UPCOMING") {
       const list = works.filter((w) => UPCOMING_STATUSES.has(w.status));
       if (!query.trim()) return list;
@@ -146,8 +181,9 @@ export default function WorksClient({ works, collection, isLoggedIn = false }: P
       return list.filter((w) => w.title.toLowerCase().includes(q) || (w.genre?.toLowerCase() ?? "").includes(q));
     }
 
-    // Other tabs: published works only
-    let list = publishedWorks;
+    // ALL: include every public work (published + upcoming/in-production)
+    // Specific tabs: published works only
+    let list = tab === "ALL" ? works : publishedWorks;
     if (query.trim()) {
       const q = query.toLowerCase();
       list = list.filter(
@@ -165,10 +201,18 @@ export default function WorksClient({ works, collection, isLoggedIn = false }: P
 
   const showRails = tab === "ALL" && query.trim() === "";
 
-  // Priority images: first visible rail only (from published)
+  const visibleWorks = filtered.slice(0, visibleCount);
+  const hasMore = visibleCount < filtered.length;
+
+  // First rail that has content — used to prioritise image loading
   const firstRailKey = useMemo(
-    () => RAILS.find(({ key }) => publishedWorks.some((w) => TAB_TYPES[key]!.includes(w.type)))?.key,
-    [publishedWorks]
+    () =>
+      RAILS.find(({ key, statusFilter }) =>
+        statusFilter
+          ? works.some((w) => statusFilter.includes(w.status))
+          : publishedWorks.some((w) => TAB_TYPES[key]!.includes(w.type))
+      )?.key,
+    [works, publishedWorks]
   );
 
   return (
@@ -227,25 +271,26 @@ export default function WorksClient({ works, collection, isLoggedIn = false }: P
       {/* ── Content ──────────────────────────────────── */}
       {works.length === 0 ? (
         <div className="container-app wc-empty">
-          <p>No works yet. Check back soon.</p>
+          <p>New stories are in the works. Check back soon.</p>
         </div>
       ) : showRails ? (
         <div className="wc-rails wc-animate-in">
-          {RAILS.map(({ key, title, eyebrow }) => {
-            const types = TAB_TYPES[key]!;
-            const railWorks = publishedWorks.filter((w) => types.includes(w.type));
+          {RAILS.map((rail) => {
+            const railWorks = rail.statusFilter
+              ? works.filter((w) => rail.statusFilter!.includes(w.status))
+              : publishedWorks.filter((w) => TAB_TYPES[rail.key]!.includes(w.type));
             if (railWorks.length === 0) return null;
             return (
-              <section key={key} className="wc-rail">
+              <section key={rail.key} className="wc-rail">
                 <div className="container-app">
                   <div className="wc-rail-head">
-                    <span className="wc-rail-eyebrow">{eyebrow}</span>
-                    <h2 className="wc-rail-title">{title}</h2>
+                    <span className="wc-rail-eyebrow">{rail.eyebrow}</span>
+                    <h2 className="wc-rail-title">{rail.title}</h2>
                   </div>
                   <div className="rail-track">
                     {railWorks.map((w, i) => (
                       <div key={w.id} className="rail-card">
-                        <FilmCard {...w} priority={key === firstRailKey && i < 4} isLoggedIn={isLoggedIn} />
+                        <FilmCard {...w} priority={rail.key === firstRailKey && i < 4} isLoggedIn={isLoggedIn} castingOpen={castingSet.has(w.id)} />
                       </div>
                     ))}
                   </div>
@@ -258,16 +303,29 @@ export default function WorksClient({ works, collection, isLoggedIn = false }: P
         <div className="container-app wc-grid-wrap wc-animate-in">
           {filtered.length === 0 ? (
             <div className="wc-empty">
-              <p>No works match your search.</p>
+              <p>Nothing matches that search. Try a different title or genre.</p>
             </div>
           ) : (
-            <div className="wc-grid">
-              {filtered.map((w, i) => (
-                <div key={w.id} className="wc-grid-item">
-                  <FilmCard {...w} priority={i < 4} isLoggedIn={isLoggedIn} />
+            <>
+              <div className="wc-grid">
+                {visibleWorks.map((w, i) => (
+                  <div key={w.id} className="wc-grid-item">
+                    <FilmCard {...w} priority={i < 4} isLoggedIn={isLoggedIn} castingOpen={castingSet.has(w.id)} />
+                  </div>
+                ))}
+              </div>
+              {hasMore && (
+                <div className="wc-load-more-wrap">
+                  <p className="wc-count-text">Showing {visibleCount} of {filtered.length} works</p>
+                  <button
+                    className="wc-load-more"
+                    onClick={() => setVisibleCount((c) => c + LOAD_MORE_STEP)}
+                  >
+                    Load More Works
+                  </button>
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           )}
         </div>
       )}

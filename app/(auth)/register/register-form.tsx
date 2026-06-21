@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { registerUser } from "@/lib/actions/auth";
-import { PasswordInput } from "../password-input";
+import { PasswordInput } from "@/components/password-input";
 
 export function RegisterForm({ error }: { error?: string }) {
   const [matchError, setMatchError] = useState<string | null>(null);

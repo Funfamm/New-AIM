@@ -1,7 +1,18 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
-import { Activity, Users, Eye, Shield, MonitorPlay } from "lucide-react";
+import {
+  Activity, Users, Eye, Shield, MonitorPlay,
+  VideoIcon, Mail, KeyRound, Bell, AlertTriangle,
+  CheckCircle2, ArrowRight, Zap, UserCheck,
+} from "lucide-react";
 import type { Metadata } from "next";
+import GlobalSearch from "@/components/admin/global-search";
+import {
+  dismissVideoJob, dismissSubtitleJob,
+  resolveAllVideoFailures, resolveAllEmailFailures, resolveAllSubtitleFailures,
+} from "@/lib/actions/admin-health";
+import "@/components/admin/system-health.css";
+import "@/components/admin/global-search.css";
 import "./admin-overview.css";
 
 export const metadata: Metadata = { title: "Admin — Command Center" };
@@ -15,39 +26,31 @@ function getGreeting(): string {
   return "Late night";
 }
 
+// ── Queries ───────────────────────────────────────────────────────────────────
+
 async function getStats() {
-  const now       = new Date();
+  const now        = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const dayStart   = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const onlineCut  = new Date(now.getTime() - 2 * 60_000); // 2-min online window
+  const onlineCut  = new Date(now.getTime() - 2 * 60_000);
 
   const [
     totalWorks, publishedWorks, totalUsers, newThisMonth,
     onlineCount, onlineMembers,
     viewsToday, watchStartsToday,
-    openAlerts,
-    recentUsers,
+    openAlerts, recentUsers,
   ] = await Promise.all([
     prisma.work.count({ where: { type: { not: "EPISODE" } } }),
     prisma.work.count({ where: { status: "PUBLISHED", type: { not: "EPISODE" } } }),
     prisma.user.count(),
     prisma.user.count({ where: { createdAt: { gte: monthStart } } }),
-
-    // Live visitor counts
     prisma.visitorSession.count({ where: { isBot: false, lastSeenAt: { gte: onlineCut } } }),
     prisma.visitorSession.count({ where: { isBot: false, lastSeenAt: { gte: onlineCut }, userId: { not: null } } }),
-
-    // Today's activity
-    prisma.analyticsEvent.count({ where: { type: "PAGE_VIEW",    createdAt: { gte: dayStart } } }),
-    prisma.analyticsEvent.count({ where: { type: "WATCH_START",  createdAt: { gte: dayStart } } }),
-
-    // Security
+    prisma.analyticsEvent.count({ where: { type: "PAGE_VIEW",   createdAt: { gte: dayStart } } }),
+    prisma.analyticsEvent.count({ where: { type: "WATCH_START", createdAt: { gte: dayStart } } }),
     prisma.securityAlert.count({ where: { status: "OPEN" } }),
-
-    // Recent members
     prisma.user.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 6,
+      orderBy: { createdAt: "desc" }, take: 6,
       select: { id: true, name: true, email: true, createdAt: true, role: true },
     }),
   ]);
@@ -55,38 +58,222 @@ async function getStats() {
   return {
     totalWorks, publishedWorks, totalUsers, newThisMonth,
     onlineCount, onlineGuests: onlineCount - onlineMembers, onlineMembers,
-    viewsToday, watchStartsToday,
-    openAlerts,
-    recentUsers,
+    viewsToday, watchStartsToday, openAlerts, recentUsers,
   };
 }
 
+async function getSystemHealth() {
+  const now         = new Date();
+  const dayStart    = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const stuckCutoff = new Date(now.getTime() - 15 * 60_000);
+
+  const [
+    videoPending, videoProcessing, videoFailed, videoStuck, videoReadyToday,
+    emailQueued, emailFailed, emailLastSent,
+    subPending, subProcessing, subFailed,
+    keyHealthy, keyCooldown, keyInvalid,
+    subscribersToday, notifyMeToday, usersToday, unsubscribesToday,
+  ] = await Promise.all([
+    prisma.videoProcessingJob.count({ where: { status: "PENDING" } }),
+    prisma.videoProcessingJob.count({ where: { status: "PROCESSING" } }),
+    prisma.videoProcessingJob.count({ where: { status: "FAILED" } }),
+    prisma.videoProcessingJob.count({ where: { status: "PROCESSING", updatedAt: { lt: stuckCutoff } } }),
+    prisma.videoProcessingJob.count({ where: { status: "READY", updatedAt: { gte: dayStart } } }),
+
+    prisma.emailQueue.count({ where: { status: "QUEUED" } }),
+    prisma.emailQueue.count({ where: { status: "FAILED" } }),
+    prisma.emailLog.findFirst({
+      where: { status: "SENT" },
+      orderBy: { createdAt: "desc" },
+      select: { createdAt: true },
+    }),
+
+    prisma.subtitleJob.count({ where: { status: "PENDING" } }),
+    prisma.subtitleJob.count({ where: { status: "PROCESSING" } }),
+    prisma.subtitleJob.count({ where: { status: "FAILED" } }),
+
+    prisma.translationApiKey.count({ where: { status: "HEALTHY", isEnabled: true } }),
+    prisma.translationApiKey.count({ where: { status: "COOLDOWN" } }),
+    prisma.translationApiKey.count({
+      where: { OR: [{ status: "INVALID" }, { status: "DISABLED" }, { isEnabled: false }] },
+    }),
+
+    prisma.subscriber.count({ where: { subscribedAt: { gte: dayStart } } }),
+    prisma.notifyMeSignup.count({ where: { createdAt: { gte: dayStart } } }),
+    prisma.user.count({ where: { createdAt: { gte: dayStart } } }),
+    prisma.emailSuppression.count({ where: { reason: "unsubscribe", createdAt: { gte: dayStart } } }),
+  ]);
+
+  return {
+    videoPending, videoProcessing, videoFailed, videoStuck, videoReadyToday,
+    emailQueued, emailFailed,
+    emailLastSentAt: emailLastSent?.createdAt ?? null,
+    subPending, subProcessing, subFailed,
+    keyHealthy, keyCooldown, keyInvalid,
+    subscribersToday, notifyMeToday, usersToday, unsubscribesToday,
+  };
+}
+
+async function getCastingStats() {
+  const now      = new Date();
+  const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60_000);
+
+  try {
+    const [
+      openRoles,
+      appsToday,
+      appsThisWeek,
+      readyForReview,
+      requirementsNotMet,
+      shortlisted,
+      selected,
+      withdrawn,
+      agentFailures,
+    ] = await Promise.all([
+      prisma.castingRole.count({ where: { isOpen: true } }),
+      prisma.castingApplication.count({ where: { createdAt: { gte: dayStart } } }),
+      prisma.castingApplication.count({ where: { createdAt: { gte: weekStart } } }),
+      prisma.castingApplication.count({ where: { status: "READY_FOR_ADMIN_REVIEW" } }),
+      prisma.castingApplication.count({ where: { status: "REQUIREMENTS_NOT_MET" } }),
+      prisma.castingApplication.count({ where: { status: "SHORTLISTED" } }),
+      prisma.castingApplication.count({ where: { status: "SELECTED" } }),
+      prisma.castingApplication.count({ where: { status: "WITHDRAWN" } }),
+      // Applications stuck under review for >30 min without a completed review = likely failed
+      prisma.castingApplication.count({
+        where: {
+          status: "UNDER_AGENT_REVIEW",
+          reviewStartedAt: { lt: new Date(now.getTime() - 30 * 60_000) },
+          agentReview: null,
+        },
+      }),
+    ]);
+    return {
+      ok: true, openRoles, appsToday, appsThisWeek,
+      readyForReview, requirementsNotMet, shortlisted, selected, withdrawn, agentFailures,
+    };
+  } catch {
+    return {
+      ok: false, openRoles: 0, appsToday: 0, appsThisWeek: 0,
+      readyForReview: 0, requirementsNotMet: 0, shortlisted: 0, selected: 0, withdrawn: 0, agentFailures: 0,
+    };
+  }
+}
+
+async function getNeedsAttention() {
+  const stuckCutoff = new Date(Date.now() - 15 * 60_000);
+
+  const [rawFailedVideoJobs, stuckVideoCount, failedSubJobs, badKeys, openAlerts] = await Promise.all([
+    // Fetch FAILED video jobs — includes work's current URL fields so we can
+    // filter out stale failures where the work was already re-uploaded.
+    prisma.videoProcessingJob.findMany({
+      where: { status: "FAILED" },
+      orderBy: { updatedAt: "desc" },
+      select: {
+        id: true, targetField: true, errorMessage: true, updatedAt: true, attempts: true,
+        work: {
+          select: {
+            id: true, title: true,
+            videoUrl: true, trailerUrl: true, previewClipUrl: true,
+          },
+        },
+      },
+    }),
+    prisma.videoProcessingJob.count({ where: { status: "PROCESSING", updatedAt: { lt: stuckCutoff } } }),
+    // Only surface subtitle failures where NO READY job exists for the same
+    // subtitle — if a later job succeeded, this failure is irrelevant.
+    prisma.subtitleJob.findMany({
+      where: {
+        status: "FAILED",
+        subtitle: { jobs: { none: { status: "READY" } } },
+      },
+      take: 3,
+      orderBy: { updatedAt: "desc" },
+      select: {
+        id: true, error: true, updatedAt: true,
+        subtitle: { select: { work: { select: { id: true, title: true } } } },
+      },
+    }),
+    prisma.translationApiKey.findMany({
+      where: { OR: [{ status: "INVALID" }, { status: "DISABLED" }] },
+      select: { id: true, name: true, status: true, errorMessage: true },
+    }),
+    prisma.securityAlert.findMany({
+      where: { status: "OPEN" },
+      take: 3,
+      orderBy: { createdAt: "desc" },
+      select: { id: true, title: true, severity: true, createdAt: true },
+    }),
+  ]);
+
+  // Smart filter: only show a video-job failure if the work's relevant field
+  // is still empty. If the field is set, a later upload resolved the issue.
+  const failedVideoJobs = rawFailedVideoJobs.filter((j) => {
+    if (!j.work) return true;
+    const resolved: Record<string, string | null> = {
+      videoUrl:      j.work.videoUrl,
+      trailerUrl:    j.work.trailerUrl,
+      previewClipUrl: j.work.previewClipUrl,
+    };
+    return !resolved[j.targetField];
+  }).slice(0, 4);
+
+  return { failedVideoJobs, stuckVideoCount, failedSubJobs, badKeys, openAlerts };
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function healthStatus(critical: number, warning: number): "healthy" | "warning" | "critical" {
+  if (critical > 0) return "critical";
+  if (warning > 0)  return "warning";
+  return "healthy";
+}
+
+function timeAgo(date: Date): string {
+  const diff = Date.now() - date.getTime();
+  const m = Math.floor(diff / 60_000);
+  if (m < 1)  return "just now";
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
 export default async function AdminOverviewPage() {
-  const {
-    totalWorks, publishedWorks, totalUsers, newThisMonth,
-    onlineCount, onlineGuests, onlineMembers,
-    viewsToday, watchStartsToday,
-    openAlerts,
-    recentUsers,
-  } = await getStats();
+  const [
+    { totalWorks, publishedWorks, totalUsers, newThisMonth, onlineCount, onlineGuests,
+      onlineMembers, viewsToday, watchStartsToday, openAlerts, recentUsers },
+    health,
+    attention,
+    casting,
+  ] = await Promise.all([getStats(), getSystemHealth(), getNeedsAttention(), getCastingStats()]);
 
   const greeting = getGreeting();
 
-  const stats = [
-    { label: "Total Works",    value: totalWorks,      note: "films & series" },
-    { label: "Published",      value: publishedWorks,  note: "live now" },
-    { label: "Members",        value: totalUsers,       note: "registered" },
-    { label: "New This Month", value: newThisMonth,    note: "recent signups" },
-  ];
+  const castingAttentionCount =
+    (casting.ok ? casting.readyForReview + casting.requirementsNotMet + casting.agentFailures : 0);
+
+  const totalAttentionItems =
+    (attention.stuckVideoCount > 0 ? 1 : 0) +
+    attention.failedVideoJobs.length +
+    attention.failedSubJobs.length +
+    attention.badKeys.length +
+    attention.openAlerts.length +
+    (castingAttentionCount > 0 ? 1 : 0);
 
   return (
     <div className="admin-page">
 
-      {/* ── Command Center header ── */}
+      {/* ── Header ── */}
       <div className="cmd-header">
         <div>
           <p className="cmd-greeting">{greeting}, Director.</p>
           <h1 className="cmd-title">Studio Command Center</h1>
+        </div>
+        <div className="cmd-search-area">
+          <GlobalSearch />
         </div>
       </div>
 
@@ -100,12 +287,12 @@ export default async function AdminOverviewPage() {
         <div className="cmd-live-pill">
           <Users size={12} />
           <span className="cmd-live-val">{onlineMembers}</span>
-          <span className="cmd-live-lbl">Members Online</span>
+          <span className="cmd-live-lbl">Members</span>
         </div>
         <div className="cmd-live-pill">
           <Eye size={12} />
           <span className="cmd-live-val">{onlineGuests}</span>
-          <span className="cmd-live-lbl">Guests Online</span>
+          <span className="cmd-live-lbl">Guests</span>
         </div>
         <div className="cmd-live-pill">
           <Activity size={12} />
@@ -128,7 +315,12 @@ export default async function AdminOverviewPage() {
 
       {/* ── Stat cards ── */}
       <div className="cmd-stats">
-        {stats.map((s) => (
+        {[
+          { label: "Total Works",    value: totalWorks,     note: "films & series" },
+          { label: "Published",      value: publishedWorks, note: "live now" },
+          { label: "Members",        value: totalUsers,     note: "registered" },
+          { label: "New This Month", value: newThisMonth,   note: "recent signups" },
+        ].map((s) => (
           <div key={s.label} className="cmd-stat">
             <div className="cmd-stat-value">{s.value}</div>
             <div className="cmd-stat-label">{s.label}</div>
@@ -137,7 +329,462 @@ export default async function AdminOverviewPage() {
         ))}
       </div>
 
-      {/* ── Recent members ── */}
+      {/* ── System Health ── */}
+      <div className="admin-section">
+        <div className="admin-section-hd">
+          <h2 className="admin-section-title cmd-section-with-icon">
+            <Zap size={13} className="cmd-section-icon" />
+            System Health
+          </h2>
+        </div>
+
+        <div className="sh-grid">
+
+          {/* Video Processing */}
+          {(() => {
+            const status    = healthStatus(health.videoFailed + health.videoStuck, health.videoPending);
+            const videoHref = (health.videoFailed + health.videoStuck) > 0
+              ? "/admin/works?jobs=failed"
+              : "/admin/works";
+            return (
+              <div className={`sh-card sh-card--${status}`}>
+                <div className="sh-card-head">
+                  <span className="sh-card-label">
+                    <VideoIcon size={9} />
+                    Video Jobs
+                  </span>
+                  <span className={`sh-status-dot sh-status-dot--${status}`} />
+                </div>
+                <div className="sh-card-metrics">
+                  <div className="sh-metric">
+                    <span className="sh-metric-label">Pending</span>
+                    <span className={`sh-metric-val ${health.videoPending > 0 ? "sh-metric-val--warn" : "sh-metric-val--muted"}`}>{health.videoPending}</span>
+                  </div>
+                  <div className="sh-metric">
+                    <span className="sh-metric-label">Processing</span>
+                    <span className="sh-metric-val">{health.videoProcessing}</span>
+                  </div>
+                  <div className="sh-metric">
+                    <span className="sh-metric-label">Stuck (&gt;15m)</span>
+                    <span className={`sh-metric-val ${health.videoStuck > 0 ? "sh-metric-val--danger" : "sh-metric-val--muted"}`}>{health.videoStuck}</span>
+                  </div>
+                  <div className="sh-metric">
+                    <span className="sh-metric-label">Failed</span>
+                    <span className={`sh-metric-val ${health.videoFailed > 0 ? "sh-metric-val--danger" : "sh-metric-val--muted"}`}>{health.videoFailed}</span>
+                  </div>
+                  <div className="sh-metric">
+                    <span className="sh-metric-label">Done today</span>
+                    <span className={`sh-metric-val ${health.videoReadyToday > 0 ? "sh-metric-val--ok" : "sh-metric-val--muted"}`}>{health.videoReadyToday}</span>
+                  </div>
+                </div>
+                {(health.videoFailed + health.videoStuck) > 0 ? (
+                  <div className="sh-card-footer">
+                    <Link href={videoHref} className="sh-card-action">
+                      View Failed Jobs <ArrowRight size={9} />
+                    </Link>
+                    <form action={resolveAllVideoFailures}>
+                      <button type="submit" className="sh-card-resolve">Resolve</button>
+                    </form>
+                  </div>
+                ) : (
+                  <Link href={videoHref} className="sh-card-action">
+                    View Jobs <ArrowRight size={9} />
+                  </Link>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* Email Queue */}
+          {(() => {
+            const status    = healthStatus(health.emailFailed, health.emailQueued);
+            const emailHref = health.emailFailed > 0
+              ? "/admin/email?tab=logs&status=FAILED"
+              : "/admin/email?tab=queue";
+            return (
+              <div className={`sh-card sh-card--${status}`}>
+                <div className="sh-card-head">
+                  <span className="sh-card-label">
+                    <Mail size={9} />
+                    Email Queue
+                  </span>
+                  <span className={`sh-status-dot sh-status-dot--${status}`} />
+                </div>
+                <div className="sh-card-metrics">
+                  <div className="sh-metric">
+                    <span className="sh-metric-label">Queued</span>
+                    <span className={`sh-metric-val ${health.emailQueued > 0 ? "sh-metric-val--warn" : "sh-metric-val--muted"}`}>{health.emailQueued}</span>
+                  </div>
+                  <div className="sh-metric">
+                    <span className="sh-metric-label">Failed</span>
+                    <span className={`sh-metric-val ${health.emailFailed > 0 ? "sh-metric-val--danger" : "sh-metric-val--muted"}`}>{health.emailFailed}</span>
+                  </div>
+                  <div className="sh-metric">
+                    <span className="sh-metric-label">Last sent</span>
+                    <span className="sh-metric-val sh-metric-val--muted">
+                      {health.emailLastSentAt ? timeAgo(health.emailLastSentAt) : "—"}
+                    </span>
+                  </div>
+                </div>
+                {health.emailFailed > 0 ? (
+                  <div className="sh-card-footer">
+                    <Link href={emailHref} className="sh-card-action">
+                      View Failed Emails <ArrowRight size={9} />
+                    </Link>
+                    <form action={resolveAllEmailFailures}>
+                      <button type="submit" className="sh-card-resolve">Resolve</button>
+                    </form>
+                  </div>
+                ) : (
+                  <Link href={emailHref} className="sh-card-action">
+                    Email Queue <ArrowRight size={9} />
+                  </Link>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* Subtitle Jobs */}
+          {(() => {
+            const status       = healthStatus(health.subFailed, health.subPending);
+            const subtitleHref = health.subFailed > 0
+              ? "/admin/works?subtitles=failed"
+              : "/admin/works";
+            return (
+              <div className={`sh-card sh-card--${status}`}>
+                <div className="sh-card-head">
+                  <span className="sh-card-label">Subtitle Jobs</span>
+                  <span className={`sh-status-dot sh-status-dot--${status}`} />
+                </div>
+                <div className="sh-card-metrics">
+                  <div className="sh-metric">
+                    <span className="sh-metric-label">Pending</span>
+                    <span className={`sh-metric-val ${health.subPending > 0 ? "sh-metric-val--warn" : "sh-metric-val--muted"}`}>{health.subPending}</span>
+                  </div>
+                  <div className="sh-metric">
+                    <span className="sh-metric-label">Processing</span>
+                    <span className="sh-metric-val">{health.subProcessing}</span>
+                  </div>
+                  <div className="sh-metric">
+                    <span className="sh-metric-label">Failed</span>
+                    <span className={`sh-metric-val ${health.subFailed > 0 ? "sh-metric-val--danger" : "sh-metric-val--muted"}`}>{health.subFailed}</span>
+                  </div>
+                </div>
+                {health.subFailed > 0 ? (
+                  <div className="sh-card-footer">
+                    <Link href={subtitleHref} className="sh-card-action">
+                      View Failed Subtitles <ArrowRight size={9} />
+                    </Link>
+                    <form action={resolveAllSubtitleFailures}>
+                      <button type="submit" className="sh-card-resolve">Resolve</button>
+                    </form>
+                  </div>
+                ) : (
+                  <Link href={subtitleHref} className="sh-card-action">
+                    Manage Subtitles <ArrowRight size={9} />
+                  </Link>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* Translation Keys */}
+          {(() => {
+            const status = healthStatus(health.keyInvalid, health.keyCooldown);
+            return (
+              <div className={`sh-card sh-card--${status}`}>
+                <div className="sh-card-head">
+                  <span className="sh-card-label">
+                    <KeyRound size={9} />
+                    Trans. Keys
+                  </span>
+                  <span className={`sh-status-dot sh-status-dot--${status}`} />
+                </div>
+                <div className="sh-card-metrics">
+                  <div className="sh-metric">
+                    <span className="sh-metric-label">Healthy</span>
+                    <span className={`sh-metric-val ${health.keyHealthy > 0 ? "sh-metric-val--ok" : "sh-metric-val--muted"}`}>{health.keyHealthy}</span>
+                  </div>
+                  <div className="sh-metric">
+                    <span className="sh-metric-label">Cooldown</span>
+                    <span className={`sh-metric-val ${health.keyCooldown > 0 ? "sh-metric-val--warn" : "sh-metric-val--muted"}`}>{health.keyCooldown}</span>
+                  </div>
+                  <div className="sh-metric">
+                    <span className="sh-metric-label">Invalid / Off</span>
+                    <span className={`sh-metric-val ${health.keyInvalid > 0 ? "sh-metric-val--danger" : "sh-metric-val--muted"}`}>{health.keyInvalid}</span>
+                  </div>
+                </div>
+                <Link href="/admin/translation-keys" className="sh-card-action">
+                  Manage Keys <ArrowRight size={9} />
+                </Link>
+              </div>
+            );
+          })()}
+
+          {/* Today's Pulse */}
+          <div className="sh-card sh-card--healthy">
+            <div className="sh-card-head">
+              <span className="sh-card-label">
+                <Bell size={9} />
+                Today&apos;s Pulse
+              </span>
+              <span className="sh-status-dot sh-status-dot--healthy" />
+            </div>
+            <div className="sh-card-metrics">
+              <div className="sh-metric">
+                <span className="sh-metric-label">New users</span>
+                <span className={`sh-metric-val ${health.usersToday > 0 ? "sh-metric-val--ok" : "sh-metric-val--muted"}`}>{health.usersToday}</span>
+              </div>
+              <div className="sh-metric">
+                <span className="sh-metric-label">Subscribers</span>
+                <span className={`sh-metric-val ${health.subscribersToday > 0 ? "sh-metric-val--ok" : "sh-metric-val--muted"}`}>{health.subscribersToday}</span>
+              </div>
+              <div className="sh-metric">
+                <span className="sh-metric-label">Notify Me</span>
+                <span className={`sh-metric-val ${health.notifyMeToday > 0 ? "sh-metric-val--ok" : "sh-metric-val--muted"}`}>{health.notifyMeToday}</span>
+              </div>
+              <div className="sh-metric">
+                <span className="sh-metric-label">Unsubscribes</span>
+                <span className={`sh-metric-val ${health.unsubscribesToday > 0 ? "sh-metric-val--warn" : "sh-metric-val--muted"}`}>{health.unsubscribesToday}</span>
+              </div>
+            </div>
+            {health.unsubscribesToday > 0 ? (
+              <div className="sh-card-footer">
+                <Link href="/admin/subscribers" className="sh-card-action">
+                  Subscribers <ArrowRight size={9} />
+                </Link>
+                <Link href="/admin/email/suppressions" className="sh-card-action sh-card-action--secondary">
+                  Suppressions <ArrowRight size={9} />
+                </Link>
+              </div>
+            ) : (
+              <Link href="/admin/subscribers" className="sh-card-action">
+                View Subscribers <ArrowRight size={9} />
+              </Link>
+            )}
+          </div>
+
+          {/* Security */}
+          {(() => {
+            const status = healthStatus(openAlerts, 0);
+            return (
+              <div className={`sh-card sh-card--${status}`}>
+                <div className="sh-card-head">
+                  <span className="sh-card-label">
+                    <Shield size={9} />
+                    Security
+                  </span>
+                  <span className={`sh-status-dot sh-status-dot--${status}`} />
+                </div>
+                <div className="sh-card-metrics">
+                  <div className="sh-metric">
+                    <span className="sh-metric-label">Open alerts</span>
+                    <span className={`sh-metric-val ${openAlerts > 0 ? "sh-metric-val--danger" : "sh-metric-val--ok"}`}>{openAlerts}</span>
+                  </div>
+                  <div className="sh-metric">
+                    <span className="sh-metric-label">Status</span>
+                    <span className={`sh-metric-val ${openAlerts === 0 ? "sh-metric-val--ok" : "sh-metric-val--danger"}`}>
+                      {openAlerts === 0 ? "All clear" : "Review needed"}
+                    </span>
+                  </div>
+                </div>
+                <Link href="/admin/security" className="sh-card-action">
+                  Security Center <ArrowRight size={9} />
+                </Link>
+              </div>
+            );
+          })()}
+
+          {/* Casting */}
+          {casting.ok && (
+            (() => {
+              const castingNeedsAction = casting.readyForReview + casting.requirementsNotMet + casting.agentFailures;
+              const status = healthStatus(casting.agentFailures, casting.readyForReview + casting.requirementsNotMet);
+              return (
+                <div className={`sh-card sh-card--${status}`}>
+                  <div className="sh-card-head">
+                    <span className="sh-card-label">
+                      <UserCheck size={9} />
+                      Casting
+                    </span>
+                    <span className={`sh-status-dot sh-status-dot--${status}`} />
+                  </div>
+                  <div className="sh-card-metrics">
+                    <div className="sh-metric">
+                      <span className="sh-metric-label">Open roles</span>
+                      <span className={`sh-metric-val ${casting.openRoles > 0 ? "sh-metric-val--ok" : "sh-metric-val--muted"}`}>{casting.openRoles}</span>
+                    </div>
+                    <div className="sh-metric">
+                      <span className="sh-metric-label">Apps today</span>
+                      <span className={`sh-metric-val ${casting.appsToday > 0 ? "sh-metric-val--ok" : "sh-metric-val--muted"}`}>{casting.appsToday}</span>
+                    </div>
+                    <div className="sh-metric">
+                      <span className="sh-metric-label">Ready to review</span>
+                      <span className={`sh-metric-val ${casting.readyForReview > 0 ? "sh-metric-val--warn" : "sh-metric-val--muted"}`}>{casting.readyForReview}</span>
+                    </div>
+                    <div className="sh-metric">
+                      <span className="sh-metric-label">Shortlisted</span>
+                      <span className={`sh-metric-val ${casting.shortlisted > 0 ? "sh-metric-val--ok" : "sh-metric-val--muted"}`}>{casting.shortlisted}</span>
+                    </div>
+                    <div className="sh-metric">
+                      <span className="sh-metric-label">AI failures</span>
+                      <span className={`sh-metric-val ${casting.agentFailures > 0 ? "sh-metric-val--danger" : "sh-metric-val--muted"}`}>{casting.agentFailures}</span>
+                    </div>
+                  </div>
+                  {castingNeedsAction > 0 ? (
+                    <Link href="/admin/casting?status=READY_FOR_ADMIN_REVIEW" className="sh-card-action">
+                      Review Queue ({casting.readyForReview}) <ArrowRight size={9} />
+                    </Link>
+                  ) : (
+                    <Link href="/admin/casting" className="sh-card-action">
+                      Casting Dashboard <ArrowRight size={9} />
+                    </Link>
+                  )}
+                </div>
+              );
+            })()
+          )}
+
+        </div>
+      </div>
+
+      {/* ── Needs Attention ── */}
+      {totalAttentionItems > 0 ? (
+        <div className="admin-section">
+          <div className="admin-section-hd">
+            <h2 className="admin-section-title cmd-section-with-icon cmd-section-with-icon--danger">
+              <AlertTriangle size={13} className="cmd-section-icon cmd-section-icon--danger" />
+              Needs Attention
+            </h2>
+          </div>
+
+          <div className="attn-panel">
+            <div className="attn-panel-head">
+              <p className="attn-panel-title">
+                <AlertTriangle size={13} />
+                Action Required
+              </p>
+              <span className="attn-count-badge">{totalAttentionItems}</span>
+            </div>
+
+            <div className="attn-items">
+              {attention.stuckVideoCount > 0 && (
+                <div className="attn-item">
+                  <div className="attn-item-left">
+                    <span className="attn-item-title">
+                      {attention.stuckVideoCount} video job{attention.stuckVideoCount === 1 ? "" : "s"} stuck in processing
+                    </span>
+                    <span className="attn-item-detail">Stuck &gt; 15 min — self-heal cron will reset these automatically</span>
+                  </div>
+                  <span className="attn-item-badge attn-item-badge--stuck">Stuck</span>
+                </div>
+              )}
+
+              {attention.failedVideoJobs.map((j) => (
+                <div key={j.id} className="attn-item">
+                  <div className="attn-item-left">
+                    <span className="attn-item-title">
+                      {j.work?.title ?? "Unknown work"} — {j.targetField}
+                    </span>
+                    <span className="attn-item-detail">
+                      {j.errorMessage ? j.errorMessage.slice(0, 90) : "Processing failed"}
+                      {j.attempts > 0 ? ` · ${j.attempts} attempt${j.attempts === 1 ? "" : "s"}` : ""}
+                    </span>
+                  </div>
+                  <div className="attn-item-actions">
+                    <Link
+                      href={j.work?.id ? `/admin/works/${j.work.id}` : "/admin/works"}
+                      className="attn-item-action"
+                    >
+                      Open Work
+                    </Link>
+                    <form action={dismissVideoJob}>
+                      <input type="hidden" name="id" value={j.id} />
+                      <button type="submit" className="attn-item-dismiss">Dismiss</button>
+                    </form>
+                  </div>
+                </div>
+              ))}
+
+              {attention.failedSubJobs.map((j) => (
+                <div key={j.id} className="attn-item">
+                  <div className="attn-item-left">
+                    <span className="attn-item-title">
+                      Subtitle failed — {j.subtitle?.work?.title ?? "Unknown work"}
+                    </span>
+                    <span className="attn-item-detail">{j.error ?? "Translation job failed"}</span>
+                  </div>
+                  <div className="attn-item-actions">
+                    <Link
+                      href={j.subtitle?.work?.id ? `/admin/works/${j.subtitle.work.id}` : "/admin/works"}
+                      className="attn-item-action"
+                    >
+                      Open Work
+                    </Link>
+                    <form action={dismissSubtitleJob}>
+                      <input type="hidden" name="id" value={j.id} />
+                      <button type="submit" className="attn-item-dismiss">Dismiss</button>
+                    </form>
+                  </div>
+                </div>
+              ))}
+
+              {attention.badKeys.map((k) => (
+                <div key={k.id} className="attn-item">
+                  <div className="attn-item-left">
+                    <span className="attn-item-title">Translation key — {k.name}</span>
+                    <span className="attn-item-detail">
+                      {k.status} · {k.errorMessage ?? "Key is disabled or invalid"}
+                    </span>
+                  </div>
+                  <Link href="/admin/translation-keys" className="attn-item-action">
+                    Manage Keys
+                  </Link>
+                </div>
+              ))}
+
+              {attention.openAlerts.map((a) => (
+                <div key={a.id} className="attn-item">
+                  <div className="attn-item-left">
+                    <span className="attn-item-title">{a.title}</span>
+                    <span className="attn-item-detail">
+                      {a.severity} · {timeAgo(a.createdAt)}
+                    </span>
+                  </div>
+                  <Link href="/admin/security" className="attn-item-action">Review</Link>
+                </div>
+              ))}
+
+              {castingAttentionCount > 0 && (
+                <div className="attn-item">
+                  <div className="attn-item-left">
+                    <span className="attn-item-title">
+                      Casting: {casting.readyForReview > 0 ? `${casting.readyForReview} ready for review` : ""}
+                      {casting.readyForReview > 0 && casting.requirementsNotMet > 0 ? ", " : ""}
+                      {casting.requirementsNotMet > 0 ? `${casting.requirementsNotMet} requirements not met` : ""}
+                      {(casting.readyForReview > 0 || casting.requirementsNotMet > 0) && casting.agentFailures > 0 ? ", " : ""}
+                      {casting.agentFailures > 0 ? `${casting.agentFailures} AI review failure${casting.agentFailures === 1 ? "" : "s"}` : ""}
+                    </span>
+                    <span className="attn-item-detail">
+                      {casting.appsThisWeek} application{casting.appsThisWeek === 1 ? "" : "s"} this week · {casting.openRoles} open role{casting.openRoles === 1 ? "" : "s"}
+                    </span>
+                  </div>
+                  <Link href="/admin/casting" className="attn-item-action">
+                    Casting
+                  </Link>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="cmd-allclear">
+          <CheckCircle2 size={13} />
+          All systems operational — no action required
+        </div>
+      )}
+
+      {/* ── Recent Members ── */}
       <div className="admin-section">
         <div className="admin-section-hd">
           <h2 className="admin-section-title">Recent Members</h2>
@@ -159,9 +806,7 @@ export default async function AdminOverviewPage() {
                   <td className="td-primary">{u.name ?? "—"}</td>
                   <td className="td-muted">{u.email}</td>
                   <td>
-                    <span className={`role-badge role-badge--${u.role.toLowerCase()}`}>
-                      {u.role}
-                    </span>
+                    <span className={`role-badge role-badge--${u.role.toLowerCase()}`}>{u.role}</span>
                   </td>
                   <td className="td-muted">{new Date(u.createdAt).toLocaleDateString()}</td>
                 </tr>

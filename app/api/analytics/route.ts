@@ -14,7 +14,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { trackEvent, getOrCreateSession, parseUserAgent } from "@/lib/analytics";
+import { trackEvent, getOrCreateSession, parseUserAgent, looksAutomated } from "@/lib/analytics";
 import type { AnalyticsEventType, Prisma } from "@prisma/client";
 
 const VALID_TYPES = new Set<string>([
@@ -62,6 +62,11 @@ export async function POST(request: NextRequest) {
     const region  = request.headers.get("x-vercel-ip-region")  ?? undefined;
     const city    = request.headers.get("x-vercel-ip-city")    ?? undefined;
 
+    // Flag automated/datacenter traffic that slips past UA detection (real browser UA
+    // from a script or a cloud datacenter). isBot sessions are excluded from every
+    // human-facing analytics view, so the visitor feed stays real people only.
+    const isBot = looksAutomated({ acceptLanguage: request.headers.get("accept-language"), city });
+
     // Resolve userId from JWT (decode only — no DB query)
     const session = await auth();
     const userId  = session?.user?.id ?? undefined;
@@ -74,7 +79,7 @@ export async function POST(request: NextRequest) {
       referrer:    request.headers.get("referer")?.slice(0, 512) ?? undefined,
       country, region, city,
       browser, os, deviceType,
-      isBot: false,
+      isBot,
     });
 
     // Write the event

@@ -9,21 +9,24 @@
   overflow: hidden;
   padding-bottom: 3.5rem;
 }
+@media (max-width: 767px) {
+  .detail-hero { padding-bottom: 5rem; }
+}
 .detail-backdrop {
   position: absolute; inset: 0; z-index: 0; pointer-events: none;
 }
 .detail-backdrop-img {
   width: 100%; height: 100%;
   object-fit: cover;
-  opacity: 0.13;
-  filter: blur(56px);
-  transform: scale(1.08);
+  opacity: 0.25;
+  filter: blur(48px) saturate(1.2);
+  transform: scale(1.1);
 }
 .detail-backdrop-gradient {
   position: absolute; inset: 0;
   background:
-    linear-gradient(to bottom, rgba(10,10,10,0.25) 0%, var(--color-brand-black) 72%),
-    linear-gradient(to right, var(--color-brand-black) 0%, rgba(10,10,10,0) 55%);
+    linear-gradient(to bottom, rgba(5,5,5,0.2) 0%, rgba(5,5,5,0.6) 50%, rgba(5,5,5,1) 75%),
+    linear-gradient(to right, rgba(5,5,5,0.7) 0%, rgba(5,5,5,0) 55%);
 }
 .detail-hero-inner {
   position: relative; z-index: 1;
@@ -36,7 +39,7 @@
   font-family: var(--font-body); font-size: 0.75rem; font-weight: 500;
   letter-spacing: 0.06em; text-transform: uppercase;
   color: var(--color-brand-muted); text-decoration: none;
-  margin-bottom: 2rem; transition: color 0.15s;
+  margin-bottom: 2rem; transition: color var(--duration-fast);
 }
 .detail-back:hover { color: var(--color-brand-white); }
 
@@ -52,18 +55,23 @@
 .detail-poster-wrap {
   flex-shrink: 0;
   position: relative;
-  width: 100%; max-width: 260px;
+  width: 100%; max-width: 220px;
   aspect-ratio: 2/3;
+  margin-inline: 0;             /* left-align; info block below aligns to same edge */
 }
 @media (min-width: 768px) { .detail-poster-wrap { width: 220px; } }
 @media (min-width: 1024px) { .detail-poster-wrap { width: 260px; } }
 .detail-poster {
-  object-fit: cover; border-radius: 4px;
-  border: 1px solid var(--color-brand-border);
+  object-fit: cover; border-radius: var(--radius-md);
+  border: 1px solid rgba(255,255,255,0.10);
+  transition: box-shadow var(--duration-normal);
+}
+.detail-poster-wrap:hover .detail-poster {
+  box-shadow: var(--shadow-gold-subtle);
 }
 .detail-poster-placeholder {
   width: 100%; aspect-ratio: 2/3;
-  background: var(--color-brand-surface); border-radius: 4px;
+  background: var(--color-brand-surface); border-radius: var(--radius-md);
   display: flex; align-items: center; justify-content: center;
   font-family: var(--font-display); font-size: 5rem; font-weight: 700;
   color: var(--color-brand-border);
@@ -72,15 +80,24 @@
 /* ── Info panel ── */
 .detail-info { flex: 1; min-width: 0; }
 .detail-genre {
-  font-family: var(--font-body); font-size: 0.6875rem; font-weight: 600;
-  letter-spacing: 0.1em; text-transform: uppercase;
-  color: var(--color-brand-accent); display: block; margin-bottom: 0.5rem;
+  display: inline-block;
+  align-self: flex-start;       /* never stretch full-width inside a flex column */
+  width: fit-content;
+  font-family: var(--font-body); font-size: 0.625rem; font-weight: 700;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--color-brand-accent);
+  margin-bottom: 0.75rem;
+  padding: 0.25rem 0.6rem;
+  background: rgba(232,201,126,0.06);
+  border: 1px solid rgba(232,201,126,0.15);
+  border-radius: var(--radius-pill);
 }
 .detail-title {
   font-family: var(--font-display);
-  font-size: clamp(2rem, 5vw, 3.25rem);
-  font-weight: 700; letter-spacing: -0.02em; line-height: 1.1;
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 700; letter-spacing: -0.03em; line-height: 1.08;
   color: var(--color-brand-white); margin: 0 0 1rem;
+  text-shadow: 0 2px 16px rgba(0,0,0,0.4);
 }
 
 /* ── Metadata ── */
@@ -94,7 +111,7 @@
   color: var(--color-brand-white);
   background: var(--color-brand-surface);
   border: 1px solid var(--color-brand-border);
-  padding: 0.2rem 0.5rem; border-radius: 2px;
+  padding: 0.2rem 0.55rem; border-radius: var(--radius-xs);
 }
 .detail-meta-item {
   display: flex; align-items: center; gap: 0.3rem;
@@ -102,33 +119,74 @@
   color: var(--color-brand-muted);
 }
 
-/* ── CTAs ── */
+/* ── Primary CTA row (Watch Full Film + Watch Preview) ── */
 .detail-actions {
-  display: flex; gap: 0.75rem; flex-wrap: wrap;
-  margin-top: 0.25rem; margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 28px;
+  margin-bottom: 16px;
 }
+
+/* Primary CTA — premium gold gradient */
 .detail-btn-primary {
-  display: inline-flex; align-items: center; gap: 0.5rem;
-  font-family: var(--font-body); font-size: 0.875rem; font-weight: 600;
-  letter-spacing: 0.04em;
-  color: var(--color-brand-black); background: var(--color-brand-accent);
-  height: 52px; padding: 0 1.75rem; border-radius: 2px; text-decoration: none;
-  transition: filter 0.2s, transform 0.2s; touch-action: manipulation;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 52px;
+  min-width: 220px;
+  padding: 0 28px;
+  border-radius: 10px;
+  border: 1px solid rgba(245, 213, 137, 0.55);
+  background: linear-gradient(135deg, #f2d577, #c9a83d);
+  color: #050505;
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: none;
+  box-shadow: 0 18px 40px rgba(201, 168, 61, 0.18);
+  transition: transform 0.2s, box-shadow 0.3s, filter 0.2s;
+  touch-action: manipulation;
 }
 .detail-btn-primary:hover {
-  filter: brightness(1.06); transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow:
+    0 22px 50px rgba(201, 168, 61, 0.28),
+    0 0 70px rgba(201, 168, 61, 0.1);
+  filter: brightness(1.06);
 }
+
+/* Secondary CTA — dark glass */
 .detail-btn-ghost {
-  display: inline-flex; align-items: center; gap: 0.5rem;
-  font-family: var(--font-body); font-size: 0.875rem; font-weight: 500;
-  color: var(--color-brand-white);
-  border: 1px solid rgba(255,255,255,0.28);
-  height: 52px; padding: 0 1.75rem; border-radius: 2px; text-decoration: none;
-  transition: border-color 0.2s, background 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 52px;
+  min-width: 190px;
+  padding: 0 24px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.055);
+  color: rgba(255,255,255,0.9);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-decoration: none;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: background 0.2s, border-color 0.2s, transform 0.2s;
 }
 .detail-btn-ghost:hover {
-  border-color: rgba(255,255,255,0.65);
-  background: rgba(255,255,255,0.05);
+  background: rgba(255,255,255,0.1);
+  border-color: rgba(255,255,255,0.35);
+  transform: translateY(-1px);
 }
 .detail-auth-note {
   display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap;
@@ -139,7 +197,27 @@
 .detail-auth-note a:hover { text-decoration: underline; }
 
 /* ══ Episodes ══ */
-.episodes-section { padding-top: 2.5rem; padding-bottom: 6rem; }
+.episodes-section {
+  padding-top: 2.5rem;
+  padding-bottom: 6rem;
+  position: relative;
+}
+.episodes-section::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 5%;
+  right: 5%;
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent 0%,
+    rgba(232,201,126,0.12) 25%,
+    rgba(232,201,126,0.2) 50%,
+    rgba(232,201,126,0.12) 75%,
+    transparent 100%
+  );
+}
 .episodes-head {
   display: flex; align-items: baseline;
   justify-content: space-between; margin-bottom: 1.25rem;
@@ -171,15 +249,16 @@
   grid-template-rows: auto auto;
   column-gap: 1rem;
   row-gap: 0.625rem;
-  background: var(--color-brand-dark);
-  border: 1px solid var(--color-brand-border);
-  border-radius: 4px;
+  background: rgba(14, 13, 11, 0.6);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: var(--radius-md);
   padding: 0.875rem 1rem;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background var(--duration-fast), border-color var(--duration-fast), box-shadow var(--duration-normal);
 }
 .ep-card:hover {
-  background: var(--color-brand-surface);
-  border-color: rgba(255,255,255,0.09);
+  background: rgba(20, 19, 16, 0.75);
+  border-color: rgba(229, 190, 91, 0.12);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.35);
 }
 @media (min-width: 640px) {
   .ep-card {
@@ -194,7 +273,7 @@
   grid-column: 1; grid-row: 1 / 3;
   aspect-ratio: 16/9;
   background: var(--color-brand-surface);
-  border-radius: 3px; overflow: hidden;
+  border-radius: var(--radius-sm); overflow: hidden;
   align-self: start;
 }
 @media (min-width: 640px) {
@@ -246,11 +325,11 @@
   font-family: var(--font-body); font-size: 0.75rem; font-weight: 600;
   letter-spacing: 0.04em;
   color: var(--color-brand-black); background: var(--color-brand-accent);
-  height: 34px; padding: 0 0.875rem; border-radius: 2px;
+  height: 34px; padding: 0 0.875rem; border-radius: var(--radius-sm);
   text-decoration: none; white-space: nowrap;
-  transition: filter 0.15s;
+  transition: filter var(--duration-fast), box-shadow var(--duration-normal);
 }
-.ep-btn:hover { filter: brightness(1.08); }
+.ep-btn:hover { filter: brightness(1.08); box-shadow: var(--shadow-gold-subtle); }
 .ep-btn--locked {
   background: transparent; color: var(--color-brand-white);
   border: 1px solid rgba(255,255,255,0.22);
@@ -259,21 +338,53 @@
   border-color: rgba(255,255,255,0.55);
   background: rgba(255,255,255,0.04);
   filter: none;
+  box-shadow: none;
 }
 .ep-soon {
   font-family: var(--font-body); font-size: 0.6875rem; font-weight: 500;
   color: var(--color-brand-muted); letter-spacing: 0.06em; text-transform: uppercase;
 }
 
-/* ── Series mobile overrides ──
-   On mobile, the sticky 16:9 SeriesTrailerPlayer replaces the portrait poster
-   and the in-hero trailer button (trailer plays inline in the sticky player). */
+/* ── Series mobile overrides ── */
 @media (max-width: 767px) {
-  /* Hide portrait poster for series — sticky player takes its role */
   .detail-poster-wrap--mobile-hide { display: none; }
 
-  /* Hide desktop "Watch Trailer" link for series — trailer plays in sticky player */
-  .detail-trailer-desktop-only { display: none; }
+  .detail-info {
+    display: flex;
+    flex-direction: column;
+  }
+  .detail-genre         { order: 1; }
+  .detail-actions       { order: 2; gap: 10px; }
+  .detail-title         { order: 3; }
+  .detail-meta          { order: 4; }
+  .detail-synopsis      { order: 5; }
+  .detail-status-badge  { order: 6; }
+  .detail-engagement    { order: 7; }
+  .detail-auth-note     { order: 8; }
+
+  .detail-btn-primary,
+  .detail-btn-ghost {
+    width: 100%;
+    min-width: 0;
+    justify-content: center;
+  }
+}
+
+/* ── Extra-small mobile CTA polish ── */
+@media (max-width: 640px) {
+  .detail-actions {
+    gap: 10px;
+  }
+
+  .detail-btn-primary,
+  .detail-btn-ghost {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .detail-engagement {
+    gap: 8px;
+  }
 }
 
 /* ── Status badge — upcoming / in-production ── */
@@ -286,7 +397,7 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   padding: 0.25rem 0.65rem;
-  border-radius: 2px;
+  border-radius: var(--radius-xs);
   margin-bottom: 0.75rem;
 }
 .detail-status-badge--upcoming {
@@ -303,7 +414,191 @@
 /* ── Engagement row — Save + Like + Share ── */
 .detail-engagement {
   display: flex;
+  align-items: center;
   flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+@media (max-width: 767px) {
+  .detail-engagement {
+    margin-top: 14px;
+    padding-bottom: 0.5rem;
+    gap: 8px;
+  }
+}
+
+/* ── Poster + cast column wrapper (mobile: flex row) ── */
+.detail-poster-column {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 0.625rem;
+}
+@media (min-width: 768px) {
+  .detail-poster-column { flex-direction: column; gap: 0; }
+}
+
+/* ── Cast circles — shared styles ── */
+.detail-cast-circle {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 1.5px solid rgba(232,201,126,0.3);
+  background: var(--color-brand-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  text-decoration: none;
+  transition: border-color 0.18s, box-shadow 0.18s;
+  cursor: pointer;
+}
+.detail-cast-circle:hover {
+  border-color: rgba(232,201,126,0.65);
+  box-shadow: 0 0 0 3px rgba(232,201,126,0.12);
+}
+.detail-cast-img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.detail-cast-initial {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-brand-accent);
+  line-height: 1;
+}
+
+/* ── Mobile cast column — right of poster, mobile only ── */
+.detail-cast-mobile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   gap: 0.5rem;
-  margin-top: 1rem;
+  padding-top: 0.25rem;
+}
+@media (min-width: 768px) {
+  .detail-cast-mobile { display: none; }
+}
+
+/* CAST label — mobile column only */
+.detail-cast-mobile-label {
+  font-family: var(--font-body);
+  font-size: 0.5625rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(226,184,101,0.82);
+  line-height: 1;
+  margin-bottom: 0.1rem;
+}
+
+.detail-cast-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 24px;
+  border-radius: 999px;
+  background: rgba(232,201,126,0.08);
+  border: 1px solid rgba(232,201,126,0.28);
+  font-family: var(--font-body);
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: rgba(232,201,126,0.85);
+  text-decoration: none;
+  transition: background 0.15s, border-color 0.15s;
+}
+.detail-cast-more:hover {
+  background: rgba(232,201,126,0.15);
+  border-color: rgba(232,201,126,0.5);
+}
+
+/* ── Desktop cast row — beside engagement buttons, desktop only ── */
+.detail-cast-desktop {
+  display: none;
+}
+@media (min-width: 768px) {
+  .detail-cast-desktop {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-left: 1.5rem; /* deliberate gap from Share button */
+    padding-left: 1.25rem;
+    border-left: 1px solid rgba(255,255,255,0.07);
+  }
+}
+
+.detail-cast-label {
+  font-family: var(--font-body);
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-brand-muted);
+  opacity: 0.7;
+}
+
+.detail-cast-circles {
+  display: flex;
+}
+.detail-cast-circles .detail-cast-circle {
+  width: 52px;
+  height: 52px;
+  margin-left: -10px;
+  box-shadow: 0 0 0 2.5px var(--color-brand-black);
+}
+.detail-cast-circles .detail-cast-circle:first-child { margin-left: 0; }
+
+.detail-cast-viewall {
+  font-family: var(--font-body);
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: rgba(232,201,126,0.78);
+  text-decoration: none;
+  white-space: nowrap;
+  padding: 0.3rem 0.7rem;
+  border: 1px solid rgba(232,201,126,0.25);
+  border-radius: 999px;
+  background: rgba(232,201,126,0.06);
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.detail-cast-viewall:hover {
+  color: var(--color-brand-accent);
+  border-color: rgba(232,201,126,0.5);
+  background: rgba(232,201,126,0.12);
+}
+
+/* ── Progressive mobile poster/cast sizing ──────────────────
+   320px: stable defaults (220px poster, 44px cast)
+   360px: slightly bigger cast circles only
+   390px: larger cast + slightly wider poster (safe margin confirmed)
+   430px: full poster width (safe margin confirmed)
+   Desktop (≥768px): handled by existing rules above — not touched here.
+───────────────────────────────────────────────────────────── */
+@media (min-width: 360px) and (max-width: 767px) {
+  .detail-cast-mobile .detail-cast-circle {
+    width: 48px;
+    height: 48px;
+  }
+  .detail-cast-mobile .detail-cast-initial { font-size: 1.05rem; }
+  .detail-cast-more { width: 48px; }
+}
+
+@media (min-width: 390px) and (max-width: 767px) {
+  .detail-poster-wrap { max-width: 240px; }
+  .detail-cast-mobile .detail-cast-circle {
+    width: 52px;
+    height: 52px;
+  }
+  .detail-cast-mobile .detail-cast-initial { font-size: 1.1rem; }
+  .detail-cast-more { width: 52px; }
+}
+
+@media (min-width: 430px) and (max-width: 767px) {
+  .detail-poster-wrap { max-width: 260px; }
 }

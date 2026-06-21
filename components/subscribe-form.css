@@ -1,0 +1,118 @@
+/* ── Subscribe Form ─────────────────────────────────────── */
+
+/* Honeypot — invisible to real users, must not affect layout */
+.sub-hp {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+  tab-index: -1;
+}
+
+.sub-form {
+  width: 100%;
+  max-width: 480px;
+  position: relative;
+}
+
+/* ── Input + button row ── */
+.sub-input-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.sub-input {
+  flex: 1;
+  min-width: 180px;
+  height: 44px;
+  padding: 0 1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.11);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%),
+    rgba(10, 9, 7, 0.75);
+  color: var(--color-brand-light);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  transition: border-color 0.15s;
+}
+.sub-input::placeholder {
+  color: rgba(255,255,255,0.32);
+}
+.sub-input:focus {
+  outline: none;
+  border-color: rgba(232,201,126,0.4);
+}
+.sub-input:disabled {
+  opacity: 0.5;
+}
+
+.sub-btn {
+  height: 44px;
+  padding: 0 1.4rem;
+  border-radius: 999px;
+  border: 1px solid rgba(232,201,126,0.35);
+  background:
+    linear-gradient(135deg, rgba(232,201,126,0.2) 0%, rgba(232,201,126,0.06) 100%),
+    rgba(14,12,8,0.82);
+  color: rgba(246,226,171,0.95);
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+  transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+}
+.sub-btn:hover:not(:disabled) {
+  background:
+    linear-gradient(135deg, rgba(232,201,126,0.28) 0%, rgba(232,201,126,0.1) 100%),
+    rgba(14,12,8,0.82);
+  border-color: rgba(232,201,126,0.55);
+}
+.sub-btn:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+/* ── Turnstile widget ── */
+.sub-turnstile {
+  margin-top: 0.65rem;
+}
+
+/* ── Success state ── */
+.sub-success {
+  font-family: var(--font-body);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: rgba(246,226,171,0.9);
+  margin: 0;
+  line-height: 1.5;
+}
+.sub-success-sub {
+  display: block;
+  font-weight: 400;
+  font-size: 0.8125rem;
+  color: var(--color-brand-muted);
+  margin-top: 0.2rem;
+}
+
+/* ── Hint (e.g. "complete verification first") ── */
+.sub-hint {
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  color: var(--color-brand-muted);
+  margin: 0.5rem 0 0;
+}
+
+/* ── Error state ── */
+.sub-error {
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  color: var(--color-brand-red);
+  margin: 0.5rem 0 0;
+}

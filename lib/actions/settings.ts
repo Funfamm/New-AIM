@@ -53,6 +53,15 @@ export async function saveContentAccessSettings(formData: FormData) {
   });
 }
 
+// ── Section 3a: Casting ───────────────────────────────────────
+export async function saveCastingSettings(formData: FormData) {
+  await requireAdmin();
+  await upsert({
+    showCasting:          formData.get("showCasting")          === "true",
+    castingBackgroundUrl: (formData.get("castingBackgroundUrl") as string) || null,
+  });
+}
+
 // ── Section 3: Feature Visibility ────────────────────────────
 export async function saveFeatureSettings(formData: FormData) {
   await requireAdmin();

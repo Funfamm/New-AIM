@@ -16,8 +16,8 @@ build/
 .env.*.local
 .env.local.example
 
-# Prisma generated client
-prisma/migrations/
+# Prisma generated client (migrations should be tracked)
+# prisma/migrations/ -- intentionally NOT ignored; migration history must be in git
 
 # Vercel
 .vercel

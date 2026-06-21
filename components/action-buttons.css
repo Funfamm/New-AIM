@@ -1,57 +1,101 @@
-/* Shared engagement action buttons — Like, Share
-   Imported by like-button.tsx and share-button.tsx
-   Scoped to components — never affects admin or public layout */
+/* Shared engagement action buttons — Like, Save, Share
+   Imported at route level by app/(public)/works/[slug]/page.tsx */
 
 .action-btn {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
+  justify-content: center;
+  gap: 7px;
   font-family: var(--font-body);
-  font-size: 0.875rem;
-  font-weight: 500;
-  letter-spacing: 0.02em;
-  color: var(--color-brand-muted);
-  background: none;
-  border: 1px solid var(--color-brand-border);
-  height: 52px;
-  padding: 0 1.5rem;
-  border-radius: 2px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.025em;
+  color: rgba(220,224,235,0.72);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.075) 0%, rgba(255,255,255,0.025) 100%),
+    rgba(12,11,9,0.75);
+  border: 1px solid rgba(255,255,255,0.11);
+  min-height: 42px;
+  min-width: 96px;
+  padding: 0 16px;
+  border-radius: 999px;
   cursor: pointer;
-  transition: color 0.18s, border-color 0.18s, opacity 0.18s;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.07),
+    0 4px 14px rgba(0,0,0,0.18);
+  transition: color 0.15s, border-color 0.15s, background 0.15s, box-shadow 0.15s;
   white-space: nowrap;
-  flex-shrink: 0;
+  flex: 0 0 auto;
+  box-sizing: border-box;
 }
 
 .action-btn:hover:not(:disabled) {
-  color: var(--color-brand-light);
-  border-color: var(--color-brand-muted);
+  color: rgba(240,244,255,0.9);
+  border-color: rgba(255,255,255,0.22);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.11) 0%, rgba(255,255,255,0.04) 100%),
+    rgba(12,12,14,0.72);
 }
 
-.action-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.action-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-/* Like — turns accent gold when liked */
+/* Like — gold when liked */
 .action-btn--liked {
-  color: var(--color-brand-accent);
-  border-color: var(--color-brand-accent);
+  color: rgba(255,235,185,0.96);
+  border-color: rgba(226,184,101,0.5);
+  background:
+    linear-gradient(180deg, rgba(226,184,101,0.2) 0%, rgba(226,184,101,0.07) 100%),
+    rgba(28,20,10,0.78);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.08),
+    0 4px 14px rgba(226,184,101,0.1);
 }
 .action-btn--liked:hover:not(:disabled) {
-  opacity: 0.75;
+  opacity: 0.82;
 }
 
-/* Share — no persistent state; stays muted */
+/* Share — no persistent state */
 .action-btn--share {}
 
-/* Like count badge */
+/* Save — no additional styles needed (uses --liked for active state) */
+.action-btn--save {}
+
+/* Like count — tabular nums for consistent width */
 .action-btn-count {
   font-variant-numeric: tabular-nums;
   font-size: 0.75rem;
   font-weight: 600;
-  opacity: 0.8;
+  opacity: 0.85;
 }
 
 /* Compact variant for watch page */
 .action-btn--sm {
-  height: 36px;
-  padding: 0 1rem;
-  font-size: 0.8125rem;
+  min-height: 34px;
+  min-width: 80px;
+  padding: 0 0.85rem;
+  font-size: 0.75rem;
 }
+
+/* Heart pop animation on like */
+@keyframes heart-pop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.45); }
+  70%  { transform: scale(0.9); }
+  100% { transform: scale(1); }
+}
+.action-btn--like-pop svg {
+  animation: heart-pop 0.38s var(--ease-bounce);
+}
+
+/* ── Mobile responsive ── */
+@media (max-width: 640px) {
+  .action-btn {
+    min-height: 38px;
+    min-width: 86px;
+    padding: 0 13px;
+    font-size: 13px;
+  }
+}
+

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import HeroVideoBg from "./hero-video-bg";
 import "./hero-rotator.css";
 
 export type HeroItem = {
@@ -11,22 +12,35 @@ export type HeroItem = {
   slug: string;
   heroMobileUrl?: string | null;
   heroDesktopUrl?: string | null;
+  /** Desktop-only preview clip (mp4 or .m3u8). Mobile always keeps static image. */
+  previewClipUrl?: string | null;
+  /** Seconds to play the preview before returning to poster. Null = 12 s default. */
+  previewClipDuration?: number | null;
 };
 
 type Props = {
   items: HeroItem[];
   interval?: number; // ms between slides, default 4s
+  onSlideChange?: (index: number) => void;
 };
 
-export default function HeroRotator({ items, interval = 4000 }: Props) {
+export default function HeroRotator({ items, interval = 4000, onSlideChange }: Props) {
   const [active, setActive] = useState(0);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Ref-based lock: skip rotation ticks while a preview video is playing
+  const previewActiveRef = useRef(false);
+
+  // Notify parent when active slide changes
+  useEffect(() => {
+    onSlideChange?.(active);
+  }, [active, onSlideChange]);
 
   useEffect(() => {
     if (items.length <= 1) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
     timer.current = setInterval(() => {
+      if (previewActiveRef.current) return; // hold slide while preview is playing
       setActive((i) => (i + 1) % items.length);
     }, interval);
 
@@ -46,11 +60,7 @@ export default function HeroRotator({ items, interval = 4000 }: Props) {
         return (
           <div
             key={i}
-            className="hr-slide"
-            style={{
-              opacity: isActive ? 1 : 0,
-              pointerEvents: isActive ? "auto" : "none",
-            }}
+            className={`hr-slide${isActive ? " hr-slide--active" : ""}`}
           >
             <Link
               href={`/works/${item.slug}`}
@@ -87,6 +97,16 @@ export default function HeroRotator({ items, interval = 4000 }: Props) {
                 />
               )}
             </Link>
+
+            {/* Desktop-only preview video — renders nothing on mobile/slow networks */}
+            {item.previewClipUrl && (
+              <HeroVideoBg
+                src={item.previewClipUrl}
+                isActive={isActive}
+                previewMs={(item.previewClipDuration ?? 12) * 1000}
+                onPlayingChange={(playing) => { previewActiveRef.current = playing; }}
+              />
+            )}
           </div>
         );
       })}
