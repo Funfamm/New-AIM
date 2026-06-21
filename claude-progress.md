@@ -119,6 +119,33 @@ Still in place (not video-related): F-02 CSP, F-03 image hosts, F-04 worker secr
 
 `npx tsc --noEmit` passes.
 
+### Error Monitoring v2 — Phases 2 & 3 + light re-theme — 2026-06-20
+
+Full reference: `docs/ERROR_MONITORING.md`. No new migration (Phase 1 added all the columns/tables).
+
+Phase 2 (triage + discovery):
+- `error-actions.ts`: `setErrorStatus`, `muteError`, `assignError`, `addErrorNote`; resolve/reopen now
+  dual-write `status` (via `statusPatch`); `clearResolvedErrors` keys off `status=RESOLVED`; delete from
+  detail redirects back to the list (`from=detail`). All `requireAdmin()` + `writeAudit()`.
+- Detail page: triage toolbar (Acknowledge / Resolve|Reopen / Ignore / Mute-snooze 1h–30d), assign-to-me,
+  notes thread (textarea + list from `error_notes`).
+- List page: status filters (Open/Resolved/Muted/All — Open = NEW+ACKNOWLEDGED), level + source filters,
+  time-range (24h/7d/30d), sort (recent/frequency/newest), and message/route **search** — all server-rendered
+  via a GET form (no client JS). Stats now "Open" + "Fatal (open)".
+
+Phase 3 (ops hardening):
+- PII scrub `lib/monitoring/scrub.ts` wired into capture BEFORE fingerprinting (also improves grouping by
+  collapsing per-user variants): emails, JWT, Bearer/Basic, AWS/Stripe/Google keys, `secret=…`, sensitive JSON keys.
+- Crons (Bearer `CRON_SECRET`, registered in `vercel.json`): `error-digest` (09:00 UTC, skips all-clear) and
+  `error-retention` (03:00 UTC; `ERROR_RETENTION_DAYS`=30 groups, `ERROR_BUCKET_RETENTION_DAYS`=90 buckets).
+- **Deferred (deliberate):** dropping the legacy `resolved` column — two-step, a later migration once nothing reads it.
+
+UI: re-themed from dark → **light neumorphic** per user request (was "i dont want something dark anymore").
+`errors-admin.css` is now a light soft-UI panel (base #e8eaf1, white/gray dual shadows, deep-gold accent #9a7416)
+floating on the dark admin shell. Uses non-token hexes — soft-UI needs custom shadow colors; explicitly requested.
+
+`npx tsc --noEmit` passes.
+
 ### Error Monitoring v2 — Phase 1 (Sentry-class foundation) — 2026-06-20
 
 Plan: `~/.claude/plans/jazzy-twirling-zebra.md` (3 phases; this is Phase 1). Industry-standard,
