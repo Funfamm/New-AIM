@@ -39,4 +39,6 @@ DB-backed per-fingerprint dedupe (`lastAlertedAt`, atomic `updateMany`) — corr
 | `ERROR_BUCKET_RETENTION_DAYS` | 90 | Age to prune occurrence buckets |
 
 ## UI
-Light **neumorphic** theme (`app/admin/errors/errors-admin.css`) — a light soft-UI panel on the dark admin shell. List: status/level filters, source/time-range/sort, search, per-row 24h sparkline, copy. Detail (`/admin/errors/[id]`): triage toolbar, 24h+7d sparklines (inline SVG, no chart lib), stack/context, notes, copy report.
+Cool-slate **neumorphic** theme (`app/admin/errors/errors-admin.css`) — a soft-UI panel on the admin shell. List: status/level filters, source/time-range/sort, search, per-row 24h sparkline, copy. Detail (`/admin/errors/[id]`): triage toolbar, 24h+7d sparklines (inline SVG, no chart lib), stack/context, notes, copy report.
+
+The sidebar **Errors** item shows a live badge of unresolved (`NEW`+`ACKNOWLEDGED`) errors, computed in `app/admin/layout.tsx` and passed to `AdminSidebar` — it clears as errors are resolved/ignored. (Distinct from the transient bell ping in [Alerting].)

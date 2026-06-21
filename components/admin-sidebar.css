@@ -82,6 +82,13 @@
   background: var(--color-brand-surface); color: var(--color-brand-white);
   border-left-color: var(--color-brand-accent);
 }
+/* Unresolved-error count on the Errors item — clears as errors are resolved. */
+.adm-link-badge {
+  margin-left: auto; min-width: 18px; text-align: center;
+  font-family: var(--font-body); font-size: 0.6rem; font-weight: 700; line-height: 1;
+  padding: 3px 6px; border-radius: 999px;
+  background: rgba(248,113,113,0.14); color: #f87171; border: 1px solid rgba(248,113,113,0.28);
+}
 
 /* Bottom */
 .adm-bottom {
