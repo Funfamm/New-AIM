@@ -27,7 +27,7 @@ const NAV = [
   { href: "/admin/errors",    label: "Errors",      icon: AlertTriangle },
 ];
 
-export default function AdminSidebar({ unreadNotifications = 0 }: { unreadNotifications?: number }) {
+export default function AdminSidebar({ unreadNotifications = 0, openErrorCount = 0 }: { unreadNotifications?: number; openErrorCount?: number }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
@@ -69,17 +69,25 @@ export default function AdminSidebar({ unreadNotifications = 0 }: { unreadNotifi
 
         {/* Nav links */}
         <nav className="adm-nav">
-          {NAV.map((l) => (
-            <Link
-              key={l.href}
-              href={l.href}
-              onClick={close}
-              className={`adm-link${active(l.href, l.exact) ? " adm-link--active" : ""}`}
-            >
-              <l.icon size={15} strokeWidth={1.75} />
-              {l.label}
-            </Link>
-          ))}
+          {NAV.map((l) => {
+            const badge = l.href === "/admin/errors" ? openErrorCount : 0;
+            return (
+              <Link
+                key={l.href}
+                href={l.href}
+                onClick={close}
+                className={`adm-link${active(l.href, l.exact) ? " adm-link--active" : ""}`}
+              >
+                <l.icon size={15} strokeWidth={1.75} />
+                {l.label}
+                {badge > 0 && (
+                  <span className="adm-link-badge" aria-label={`${badge} unresolved`}>
+                    {badge > 99 ? "99+" : badge}
+                  </span>
+                )}
+              </Link>
+            );
+          })}
         </nav>
 
         {/* Bottom: back to site + sign out */}
