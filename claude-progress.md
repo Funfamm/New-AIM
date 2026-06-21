@@ -138,7 +138,9 @@ Phase 3 (ops hardening):
   collapsing per-user variants): emails, JWT, Bearer/Basic, AWS/Stripe/Google keys, `secret=…`, sensitive JSON keys.
 - Crons (Bearer `CRON_SECRET`, registered in `vercel.json`): `error-digest` (09:00 UTC, skips all-clear) and
   `error-retention` (03:00 UTC; `ERROR_RETENTION_DAYS`=30 groups, `ERROR_BUCKET_RETENTION_DAYS`=90 buckets).
-- **Deferred (deliberate):** dropping the legacy `resolved` column — two-step, a later migration once nothing reads it.
+- Legacy `resolved` column **dropped** (two-step, done 2026-06-21): step 1 (74e957d) removed all
+  reads/writes; step 2 migration `20260621040000_drop_error_resolved` drops the column + its index
+  after step 1 was confirmed live in production. `resolvedAt`/`resolvedBy` retained.
 
 UI: neumorphic, iterated on user feedback. Final = **cool-slate mid-dark** soft-UI panel
 (`errors-admin.css`): base #2b3039, cool dual shadows (#21252c / #353c47), soft off-white text
