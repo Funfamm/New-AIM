@@ -253,8 +253,8 @@ enum ErrorSource {
   WORKER
 }
 
-// Triage workflow state for an error group. `resolved` boolean is retained and
-// kept in sync during the transition; reads migrate to `status` over time.
+// Triage workflow state for an error group (the source of truth; the legacy
+// `resolved` boolean it replaced has been dropped).
 enum ErrorStatus {
   NEW
   ACKNOWLEDGED
@@ -950,7 +950,6 @@ model ErrorLog {
   route       String?
   method      String?
   count       Int         @default(1)
-  resolved    Boolean     @default(false)
   resolvedAt  DateTime?
   resolvedBy  String?
   lastUserId  String?
@@ -973,7 +972,6 @@ model ErrorLog {
 
   notes ErrorNote[]
 
-  @@index([resolved, lastSeenAt])
   @@index([level, lastSeenAt])
   @@index([lastSeenAt])
   @@index([status, lastSeenAt])
