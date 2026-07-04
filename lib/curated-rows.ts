@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/prisma";
+import { unstable_cache } from "next/cache";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 import type { RowPlacement } from "@prisma/client";
 import type { RailFilm } from "@/components/film-rail";
 
@@ -42,9 +44,8 @@ export interface PublicContentRow {
  * Only includes published works in each row.
  * Skips rows with no published works.
  */
-export async function getPublicContentRows(
-  placement: RowPlacement
-): Promise<PublicContentRow[]> {
+const loadPublicContentRows = unstable_cache(
+  async (placement: RowPlacement): Promise<PublicContentRow[]> => {
   const rows = await prisma.contentRow.findMany({
     where: {
       placement: {
@@ -80,6 +81,18 @@ export async function getPublicContentRows(
 
   // Filter out rows with no published works
   return rows.filter((row) => row.items.length > 0);
+  },
+  ["public-content-rows"], // `placement` arg is auto-included in the cache key
+  {
+    tags: [CACHE_TAGS.contentRows, CACHE_TAGS.works], // also "works": rows embed live Work display fields
+    revalidate: 300,
+  },
+);
+
+export async function getPublicContentRows(
+  placement: RowPlacement
+): Promise<PublicContentRow[]> {
+  return loadPublicContentRows(placement);
 }
 
 /**

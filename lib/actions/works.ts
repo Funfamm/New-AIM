@@ -4,8 +4,9 @@
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth-guard";
 import { slugify } from "@/lib/utils";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { redirect } from "next/navigation";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 import type { WorkType, WorkStatus } from "@prisma/client";
 import { updateWorkRowAssignments } from "@/lib/actions/rows";
 import { ensureVideoProcessingJob } from "@/lib/actions/video-processing";
@@ -64,6 +65,9 @@ function parseFormData(formData: FormData) {
 }
 
 function revalidateAll() {
+  // Clears the public Data Cache (home loaders + curated rows both carry the "works"
+  // tag). revalidatePath alone does NOT purge unstable_cache — only revalidateTag does.
+  revalidateTag(CACHE_TAGS.works);
   revalidatePath("/admin/works", "layout"); // covers list + all /admin/works/[id] pages
   revalidatePath("/works");
   revalidatePath("/");

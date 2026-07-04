@@ -2,7 +2,8 @@
 
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth-guard";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 import type { RowPlacement } from "@prisma/client";
 
 // ── Helper: Sanitize slug ────────────────────────────────────────────────────
@@ -157,6 +158,7 @@ export async function updateRow(
     });
 
     revalidatePath("/admin/rows");
+    revalidateTag(CACHE_TAGS.contentRows); // purge public curated-rows Data Cache
     revalidatePath("/");
     revalidatePath("/works");
     return { ok: true };
@@ -174,6 +176,7 @@ export async function deleteRow(rowId: string): Promise<{ ok: boolean; error?: s
     await prisma.contentRow.delete({ where: { id: rowId } });
 
     revalidatePath("/admin/rows");
+    revalidateTag(CACHE_TAGS.contentRows); // purge public curated-rows Data Cache
     revalidatePath("/");
     revalidatePath("/works");
     return { ok: true };
@@ -194,6 +197,7 @@ export async function setRowActive(
     await prisma.contentRow.update({ where: { id: rowId }, data: { active } });
 
     revalidatePath("/admin/rows");
+    revalidateTag(CACHE_TAGS.contentRows); // purge public curated-rows Data Cache
     revalidatePath("/");
     revalidatePath("/works");
     return { ok: true };
@@ -235,6 +239,7 @@ export async function addWorkToRow(
     });
 
     revalidatePath("/admin/rows");
+    revalidateTag(CACHE_TAGS.contentRows); // purge public curated-rows Data Cache
     revalidatePath("/");
     revalidatePath("/works");
     return { ok: true };
@@ -260,6 +265,7 @@ export async function removeWorkFromRow(
     });
 
     revalidatePath("/admin/rows");
+    revalidateTag(CACHE_TAGS.contentRows); // purge public curated-rows Data Cache
     revalidatePath("/");
     revalidatePath("/works");
     return { ok: true };
@@ -287,6 +293,7 @@ export async function updateRowItemOrder(
     );
 
     revalidatePath("/admin/rows");
+    revalidateTag(CACHE_TAGS.contentRows); // purge public curated-rows Data Cache
     revalidatePath("/");
     revalidatePath("/works");
     return { ok: true };
@@ -313,6 +320,7 @@ export async function updateRowSortOrder(
     );
 
     revalidatePath("/admin/rows");
+    revalidateTag(CACHE_TAGS.contentRows); // purge public curated-rows Data Cache
     revalidatePath("/");
     revalidatePath("/works");
     return { ok: true };
@@ -373,6 +381,7 @@ export async function updateWorkRowAssignments(
       });
     }
 
+    revalidateTag(CACHE_TAGS.contentRows); // purge public curated-rows Data Cache
     revalidatePath("/");
     revalidatePath("/works");
     revalidatePath("/admin/works");

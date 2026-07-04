@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/prisma";
+import { unstable_cache } from "next/cache";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 import { auth } from "@/lib/auth";
 import { notFound } from "next/navigation";
 import { after } from "next/server";
@@ -39,12 +41,43 @@ const STATUS_BADGE: Record<string, { label: string; cls: string } | undefined> =
   IN_PRODUCTION: { label: "In Production",  cls: "detail-status-badge detail-status-badge--production" },
 };
 
+// Cached, user-independent work-by-slug loader. Shared by generateMetadata AND the page
+// body, so a crawler hit is ONE cached lookup instead of two duplicate DB reads. Tagged
+// "works" so any admin Work mutation (or HLS completion) invalidates it. Selects a superset
+// covering both the OG/meta fields and the full page render. No cookies/auth inside — public.
+const getWork = unstable_cache(
+  async (slug: string) => {
+    return prisma.work.findUnique({
+      where: { slug },
+      select: {
+        id: true, slug: true, title: true, type: true, status: true, commentsEnabled: true,
+        description: true, posterUrl: true, thumbnailUrl: true, heroMobileUrl: true, heroDesktopUrl: true,
+        trailerUrl: true, videoUrl: true, previewClipUrl: true,
+        year: true, duration: true, genre: true, genres: true, director: true,
+        requiresAuth: true, requiresLoginToViewTrailer: true,
+        cast: {
+          orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+          select: { id: true, name: true, jobTitle: true, character: true, photoUrl: true },
+        },
+        episodes: {
+          where: { status: "PUBLISHED" },
+          orderBy: [{ seasonNumber: "asc" }, { episodeNumber: "asc" }, { order: "asc" }],
+          select: {
+            id: true, slug: true, title: true,
+            description: true, posterUrl: true, videoUrl: true,
+            duration: true, seasonNumber: true, episodeNumber: true,
+          },
+        },
+      },
+    });
+  },
+  ["work-detail"],
+  { tags: [CACHE_TAGS.works], revalidate: 300 },
+);
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const work = await prisma.work.findUnique({
-    where: { slug },
-    select: { title: true, description: true, posterUrl: true, heroDesktopUrl: true, thumbnailUrl: true, heroMobileUrl: true },
-  });
+  const work = await getWork(slug);
   if (!work) return { title: "Not Found" };
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://impactaistudio.com";
@@ -76,32 +109,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       images: [shareImage],
     },
   };
-}
-
-async function getWork(slug: string) {
-  return prisma.work.findUnique({
-    where: { slug },
-    select: {
-      id: true, slug: true, title: true, type: true, status: true, commentsEnabled: true,
-      description: true, posterUrl: true, heroMobileUrl: true, heroDesktopUrl: true,
-      trailerUrl: true, videoUrl: true, previewClipUrl: true,
-      year: true, duration: true, genre: true, genres: true, director: true,
-      requiresAuth: true, requiresLoginToViewTrailer: true,
-      cast: {
-        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-        select: { id: true, name: true, jobTitle: true, character: true, photoUrl: true },
-      },
-      episodes: {
-        where: { status: "PUBLISHED" },
-        orderBy: [{ seasonNumber: "asc" }, { episodeNumber: "asc" }, { order: "asc" }],
-        select: {
-          id: true, slug: true, title: true,
-          description: true, posterUrl: true, videoUrl: true,
-          duration: true, seasonNumber: true, episodeNumber: true,
-        },
-      },
-    },
-  });
 }
 
 function fmtDuration(minutes: number): string {

@@ -1,9 +1,11 @@
 import { prisma } from "@/lib/prisma";
+import { unstable_cache } from "next/cache";
 import { auth } from "@/lib/auth";
 import { getWorksWithOpenCastingRoles } from "@/lib/actions/casting";
 import WorksClient from "@/components/works-client";
 import FilmRail from "@/components/film-rail";
 import { getPublicContentRows } from "@/lib/curated-rows";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 import type { Metadata } from "next";
 import type { WorkStatus } from "@prisma/client";
 
@@ -15,7 +17,10 @@ type Props = {
 
 const HERO_STATUSES: { in: WorkStatus[] } = { in: ["PUBLISHED", "UPCOMING", "IN_PRODUCTION"] };
 
-async function getWorksHero() {
+// Both loaders are user-independent Work data — cached in the Data Cache so bot/crawler
+// bursts don't re-run them per request (the flaw that exhausted the pool on the homepage).
+// Invalidated by revalidateTag(CACHE_TAGS.works) on any admin Work mutation. No auth inside.
+const getWorksHero = unstable_cache(async () => {
   return prisma.work.findMany({
     where: { status: HERO_STATUSES, featuredOnWorks: true, type: { not: "EPISODE" } },
     orderBy: { order: "asc" },
@@ -24,9 +29,9 @@ async function getWorksHero() {
       title: true, slug: true, previewClipUrl: true, heroPreviewDuration: true,
     },
   });
-}
+}, ["works-hero"], { tags: [CACHE_TAGS.works], revalidate: 300 });
 
-async function getWorks() {
+const getWorks = unstable_cache(async () => {
   return prisma.work.findMany({
     where: {
       status: { in: ["PUBLISHED", "UPCOMING", "IN_PRODUCTION"] },
@@ -41,7 +46,7 @@ async function getWorks() {
       previewClipUrl: true, heroPreviewDuration: true,
     },
   });
-}
+}, ["works-grid"], { tags: [CACHE_TAGS.works], revalidate: 300 });
 
 export default async function WorksPage({ searchParams }: Props) {
   const [heroWorks, works, { collection }, session, curatedRowsWorks, castingWorkIds] = await Promise.all([
