@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 import { verifyWorkerSecret } from "@/lib/worker-auth";
 
 export async function POST(
@@ -49,6 +51,12 @@ export async function POST(
       data: workUpdate,
     }),
   ]);
+
+  // A completed HLS job writes videoUrl/trailerUrl/previewClipUrl onto the Work,
+  // which drives the homepage hero CTA. The homepage caches Work data, so purge the
+  // "works" tag (curated rows carry it too) or the hero stays stale until an unrelated
+  // admin save. This runs in a route-handler request context, so revalidateTag is valid.
+  revalidateTag(CACHE_TAGS.works);
 
   return NextResponse.json({ ok: true });
 }

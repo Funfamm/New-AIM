@@ -91,6 +91,25 @@ _Nothing currently in progress._
 
 ---
 
+## Homepage connection-pool exhaustion fix — 2026-06-21
+
+**Incident:** production `PrismaClientKnownRequestError` on `HEAD /` — "Timed out fetching a new connection from the connection pool (timeout: 10, connection limit: 5)" on `work.findMany()` + `work.count()`.
+
+**Root cause:** the public homepage ran **5–7 parallel Prisma queries on every render** (including bot HEAD requests) with **no data caching** — the codebase only used `revalidatePath`, never `unstable_cache`. Against the default pool (limit 5 / 10s timeout), a bot/crawler burst during a Neon cold start exhausted the pool.
+
+**Fix (primary — caching):**
+- New `lib/cache-tags.ts` — central tag registry (`works`, `content-rows`).
+- Wrapped the 3 user-independent loaders in `unstable_cache` (revalidate 300s): `getHomeWorks` + `getPublishedTypes` (`app/(public)/page.tsx`, tag `works`) and `getPublicContentRows` (`lib/curated-rows.ts`, tags `content-rows` + `works` since rows embed live Work fields). Per-user loaders (`getContinueWatching`, `getSavedIds`) stay live; `auth()` stays outside the cache.
+- **`revalidatePath` does NOT clear `unstable_cache`** — added `revalidateTag` at every invalidation site: `works.ts` `revalidateAll()` → `works`; all 8 home-affecting `rows.ts` actions → `content-rows`; **worker HLS-completion route** (`app/api/worker/video-processing/[jobId]/complete/route.ts`) → `works` (this route wrote `videoUrl`/`trailerUrl` to a Work but previously revalidated nothing — latent stale-hero bug once cached).
+
+**Fix (secondary — pool hardening, USER ACTION on Vercel):** point runtime `DATABASE_URL` at the Neon **-pooler** host and append `?pgbouncer=true&connection_limit=10&pool_timeout=20&connect_timeout=15`. Keep `DIRECT_DATABASE_URL` on the non-pooler host (migrations). `pgbouncer=true` required to avoid prepared-statement collisions; `connection_limit` must stay ≥ the per-render fan-out (never 1).
+
+**Also cached same session:** `/works` — `getWorksHero` + `getWorks` (`app/(public)/works/page.tsx`, tag `works`; its curated rows were already covered by the shared loader). `/works/[slug]` — deduped the double work-by-slug fetch (`generateMetadata` + page each ran `work.findUnique`) into one cached `getWork(slug)` loader (tag `works`, superset select). Per-user/like-count queries left live.
+
+**Still uncached (follow-up, pool hardening covers them):** `/casting` (2 queries — needs a `casting` tag + invalidation wiring in casting actions), `/watch/[slug]` (4 heavy, but auth/SERIES redirects shrink the cacheable surface), `/sitemap.xml` (1, polled often). `/works/[slug]` like-count still live (cheap indexed COUNT; caching it would need invalidation on every like/unlike).
+
+`npx tsc --noEmit` clean.
+
 ## Audit Hardening — 2026-06-20
 
 Full-platform audit fixes applied (see `docs/lite-hls-streaming-audit.md` §11–12 for streaming detail):

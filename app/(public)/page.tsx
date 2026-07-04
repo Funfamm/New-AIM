@@ -1,6 +1,8 @@
 // Home page — cinematic hero with rotating posters + work rails
 import Link from "next/link";
+import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 import { auth } from "@/lib/auth";
 import FilmRail from "@/components/film-rail";
 import MobileFeaturedHero from "@/components/mobile-featured-hero";
@@ -22,7 +24,13 @@ import type { WorkStatus } from "@prisma/client";
 
 const HOME_STATUSES: { in: WorkStatus[] } = { in: ["PUBLISHED", "UPCOMING", "IN_PRODUCTION"] };
 
-async function getHomeWorks() {
+// Public, user-independent homepage data is cached in the Data Cache so bot/crawler
+// traffic no longer re-runs this fan-out on every request (it was exhausting the
+// Prisma connection pool). Invalidated by revalidateTag(CACHE_TAGS.works) on any
+// admin Work mutation. Do NOT read cookies/headers/auth inside these — they must
+// stay user-independent, or the shared cache would leak one user's data to all.
+const getHomeWorks = unstable_cache(
+  async () => {
   const [featured, newReleases] = await Promise.all([
     // Featured: include first-episode slug so "Watch Series" CTA works on hero
     prisma.work.findMany({
@@ -46,9 +54,13 @@ async function getHomeWorks() {
     }),
   ]);
   return { featured, newReleases };
-}
+  },
+  ["home-works"],
+  { tags: [CACHE_TAGS.works], revalidate: 300 },
+);
 
-async function getPublishedTypes(): Promise<{ types: string[]; hasUpcoming: boolean }> {
+const getPublishedTypes = unstable_cache(
+  async (): Promise<{ types: string[]; hasUpcoming: boolean }> => {
   // Two separate queries so the concepts stay clean:
   //   types      = distinct WorkType values from PUBLISHED works shown on home
   //   hasUpcoming = whether any UPCOMING/IN_PRODUCTION works exist on home
@@ -68,7 +80,10 @@ async function getPublishedTypes(): Promise<{ types: string[]; hasUpcoming: bool
     types:       typeRows.map((r) => r.type as string),
     hasUpcoming: upcomingCount > 0,
   };
-}
+  },
+  ["home-published-types"],
+  { tags: [CACHE_TAGS.works], revalidate: 300 },
+);
 
 async function getSavedIds(userId: string): Promise<string[]> {
   const saved = await prisma.savedWork.findMany({
