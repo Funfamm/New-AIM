@@ -136,7 +136,7 @@ export default async function NotifyMeCtasPage({
         </select>
         <button type="submit" className="admin-filter-btn">Filter</button>
         {isFiltered && (
-          <a href="/admin/notify-me-ctas" className="admin-filter-clear">Clear</a>
+          <Link href="/admin/notify-me-ctas" className="admin-filter-clear">Clear</Link>
         )}
         <span className="admin-filter-count">{ctas.length} result{ctas.length !== 1 ? "s" : ""}</span>
       </form>

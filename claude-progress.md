@@ -91,6 +91,15 @@ _Nothing currently in progress._
 
 ---
 
+## CI lint gate repaired — 2026-07-04
+
+The "Lint, Type Check & Audit" CI check had been **red on every merge since #154**: CI runs `next lint`, but no `eslint`/`eslint-config-next` was installed and no config existed, so `next lint` dropped into interactive setup and exited 1 — killing the job before typecheck/audit even ran (the lint gate protected nothing).
+
+- Added devDeps `eslint@^8.57.1` + `eslint-config-next@15.3.2`; new `.eslintrc.json` extends `next/core-web-vitals`.
+- Fixed the 4 files with real lint **errors** (the many `<img>` items are warnings and don't fail the build): `react/no-unescaped-entities` in `admin/comments` + `notify-me-ctas/signups` (→ `&ldquo;`/`&rdquo;`); `@next/next/no-html-link-for-pages` in `notify-me-ctas` (`<a>` → `<Link>`); and a genuine **`react-hooks/rules-of-hooks`** latent bug in `components/admin/row-edit-form.tsx` — `useFormState` was called *after* an early `return null`; moved it above the guard.
+
+`npm run lint` → exit 0; `tsc --noEmit` clean.
+
 ## Homepage connection-pool exhaustion fix — 2026-06-21
 
 **Incident:** production `PrismaClientKnownRequestError` on `HEAD /` — "Timed out fetching a new connection from the connection pool (timeout: 10, connection limit: 5)" on `work.findMany()` + `work.count()`.
