@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { isIgnorableClientError } from "@/lib/monitoring/ignore";
 
 // Captures uncaught browser errors + unhandled promise rejections and beacons them
 // to the in-house monitor. Mounted once in the root layout. Silent and best-effort.
@@ -8,7 +9,9 @@ export default function ClientErrorReporter() {
   useEffect(() => {
     function report(message: string, stack?: string) {
       const msg = (message ?? "").trim();
-      if (!msg || msg === "Script error.") return; // cross-origin noise, no detail
+      // Drop known-benign browser noise (aborted fetch/media on navigation, cross-origin
+      // "Script error.", ResizeObserver churn) so it never reaches the monitor.
+      if (isIgnorableClientError(msg)) return;
       const payload = JSON.stringify({
         message: msg.slice(0, 1000),
         stack:   stack?.slice(0, 4000),
