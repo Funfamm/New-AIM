@@ -91,6 +91,16 @@ _Nothing currently in progress._
 
 ---
 
+## Cache remaining crawler pages — 2026-07-04
+
+Follow-up to the homepage/works pool-exhaustion fix — same `unstable_cache` + tag treatment for the other crawler-reachable pages that shared the flaw.
+
+- **`/sitemap.xml`** (`app/sitemap.ts`): cached the published-works `findMany` (tag `works`, revalidate 1h) so bots polling the sitemap don't each open a DB connection.
+- **`/casting` + `/casting/[slug]`**: new `casting` cache tag. Cached `getPublicCastingRoles` (list) and `getPublicCastingRole` (deduped across `generateMetadata` + page) at the call sites (they live in a `"use server"` file, so wrapped at the page, not in place). Wired `revalidateTag(CACHE_TAGS.casting)` into `casting.ts` role mutations (`adminCreateRole`/`adminUpdateRole`/`adminDeleteRole`) and `settings.ts` (`saveCastingSettings` + `saveFeatureSettings`, both write `showCasting`). Application-count staleness bounded by the 300s window (not worth invalidating on every submit).
+- **`/watch/[slug]`** (`app/(public)/watch/[slug]/page.tsx`): cached the heavy `getWork(slug)` (nested episodes/parent/CTA) and deduped it with `generateMetadata` (tag `works`; added hero/thumb fields to the select for the OG image). **Access-control/redirects run against the live session in the page body, not the cached data** — safe. Per-user loaders (progress, saved, likes, subtitles, notify-signup, analytics) left live.
+
+`tsc --noEmit` clean; `npm run lint` exit 0.
+
 ## Client error monitor: filter benign browser noise — 2026-07-04
 
 A production CLIENT error "The operation was aborted." (AbortError) on `/watch/line-of-sight` was captured as a real error. It's benign — `AbortController` cancels in-flight fetch/media requests when the user navigates away or the HLS player tears down. `ClientErrorReporter` only filtered `"Script error."`, so this noise reached the monitor (with a misleading stack, since the ingest route wraps the message in a fresh `Error`).

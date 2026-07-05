@@ -1,14 +1,27 @@
 import type { MetadataRoute } from "next";
+import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { CACHE_TAGS } from "@/lib/cache-tags";
+
+// Cached so search-engine bots polling the sitemap don't each open a DB connection
+// (during a Neon cold start that exhausted the pool elsewhere). Invalidated on any
+// admin Work mutation via the "works" tag; also self-refreshes hourly.
+const getSitemapWorks = unstable_cache(
+  async () => {
+    return prisma.work.findMany({
+      where: { status: "PUBLISHED" },
+      select: { slug: true, updatedAt: true },
+      orderBy: { updatedAt: "desc" },
+    });
+  },
+  ["sitemap-works"],
+  { tags: [CACHE_TAGS.works], revalidate: 3600 },
+);
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://aimstudio.app";
 
-  const works = await prisma.work.findMany({
-    where: { status: "PUBLISHED" },
-    select: { slug: true, updatedAt: true },
-    orderBy: { updatedAt: "desc" },
-  });
+  const works = await getSitemapWorks();
 
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: appUrl,                   lastModified: new Date(), changeFrequency: "daily",   priority: 1.0 },

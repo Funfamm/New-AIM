@@ -3,7 +3,8 @@
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { requireAdmin } from "@/lib/auth-guard";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 import { headers } from "next/headers";
 import { runAuditionReview } from "@/lib/casting/casting-ai-client";
 import { writeAudit } from "@/lib/audit";
@@ -783,6 +784,7 @@ export async function adminCreateRole(
       },
     });
 
+    revalidateTag(CACHE_TAGS.casting); // purge public /casting + /casting/[slug] Data Cache
     revalidatePath("/admin/casting/roles");
     revalidatePath("/casting");
     return { ok: true, id: role.id };
@@ -824,6 +826,7 @@ export async function adminUpdateRole(
       },
     });
 
+    revalidateTag(CACHE_TAGS.casting); // purge public /casting + /casting/[slug] Data Cache
     revalidatePath("/admin/casting/roles");
     revalidatePath("/casting");
     return { ok: true };

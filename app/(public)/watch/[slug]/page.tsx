@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/prisma";
+import { unstable_cache } from "next/cache";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 import { auth } from "@/lib/auth";
 import { notFound, redirect } from "next/navigation";
 import { after } from "next/server";
@@ -38,10 +40,7 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const work = await prisma.work.findUnique({
-    where: { slug },
-    select: { title: true, description: true, posterUrl: true, heroDesktopUrl: true, thumbnailUrl: true, heroMobileUrl: true },
-  });
+  const work = await getWork(slug);
   if (!work) return { title: "Watch" };
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://impactaistudio.com";
@@ -75,7 +74,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-async function getWork(slug: string) {
+// Cached, user-independent work-by-slug loader for the watch page — shared with
+// generateMetadata (one cached lookup instead of two DB reads). Access-control and
+// redirect decisions run against the LIVE session in the page body, NOT here, so
+// caching this public work data is safe. Invalidated by the "works" tag (admin Work
+// mutations + HLS completion), so new episodes/videos refresh it.
+const getWork = unstable_cache(async (slug: string) => {
   return prisma.work.findUnique({
     where: { slug },
     select: {
@@ -83,7 +87,7 @@ async function getWork(slug: string) {
       commentsEnabled: true,
       trailerUrl: true, previewClipUrl: true, videoUrl: true,
       requiresAuth: true, requiresLoginToViewTrailer: true,
-      posterUrl: true, description: true,
+      posterUrl: true, heroMobileUrl: true, heroDesktopUrl: true, thumbnailUrl: true, description: true,
       episodeNumber: true, seasonNumber: true, duration: true,
       introStart: true, introEnd: true, creditsStart: true,
       contentRating: true, contentDescriptors: true,
@@ -126,7 +130,7 @@ async function getWork(slug: string) {
       },
     },
   });
-}
+}, ["watch-work-detail"], { tags: [CACHE_TAGS.works], revalidate: 300 });
 
 function toEmbedUrl(url: string): string {
   if (url.includes("youtube.com/watch")) {
