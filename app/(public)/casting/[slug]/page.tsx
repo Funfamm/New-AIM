@@ -1,4 +1,6 @@
 import { getPublicCastingRole, getUserApplicationForRole } from "@/lib/actions/casting";
+import { unstable_cache } from "next/cache";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 import { auth } from "@/lib/auth";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -7,9 +9,18 @@ import "../casting.css";
 
 type Props = { params: Promise<{ slug: string }> };
 
+// Cached, user-independent role-by-slug loader — shared by generateMetadata AND the
+// page body so a crawler hit is one cached lookup, not two. Invalidated by the
+// "casting" tag on role mutations / casting-visibility changes.
+const getCastingRole = unstable_cache(
+  getPublicCastingRole,
+  ["public-casting-role"],
+  { tags: [CACHE_TAGS.casting], revalidate: 300 },
+);
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const role = await getPublicCastingRole(slug);
+  const role = await getCastingRole(slug);
   return { title: role ? `${role.title} — AIM Studio Casting` : "Casting" };
 }
 
@@ -17,7 +28,7 @@ export default async function CastingRolePage({ params }: Props) {
   const { slug } = await params;
 
   const [role, session] = await Promise.all([
-    getPublicCastingRole(slug),
+    getCastingRole(slug),
     auth(),
   ]);
 

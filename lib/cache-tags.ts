@@ -13,4 +13,6 @@ export const CACHE_TAGS = {
   works: "works",
   // Curated content rows (ContentRow / ContentRowItem) for HOME and WORKS placements.
   contentRows: "content-rows",
+  // Public casting pages: casting roles + the showCasting/background settings that gate them.
+  casting: "casting",
 } as const;

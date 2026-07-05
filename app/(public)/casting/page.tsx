@@ -1,4 +1,6 @@
 import { getPublicCastingRoles } from "@/lib/actions/casting";
+import { unstable_cache } from "next/cache";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 import { auth } from "@/lib/auth";
 import Link from "next/link";
 import type { Metadata } from "next";
@@ -8,9 +10,18 @@ export const metadata: Metadata = { title: "Casting — AIM Studio" };
 
 const DEFAULT_BG = "/images/casting-default-bg.jpg";
 
+// User-independent public roles/settings — cached so crawler traffic doesn't re-run
+// the settings + roles queries per request. Invalidated by revalidateTag(CACHE_TAGS.casting)
+// on any role mutation or casting-visibility settings change.
+const getCastingRoles = unstable_cache(
+  getPublicCastingRoles,
+  ["public-casting-roles"],
+  { tags: [CACHE_TAGS.casting], revalidate: 300 },
+);
+
 export default async function CastingPage() {
   const [{ enabled, backgroundUrl, groups }, session] = await Promise.all([
-    getPublicCastingRoles(),
+    getCastingRoles(),
     auth(),
   ]);
 
