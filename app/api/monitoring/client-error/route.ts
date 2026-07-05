@@ -5,6 +5,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { captureError } from "@/lib/monitoring/capture-error";
+import { isIgnorableClientError } from "@/lib/monitoring/ignore";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -37,6 +38,9 @@ export async function POST(req: Request) {
   if (!body || typeof body.message !== "string" || !body.message.trim()) {
     return NextResponse.json({ ok: true });
   }
+  // Defense-in-depth: drop known-benign browser noise (aborted requests/media on
+  // navigation, etc.) in case it comes from a stale client that lacks the filter.
+  if (isIgnorableClientError(body.message)) return NextResponse.json({ ok: true });
 
   const session = await auth().catch(() => null);
 

@@ -91,6 +91,16 @@ _Nothing currently in progress._
 
 ---
 
+## Client error monitor: filter benign browser noise — 2026-07-04
+
+A production CLIENT error "The operation was aborted." (AbortError) on `/watch/line-of-sight` was captured as a real error. It's benign — `AbortController` cancels in-flight fetch/media requests when the user navigates away or the HLS player tears down. `ClientErrorReporter` only filtered `"Script error."`, so this noise reached the monitor (with a misleading stack, since the ingest route wraps the message in a fresh `Error`).
+
+- New `lib/monitoring/ignore.ts` — `isIgnorableClientError(message)` denylist (Sentry-style `ignoreErrors`): AbortError/"operation was aborted", media `play()`/fetch aborts, ResizeObserver loop, "Non-Error promise rejection", cross-origin "Script error.". Dependency-free so client + server share it.
+- Filtered at two layers: `components/client-error-reporter.tsx` (skip the beacon) and `app/api/monitoring/client-error/route.ts` (defense-in-depth for stale clients).
+- Existing single occurrence can be marked Ignored in the UI; future ones are auto-dropped.
+
+`npm run lint` exit 0; `tsc --noEmit` clean.
+
 ## CI lint gate repaired — 2026-07-04
 
 The "Lint, Type Check & Audit" CI check had been **red on every merge since #154**: CI runs `next lint`, but no `eslint`/`eslint-config-next` was installed and no config existed, so `next lint` dropped into interactive setup and exited 1 — killing the job before typecheck/audit even ran (the lint gate protected nothing).
