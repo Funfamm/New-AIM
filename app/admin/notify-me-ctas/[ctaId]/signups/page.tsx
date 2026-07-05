@@ -142,7 +142,7 @@ export default async function CtaSignupsPage({ params, searchParams }: Props) {
             <h1 className="nms-title">{cta.work.title}</h1>
             <span className="nms-type-chip">{CTA_TYPE_LABEL[cta.type] ?? cta.type}</span>
           </div>
-          <p className="nms-subtitle">"{cta.headline}" · {cta.ctaLabel}</p>
+          <p className="nms-subtitle">&ldquo;{cta.headline}&rdquo; · {cta.ctaLabel}</p>
         </div>
         <div className="nms-header-right">
           <span className="nms-count-badge">

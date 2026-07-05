@@ -6,13 +6,15 @@ import { useFormState } from "react-dom";
 type RowData = Awaited<ReturnType<typeof getRowById>>;
 
 export default function RowEditForm({ row }: { row: RowData | null }) {
-  if (!row) return null;
-
+  // Hooks must run unconditionally — call before any early return. The action only
+  // fires from the rendered form, which requires a non-null row, so row! is safe.
   const [state, formAction] = useFormState(
     (_prev: { ok: boolean; error?: string } | null, formData: FormData) =>
-      updateRow(row.id, _prev, formData),
+      updateRow(row!.id, _prev, formData),
     null
   );
+
+  if (!row) return null;
 
   return (
     <form action={formAction} className="edit-form">

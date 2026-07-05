@@ -166,7 +166,7 @@ export default async function AdminCommentsPage({ searchParams }: Props) {
                             </span>
                             {r.details && (
                               <span style={{ fontFamily: "var(--font-body)", fontSize: "0.65rem", color: "var(--color-brand-muted)" }}>
-                                "{r.details.slice(0, 60)}"
+                                &ldquo;{r.details.slice(0, 60)}&rdquo;
                               </span>
                             )}
                             <form>
