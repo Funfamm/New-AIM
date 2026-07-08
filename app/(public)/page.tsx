@@ -3,6 +3,7 @@ import Link from "next/link";
 import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { CACHE_TAGS } from "@/lib/cache-tags";
+import { captureError } from "@/lib/monitoring/capture-error";
 import { auth } from "@/lib/auth";
 import FilmRail from "@/components/film-rail";
 import MobileFeaturedHero from "@/components/mobile-featured-hero";
@@ -115,6 +116,21 @@ async function getContinueWatching(userId: string) {
   }));
 }
 
+// Best-effort loader guard. On a transient DB/pool error — e.g. a cache-miss burst
+// exhausting the connection pool during a Neon cold start — degrade THIS one render to
+// a safe fallback instead of letting an unhandled throw crash the whole Server Component
+// tree (which surfaced as the "/" render-crash + digest error). The error is still
+// reported so recurring pool exhaustion stays visible. MUST wrap at the call site, never
+// inside an unstable_cache fn: a caught fallback there would be cached for the full 300s.
+async function safe<T>(p: Promise<T>, fallback: T, loader: string): Promise<T> {
+  try {
+    return await p;
+  } catch (err) {
+    captureError(err, { source: "SERVER", route: "/", metadata: { loader, degraded: true } });
+    return fallback;
+  }
+}
+
 export default async function HomePage() {
   const session = await auth();
   const userId = session?.user?.id ?? null;
@@ -126,13 +142,15 @@ export default async function HomePage() {
     { types: availableTypes, hasUpcoming },
     curatedRowsHome,
   ] = await Promise.all([
-    getHomeWorks(),
+    safe(getHomeWorks(), { featured: [], newReleases: [] } as Awaited<ReturnType<typeof getHomeWorks>>, "getHomeWorks"),
     userId
-      ? getContinueWatching(userId)
+      ? safe(getContinueWatching(userId), [] as Awaited<ReturnType<typeof getContinueWatching>>, "getContinueWatching")
       : Promise.resolve([] as Awaited<ReturnType<typeof getContinueWatching>>),
-    userId ? getSavedIds(userId) : Promise.resolve<string[]>([]),
-    getPublishedTypes(),
-    getPublicContentRows("HOME"),
+    userId
+      ? safe(getSavedIds(userId), [] as string[], "getSavedIds")
+      : Promise.resolve<string[]>([]),
+    safe(getPublishedTypes(), { types: [] as string[], hasUpcoming: false }, "getPublishedTypes"),
+    getPublicContentRows("HOME"), // guarded inside its own wrapper (also protects /works)
   ]);
 
   const featuredWithPosters = featured.filter(

@@ -30,6 +30,7 @@ function fmtDate(iso: string) {
   return new Intl.DateTimeFormat("en-GB", {
     day: "2-digit", month: "short", year: "numeric",
     hour: "2-digit", minute: "2-digit",
+    timeZone: "UTC", // pin to UTC so SSR (server) and hydration (client) render identical text — avoids React #418
   }).format(new Date(iso));
 }
 

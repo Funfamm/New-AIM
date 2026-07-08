@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { unstable_cache } from "next/cache";
 import { CACHE_TAGS } from "@/lib/cache-tags";
+import { captureError } from "@/lib/monitoring/capture-error";
 import type { RowPlacement } from "@prisma/client";
 import type { RailFilm } from "@/components/film-rail";
 
@@ -92,7 +93,16 @@ const loadPublicContentRows = unstable_cache(
 export async function getPublicContentRows(
   placement: RowPlacement
 ): Promise<PublicContentRow[]> {
-  return loadPublicContentRows(placement);
+  // Degrade gracefully on a transient DB/pool error (e.g. a cache-miss burst during a
+  // Neon cold start): return no rows so the page falls back instead of the whole Server
+  // Component render crashing. The catch is OUTSIDE the cached loader, so a transient
+  // failure is never written to the Data Cache. Reported so the incident stays visible.
+  try {
+    return await loadPublicContentRows(placement);
+  } catch (err) {
+    captureError(err, { source: "SERVER", metadata: { loader: "getPublicContentRows", placement, degraded: true } });
+    return [];
+  }
 }
 
 /**

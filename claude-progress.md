@@ -91,6 +91,23 @@ _Nothing currently in progress._
 
 ---
 
+## Jul 5-7 error batch: hydration #418 + homepage resilience — 2026-07-07
+
+Three production errors from the monitor, diagnosed via multi-agent investigation.
+
+**React #418 (hydration text mismatch) — same class as the earlier /admin/users fix:**
+- `/admin/email` — three `"use client"` tables (`logs-table.tsx`, `queue-table.tsx`, `suppression-bulk.tsx`) had `fmtDate` using `Intl.DateTimeFormat` with hour/minute but **no `timeZone`** → server UTC vs client local. Added `timeZone: "UTC"` to each.
+- `/admin/analytics/visitors` — `vi-feed.tsx` `timeAgo()` uses `Date.now()` (clock-dependent — can't fix with timeZone). Added a mount gate (`mounted` state + `useEffect`) + a deterministic `absTime()` (UTC) placeholder; render `{mounted ? timeAgo(x) : absTime(x)}` at all 3 sites so SSR/first-client render match, then swap to relative post-mount.
+
+**Homepage render crash (`/` digest error) = downstream of the regressed pool timeout:** confirmed the `work.count()` pool-exhaustion throw on a Data-Cache **miss** (post-deploy / after `revalidateTag`) propagated out of the cached loader → unhandled in `HomePage`'s `Promise.all` → crashed the whole render (500/digest). Fix:
+- `app/(public)/page.tsx` — added `safe(p, fallback, loader)` call-site guard around `getHomeWorks`/`getPublishedTypes`/`getContinueWatching`/`getSavedIds`; on a transient error it reports via `captureError` and returns a fallback so the render degrades to a valid 200 (existing empty-state) instead of crashing.
+- `lib/curated-rows.ts` — same try/catch in the **exported** `getPublicContentRows` wrapper (protects homepage + `/works` + `hasPublicContentRows`).
+- **Guardrail:** all catches live OUTSIDE the `unstable_cache` fns — a caught fallback inside would be cached for 300s. Kept the cached loaders throwing so nothing bad is ever cached; the fallback affects only the one failing render.
+
+**STILL THE PRIMARY FIX (user action, not code):** the pool timeout regressed because the pooler `DATABASE_URL` env change was never applied. Point runtime `DATABASE_URL` at the Neon `-pooler` host + `?pgbouncer=true&connection_limit=10&pool_timeout=20&connect_timeout=15`. A single guest cache-miss render fans out to exactly 5 concurrent queries = the current `connection_limit=5`, so two coincident misses guarantee queueing. Caching + degradation reduce and contain it; only the env change raises the ceiling.
+
+`tsc --noEmit` clean; `npm run lint` exit 0.
+
 ## Cache remaining crawler pages — 2026-07-04
 
 Follow-up to the homepage/works pool-exhaustion fix — same `unstable_cache` + tag treatment for the other crawler-reachable pages that shared the flaw.
