@@ -4,6 +4,7 @@ import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { CACHE_TAGS } from "@/lib/cache-tags";
 import { captureError } from "@/lib/monitoring/capture-error";
+import { withDbRetry } from "@/lib/db-retry";
 import { auth } from "@/lib/auth";
 import FilmRail from "@/components/film-rail";
 import MobileFeaturedHero from "@/components/mobile-featured-hero";
@@ -67,19 +68,22 @@ const getPublishedTypes = unstable_cache(
   //   hasUpcoming = whether any UPCOMING/IN_PRODUCTION works exist on home
   // This way Films/Series/Shorts tabs only appear when real published content
   // exists, and Upcoming only appears when there is genuinely upcoming content.
-  const [typeRows, upcomingCount] = await Promise.all([
+  const [typeRows, upcomingWork] = await Promise.all([
     prisma.work.findMany({
       where: { status: "PUBLISHED", showOnHome: true, type: { not: "EPISODE" } },
       select: { type: true },
       distinct: ["type"],
     }),
-    prisma.work.count({
+    // Only need to know IF any upcoming work exists — findFirst stops at the first row,
+    // cheaper than count() scanning all matches on this hot path.
+    prisma.work.findFirst({
       where: { status: { in: ["UPCOMING", "IN_PRODUCTION"] }, showOnHome: true, type: { not: "EPISODE" } },
+      select: { id: true },
     }),
   ]);
   return {
     types:       typeRows.map((r) => r.type as string),
-    hasUpcoming: upcomingCount > 0,
+    hasUpcoming: upcomingWork !== null,
   };
   },
   ["home-published-types"],
@@ -142,15 +146,17 @@ export default async function HomePage() {
     { types: availableTypes, hasUpcoming },
     curatedRowsHome,
   ] = await Promise.all([
-    safe(getHomeWorks(), { featured: [], newReleases: [] } as Awaited<ReturnType<typeof getHomeWorks>>, "getHomeWorks"),
+    // withDbRetry rides out a Neon cold start (serve the real page); safe() degrades to a
+    // valid empty-state only if every retry still fails. Retry inside, degrade outside.
+    safe(withDbRetry(() => getHomeWorks()), { featured: [], newReleases: [] } as Awaited<ReturnType<typeof getHomeWorks>>, "getHomeWorks"),
     userId
       ? safe(getContinueWatching(userId), [] as Awaited<ReturnType<typeof getContinueWatching>>, "getContinueWatching")
       : Promise.resolve([] as Awaited<ReturnType<typeof getContinueWatching>>),
     userId
       ? safe(getSavedIds(userId), [] as string[], "getSavedIds")
       : Promise.resolve<string[]>([]),
-    safe(getPublishedTypes(), { types: [] as string[], hasUpcoming: false }, "getPublishedTypes"),
-    getPublicContentRows("HOME"), // guarded inside its own wrapper (also protects /works)
+    safe(withDbRetry(() => getPublishedTypes()), { types: [] as string[], hasUpcoming: false }, "getPublishedTypes"),
+    getPublicContentRows("HOME"), // guarded (retry + degrade) inside its own wrapper (also protects /works)
   ]);
 
   const featuredWithPosters = featured.filter(
