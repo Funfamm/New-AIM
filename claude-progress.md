@@ -91,6 +91,16 @@ _Nothing currently in progress._
 
 ---
 
+## Error monitor: filter extension / in-app-browser + non-Error noise — 2026-07-12
+
+Two more benign client errors were reaching the monitor:
+- **`[object Event]`** (`/reset-password`) — an `unhandledrejection` whose `reason` is a bare DOM `Event` (failed resource/media load, etc.); `String(Event)` → `"[object Event]"`, no message/stack, zero signal.
+- **`Cannot assign to read only property 'pushState'`** (`/`) — a browser **extension / in-app browser** (IG/FB/TikTok webview) patched `window.history`. Not our code; unfixable from the app.
+
+Added two patterns to `lib/monitoring/ignore.ts`: `/cannot assign to read only property '(pushState|replaceState)'/i` and `/^\[object \w+\]$/` (anchored so real messages like "[object Object] is not iterable" still report). Filtered at both the client reporter and the ingest route (same mechanism as the AbortError filter). This is standard error-monitor hygiene (Sentry-style ignoreErrors).
+
+**DB pool errors (#1 work.count timeout, #3 "can't reach server") from the same batch are NOT in this PR** — the host is now the Neon `-pooler` but pool params were never added (`connection_limit` still 5), and Neon autosuspend causes cold-start "can't reach". Primary fix remains the `DATABASE_URL` params (user) + Neon autosuspend config; structural code fix (Neon serverless driver adapter to remove the pool entirely) tracked separately. See [[project_db_pooler_pending]].
+
 ## Jul 5-7 error batch: hydration #418 + homepage resilience — 2026-07-07
 
 Three production errors from the monitor, diagnosed via multi-agent investigation.
