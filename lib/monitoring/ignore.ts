@@ -17,6 +17,8 @@ const IGNORED_CLIENT_ERROR_PATTERNS: RegExp[] = [
   /because the media was removed from the document/i,
   /ResizeObserver loop (limit exceeded|completed)/i,       // layout churn, harmless
   /Non-Error promise rejection captured/i,
+  /cannot assign to read only property '(pushState|replaceState)'/i, // a browser extension / in-app browser (IG/FB/TikTok webview) patched window.history — not our code
+  /^\[object \w+\]$/,                                       // non-Error rejection reason (a bare DOM Event/object) — stringifies to "[object Event]" etc. with no message or stack
 ];
 
 /** True when a reported browser error message is known-benign navigation/teardown noise. */
