@@ -91,6 +91,18 @@ _Nothing currently in progress._
 
 ---
 
+## DB hardening: retry-with-backoff for Neon cold starts — 2026-07-12
+
+Code-side hardening for the recurring `work.count()` pool timeout (#1) and "Can't reach database server" (#3). Grounded in a 2026 industry-practice research pass (Neon/Prisma/Vercel docs + Sentry): for this stack (Node runtime + Fluid Compute + singleton PrismaClient — all already in place) the Neon driver-adapter migration is **optional, not required**; the sanctioned fix is the tuned pooled connection string (user env) plus **retry-with-backoff** to ride out Neon scale-to-zero cold starts.
+
+- New `lib/db-retry.ts` — `withDbRetry(op, {retries=2, baseMs=150})`: retries only TRANSIENT connection errors (`PrismaClientInitializationError`, and `P1001` can't-reach / `P1002` connect-timeout / `P2024` pool-acquire-timeout) with capped, **jittered** backoff. Bounded so it rides out a cold start without becoming a retry storm under real saturation; non-transient errors rethrow immediately.
+- Wired at the homepage call sites: `safe(withDbRetry(() => getHomeWorks()), …)` and same for `getPublishedTypes` — **retry inside, degrade (safe) outside**, so a cold start serves the REAL page after a brief backoff and only degrades to empty-state if every retry fails. Same in the `getPublicContentRows` wrapper (protects `/works` too).
+- `getPublishedTypes`: `work.count()` → `work.findFirst({select:{id}})` for the `hasUpcoming` boolean — stops at first row, cheaper on the hot path.
+
+**STILL the primary fix (user, not code):** the pool `connection_limit` is still 5. Per research, size it to exceed the per-render fan-out (≈10, never 1) and add `connect_timeout=15&pool_timeout=15` on the already-`-pooler` `DATABASE_URL`; and raise Neon's autosuspend `suspend_timeout` (or disable scale-to-zero) rather than a keep-warm cron (which Neon's own guidance discourages). Retry reduces the cold-start errors; only more connections raises the ceiling. See [[project_db_pooler_pending]].
+
+`tsc --noEmit` clean; `npm run lint` exit 0.
+
 ## Error monitor: filter extension / in-app-browser + non-Error noise — 2026-07-12
 
 Two more benign client errors were reaching the monitor:

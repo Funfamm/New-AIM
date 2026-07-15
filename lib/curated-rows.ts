@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { unstable_cache } from "next/cache";
 import { CACHE_TAGS } from "@/lib/cache-tags";
 import { captureError } from "@/lib/monitoring/capture-error";
+import { withDbRetry } from "@/lib/db-retry";
 import type { RowPlacement } from "@prisma/client";
 import type { RailFilm } from "@/components/film-rail";
 
@@ -98,7 +99,7 @@ export async function getPublicContentRows(
   // Component render crashing. The catch is OUTSIDE the cached loader, so a transient
   // failure is never written to the Data Cache. Reported so the incident stays visible.
   try {
-    return await loadPublicContentRows(placement);
+    return await withDbRetry(() => loadPublicContentRows(placement));
   } catch (err) {
     captureError(err, { source: "SERVER", metadata: { loader: "getPublicContentRows", placement, degraded: true } });
     return [];
