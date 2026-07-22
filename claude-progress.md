@@ -91,6 +91,16 @@ _Nothing currently in progress._
 
 ---
 
+## DB incident CLOSED: pool params + Neon always-on applied — 2026-07-22
+
+The two long-pending config knobs are now live (user applied; deploy verified):
+- **Vercel `DATABASE_URL`** (Production) updated to the Neon `-pooler` host with `?sslmode=require&pgbouncer=true&connection_limit=10&pool_timeout=15&connect_timeout=15` (`channel_binding` removed — psql-only, unsupported over PgBouncer). Production redeployed via CLI (`vercel redeploy`, deploy `dpl_DBJtVmCR…` READY, aliased to impactaistudio.com; homepage + /works 200).
+- **Neon primary compute: scale-to-zero DISABLED** ("remains active at all times") — ends the P1001 "Can't reach database server" cold starts. Compute supports 894 direct / 10k pooled connections, so `connection_limit=10` has huge headroom.
+
+Combined with the code side (caching #159/#162/#166, degradation #163, retry #165, build-time DB independence #167), the connection-pool/cold-start error class is fully closed: ceiling raised, demand collapsed, failures contained. If "connection limit" or "can't reach" errors EVER reappear in the monitor, that is genuinely new information.
+
+Note: Vercel production env values are team-policy write-only (`vercel env pull` returns empty values) — future env edits must go through the dashboard with a fresh value; tooling cannot read-modify-write them.
+
 ## Prod build failed on build-time DB prerender — 2026-07-22
 
 The #166 production build FAILED (`PrismaClientKnownRequestError`, exit 1) while its identical preview build succeeded: during `next build` static generation, Next attempted to **prerender `/admin`**, whose dashboard queries (`visitorSession.count()`) hit the DB at build time — exactly when Neon was unreachable (P1001 cold start). Every prior build only succeeded because Neon happened to be awake mid-build. Site stayed up (failed deploy never promoted; prod kept serving #165).
