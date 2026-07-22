@@ -91,6 +91,16 @@ _Nothing currently in progress._
 
 ---
 
+## Prod build failed on build-time DB prerender — 2026-07-22
+
+The #166 production build FAILED (`PrismaClientKnownRequestError`, exit 1) while its identical preview build succeeded: during `next build` static generation, Next attempted to **prerender `/admin`**, whose dashboard queries (`visitorSession.count()`) hit the DB at build time — exactly when Neon was unreachable (P1001 cold start). Every prior build only succeeded because Neon happened to be awake mid-build. Site stayed up (failed deploy never promoted; prod kept serving #165).
+
+- `app/admin/layout.tsx`: `export const dynamic = "force-dynamic"` — admin pages are per-request, auth-gated, DB-backed; never prerender them at build. Removes the DB from the admin build path entirely (and skips pointless build work).
+- `app/sitemap.ts`: sitemap also renders at build — wrapped `getSitemapWorks()` in `withDbRetry` + degrade-to-static-routes on total failure (catch outside the cached loader) so a Neon blip can't fail the build.
+- Residual (theoretical): other public pages' build-time prerender attempts run cached loaders unguarded (e.g. casting); their windows are tiny and the homepage/rows already degrade. Revisit only if a build ever flakes there.
+
+`tsc --noEmit` clean; lint exit 0.
+
 ## Nav was the hidden per-page DB fan-out — 2026-07-22
 
 The recurring `work.count()` pool timeout resurfaced on `GET /works/grandpas-diary` (release 64e5a77). Root cause finally pinned: **`components/nav-wrapper.tsx`** — rendered on **every public page** via the layout — ran an uncached `Promise.all` with `prisma.work.count()` at **index 1** (matching the stack: `Promise.all (index 1)`, shared chunk 2157.js). Every page view fired 2 uncached DB queries through the nav; that's why the error kept appearing on different routes and survived all page-level caching (earlier homepage analyses missed this shared-layout query).

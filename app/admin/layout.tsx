@@ -5,6 +5,12 @@ import { prisma } from "@/lib/prisma";
 import AdminSidebar from "@/components/admin-sidebar";
 import "./admin-layout.css";
 
+// Admin pages are per-request, auth-gated, and DB-backed — never prerender them at
+// build time. Without this, `next build` static generation ran admin dashboard queries
+// during the build; when Neon was cold/unreachable (P1001) the whole production BUILD
+// failed ("Error occurred prerendering page /admin"). Also removes pointless build work.
+export const dynamic = "force-dynamic";
+
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   if (!session?.user || !isAdminRole(session.user.role)) redirect("/");
