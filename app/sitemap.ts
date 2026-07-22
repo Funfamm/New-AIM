@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { CACHE_TAGS } from "@/lib/cache-tags";
+import { withDbRetry } from "@/lib/db-retry";
 
 // Cached so search-engine bots polling the sitemap don't each open a DB connection
 // (during a Neon cold start that exhausted the pool elsewhere). Invalidated on any
@@ -21,7 +22,12 @@ const getSitemapWorks = unstable_cache(
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://aimstudio.app";
 
-  const works = await getSitemapWorks();
+  // The sitemap renders at BUILD time too — retry rides out a Neon cold start, and on
+  // total failure degrade to the static routes instead of failing the whole build.
+  // Catch is outside the cached loader so a transient failure is never cached.
+  const works = await withDbRetry(() => getSitemapWorks()).catch(
+    () => [] as Awaited<ReturnType<typeof getSitemapWorks>>,
+  );
 
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: appUrl,                   lastModified: new Date(), changeFrequency: "daily",   priority: 1.0 },
