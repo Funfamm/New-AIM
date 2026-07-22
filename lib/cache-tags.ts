@@ -15,4 +15,6 @@ export const CACHE_TAGS = {
   contentRows: "content-rows",
   // Public casting pages: casting roles + the showCasting/background settings that gate them.
   casting: "casting",
+  // Public-facing AdminSettings read on every page (nav): allowNewRegistrations.
+  publicSettings: "public-settings",
 } as const;

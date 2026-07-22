@@ -134,6 +134,7 @@ export async function saveSecuritySettings(
     allowCredentialsSignIn: allowCredentials,
     allowNewRegistrations:  formData.get("allowNewRegistrations") === "true",
   });
+  revalidateTag(CACHE_TAGS.publicSettings); // nav caches allowNewRegistrations
 
   return { ok: true };
 }
