@@ -91,6 +91,19 @@ _Nothing currently in progress._
 
 ---
 
+## Nav was the hidden per-page DB fan-out — 2026-07-22
+
+The recurring `work.count()` pool timeout resurfaced on `GET /works/grandpas-diary` (release 64e5a77). Root cause finally pinned: **`components/nav-wrapper.tsx`** — rendered on **every public page** via the layout — ran an uncached `Promise.all` with `prisma.work.count()` at **index 1** (matching the stack: `Promise.all (index 1)`, shared chunk 2157.js). Every page view fired 2 uncached DB queries through the nav; that's why the error kept appearing on different routes and survived all page-level caching (earlier homepage analyses missed this shared-layout query).
+
+- Cached both user-independent nav queries in the Data Cache: `getHasUpcoming` (`findFirst` existence check instead of `count()`, tag `works`, 300s) and `getAllowRegistrations` (new tag `public-settings`, 300s).
+- Added `safeNav()` — thunk-based retry (`withDbRetry`) + degradation fallback, so a nav DB blip degrades one flag for one render instead of crashing every page (the nav lives in the layout). Catches OUTSIDE the cached fns; thunk so retries re-RUN the query, not re-await the same rejection.
+- `unreadCount` stays live (per-user) with a `.catch(() => 0)`.
+- `lib/cache-tags.ts`: added `publicSettings`; `saveSecuritySettings` (only writer of `allowNewRegistrations`) now fires `revalidateTag(publicSettings)`.
+
+With this, ALL user-independent public-path queries are cached: pages + sitemap + nav. Env change (connection_limit=10 etc. + Neon autosuspend) still pending — see [[project_db_pooler_pending]].
+
+`tsc --noEmit` clean; `npm run lint` exit 0.
+
 ## DB hardening: retry-with-backoff for Neon cold starts — 2026-07-12
 
 Code-side hardening for the recurring `work.count()` pool timeout (#1) and "Can't reach database server" (#3). Grounded in a 2026 industry-practice research pass (Neon/Prisma/Vercel docs + Sentry): for this stack (Node runtime + Fluid Compute + singleton PrismaClient — all already in place) the Neon driver-adapter migration is **optional, not required**; the sanctioned fix is the tuned pooled connection string (user env) plus **retry-with-backoff** to ride out Neon scale-to-zero cold starts.
