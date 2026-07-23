@@ -13,6 +13,8 @@ import { sendPasswordResetCodeEmail, sendSecurityAlertEmail } from "@/lib/email"
 import { ensureWelcomeForUser } from "@/lib/onboarding/welcome";
 import { trackEvent, getOrCreateSession } from "@/lib/analytics";
 import { writeSecurityEvent, createSecurityAlert } from "@/lib/security";
+import { rateLimit } from "@/lib/rate-limit";
+import { getClientIpHash } from "@/lib/request-ip";
 
 // ── Register ──────────────────────────────────────────────────
 export async function registerUser(formData: FormData) {
@@ -23,6 +25,13 @@ export async function registerUser(formData: FormData) {
   // Basic validation
   if (!email || !password || password.length < 8) {
     redirect("/register?error=" + encodeURIComponent("Please provide a valid email and a password of at least 8 characters."));
+  }
+
+  // Throttle scripted signup floods — each success creates/updates a User and can send
+  // a welcome email (a spam-cannon + Graph-quota risk). Per hashed IP; raw IP never stored.
+  const regIpRl = rateLimit(`register-ip:${await getClientIpHash()}`, 5, 60 * 60 * 1000);
+  if (!regIpRl.allowed) {
+    redirect("/register?error=" + encodeURIComponent("Too many sign-up attempts. Please try again later."));
   }
 
   // Check if user already exists
@@ -74,6 +83,15 @@ export async function registerUser(formData: FormData) {
     // Auto-login with new credentials
     await signIn("credentials", { email, password, redirectTo: "/" });
     return; // signIn throws NEXT_REDIRECT — this line is a safety net
+  }
+
+  // Registrations kill-switch — enforced server-side for NEW accounts. Previously the
+  // admin toggle only hid the nav link; /register and this action still worked when off.
+  const settings = await prisma.adminSettings.findUnique({
+    where: { id: "singleton" }, select: { allowNewRegistrations: true },
+  });
+  if (settings && !settings.allowNewRegistrations) {
+    redirect("/register?error=" + encodeURIComponent("New registrations are currently closed."));
   }
 
   // Hash password — 12 rounds is secure without being slow
@@ -167,6 +185,21 @@ export async function forgotPassword(formData: FormData) {
     redirect("/forgot-password?error=" + encodeURIComponent("Please enter a valid email address."));
   }
 
+  // Throttle BEFORE any DB/email work: caps reset-email bombing, reset-flow DoS (each
+  // request deletes the victim's prior code), and the pool of live codes an attacker
+  // can spray against. On limit, take the SAME neutral redirect as success so the limit
+  // is invisible and enumeration stays impossible.
+  const fpIpHash = await getClientIpHash();
+  const fpEmailRl = rateLimit(`forgot:${email}`, 3, 60 * 60 * 1000);   // 3/hr per email
+  const fpIpRl    = rateLimit(`forgot-ip:${fpIpHash}`, 15, 60 * 60 * 1000); // 15/hr per IP
+  if (!fpEmailRl.allowed || !fpIpRl.allowed) {
+    void writeSecurityEvent({
+      type: "PASSWORD_RESET_REQUESTED", severity: "MEDIUM", email, ipHash: fpIpHash,
+      metadata: { rateLimited: true, by: !fpEmailRl.allowed ? "email" : "ip" },
+    });
+    redirect(`/reset-password?email=${encodeURIComponent(email)}`);
+  }
+
   const user = await prisma.user.findUnique({
     where: { email },
     select: { id: true, password: true },
@@ -229,6 +262,19 @@ export async function verifyResetCode(
     return { valid: false, error: "Please enter a valid 6-digit code." };
   }
 
+  // Cap code-guessing velocity per IP and per email — the 6-digit space is only
+  // 900k wide, so without this an attacker could spray codes to hit a live one.
+  const vIpHash = await getClientIpHash();
+  const vIpRl    = rateLimit(`reset-ip:${vIpHash}`, 12, 15 * 60 * 1000);
+  const vEmailRl = rateLimit(`reset:${email}`, 12, 15 * 60 * 1000);
+  if (!vIpRl.allowed || !vEmailRl.allowed) {
+    void writeSecurityEvent({
+      type: "PASSWORD_RESET_REQUESTED", severity: "HIGH", email, ipHash: vIpHash,
+      metadata: { resetCodeGuessRateLimited: true },
+    });
+    return { valid: false, error: "Too many attempts. Please request a new code and try again shortly." };
+  }
+
   const tokenHash = createHash("sha256").update(code).digest("hex");
 
   const record = await prisma.passwordResetToken.findUnique({
@@ -286,19 +332,46 @@ export async function resetPassword(formData: FormData) {
     );
   }
 
+  // Rate-limit the CODE flow (6-digit, brute-forceable) per IP + email. The token flow
+  // uses a 256-bit admin link and is not guessable, so it is exempt.
+  const rpIpHash = await getClientIpHash();
+  if (isCodeFlow) {
+    const rpIpRl    = rateLimit(`reset-ip:${rpIpHash}`, 12, 15 * 60 * 1000);
+    const rpEmailRl = rateLimit(`reset:${email}`, 12, 15 * 60 * 1000);
+    if (!rpIpRl.allowed || !rpEmailRl.allowed) {
+      void writeSecurityEvent({
+        type: "PASSWORD_RESET_REQUESTED", severity: "HIGH", email, ipHash: rpIpHash,
+        metadata: { resetCodeGuessRateLimited: true, stage: "submit" },
+      });
+      redirect(
+        `${errorRedirect}&error=` +
+          encodeURIComponent("Too many attempts. Please request a new code and try again shortly.")
+      );
+    }
+  }
+
   const tokenHash = createHash("sha256").update(secret).digest("hex");
 
   const record = await prisma.passwordResetToken.findUnique({
     where: { tokenHash },
   });
 
-  // Token not found, already used, or expired — all get the same generic error
+  // Valid iff: exists, unused, unexpired, AND (code flow) the code belongs to the
+  // submitted email — binding the code to the email closes cross-account misuse.
   const isValid =
     record &&
     !record.used &&
-    record.expires > new Date();
+    record.expires > new Date() &&
+    (!isCodeFlow || record.email === email);
 
   if (!isValid) {
+    // Make spraying visible so a flood of these is alertable, not silent.
+    if (isCodeFlow) {
+      void writeSecurityEvent({
+        type: "PASSWORD_RESET_REQUESTED", severity: "MEDIUM", email, ipHash: rpIpHash,
+        metadata: { invalidResetCode: true },
+      });
+    }
     redirect(
       "/forgot-password?error=" +
         encodeURIComponent("This reset code is invalid or has expired. Please request a new one.")
