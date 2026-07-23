@@ -3,6 +3,7 @@
 import { sendEmail } from "@/lib/email";
 import { premiumTransactionalEmail } from "@/lib/email-base";
 import { rateLimit } from "@/lib/rate-limit";
+import { getClientIpHash } from "@/lib/request-ip";
 
 const STUDIO_INBOX = "aimstudio@impactaistudio.com";
 
@@ -25,8 +26,11 @@ export async function submitContactForm(formData: FormData): Promise<{ ok: boole
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { ok: false, error: "A valid email address is required." };
   if (!message) return { ok: false, error: "Message is required." };
 
-  const rl = rateLimit(`contact:${email}`, 3, 60 * 60 * 1000);
-  if (!rl.allowed) return { ok: false, error: "Too many submissions. Please try again later." };
+  // Two keys: per-email (3/hr) AND per-IP (10/hr). The IP key stops the trivial bypass
+  // of rotating a fresh fake email each submission to flood the studio inbox.
+  const rlEmail = rateLimit(`contact:${email}`, 3, 60 * 60 * 1000);
+  const rlIp    = rateLimit(`contact-ip:${await getClientIpHash()}`, 10, 60 * 60 * 1000);
+  if (!rlEmail.allowed || !rlIp.allowed) return { ok: false, error: "Too many submissions. Please try again later." };
 
   const label  = SUBJECT_LABELS[subject] ?? "General";
   const bodyHtml = `

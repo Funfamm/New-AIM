@@ -15,6 +15,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { trackEvent, getOrCreateSession, parseUserAgent, looksAutomated } from "@/lib/analytics";
+import { rateLimit } from "@/lib/rate-limit";
 import type { AnalyticsEventType, Prisma } from "@prisma/client";
 
 const VALID_TYPES = new Set<string>([
@@ -49,6 +50,13 @@ export async function POST(request: NextRequest) {
     // visitorId is read server-side from the HttpOnly cookie — never trusted from the payload
     const visitorId = request.cookies.get("aim-vid")?.value;
     if (!visitorId) return new NextResponse(null, { status: 204 });
+
+    // Cap event floods per visitor (the cookie is the natural key). A cheap POST fans
+    // out to auth() + getOrCreateSession + trackEvent (several DB ops), so uncapped this
+    // is a write-DoS and metrics-poisoning vector. 120/min is far above real usage.
+    if (!rateLimit(`analytics:${visitorId}`, 120, 60 * 1000).allowed) {
+      return new NextResponse(null, { status: 204 });
+    }
 
     // Parse device/browser/OS from UA — no raw UA stored
     const ua = request.headers.get("user-agent") ?? "";

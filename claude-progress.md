@@ -100,6 +100,19 @@ A `work.count()` pool timeout (**still printing "connection limit: 5"**) crashed
 
 `tsc` + lint clean.
 
+## Auth surface hardening (rate limits + kill-switch) — 2026-07-23
+
+Fixes from a multi-agent security audit of the auth/anti-abuse surface (both HIGH findings adversarially confirmed). Baseline was already strong (DB-backed login throttle, bcrypt-12, hashed rotating refresh tokens, tokenVersion revocation, enumeration-safe forgot responses, security headers). Closed the exploitable gaps:
+
+- **New `lib/request-ip.ts`** — `getClientIp()` / `getClientIpHash()` (cf-connecting-ip → x-real-ip → leftmost XFF; SHA-256, raw IP never stored).
+- **🔴 Password-reset takeover path** (`lib/actions/auth.ts`): `forgotPassword` now rate-limited per email (3/hr) + per IP (15/hr) BEFORE any DB/email work, with a **neutral redirect on limit** (invisible, preserves anti-enumeration) — kills reset-email bombing + reset-flow DoS. `verifyResetCode` + `resetPassword` (code flow only) rate-limited per IP + email (12 / 15min) to cap 6-digit-code spraying; `resetPassword` now **binds the code to the submitted email** (`record.email === email`); invalid/limited attempts write a `SecurityEvent` (was silent → now alertable).
+- **🟠 Registration** (`registerUser`): per-IP limit (5/hr) on all paths + **server-side enforcement of `allowNewRegistrations`** for new accounts (the toggle previously only hid the nav link; `/register` still worked when "off").
+- **🟠 Abuse surface**: `/api/analytics` now per-visitor rate-limited (120/min, cookie key) — closes write-DoS + metric poisoning. `contact` and `notify-cta` gained a per-IP key alongside the email key (the email key alone was bypassable by rotation).
+
+Scope note: limiters use the existing in-memory `rateLimit()` (per-instance) — a large improvement + now-visible logging; DB-backed/Upstash + Turnstile-on-forms + the bot-cadence heuristic are the next tier (follow-up). Reset-email copy still says "30 min" vs actual 15 — minor, not fixed here.
+
+`tsc --noEmit` clean; `npm run lint` exit 0.
+
 ## Media link checker (admin + daily cron) — 2026-07-23
 
 Born from a real incident: LINE OF SIGHT's `videoUrl` pointed at a deleted R2 object (`…r2.dev/Trailers/LINE OF SIGHT.mp4` → 404, looks like a trailer URL pasted into the wrong field) and `trailerUrl` was empty — a viewer failed playback 15× ("The element has no supported sources") before anyone knew. Broken assets are now caught proactively:
