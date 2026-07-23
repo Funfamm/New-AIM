@@ -37,5 +37,10 @@ jobs:
         run: npx tsc --noEmit
 
       - name: Security audit
-        # Fail on high or critical vulnerabilities
-        run: npm audit --audit-level=high
+        # Fail on high/critical advisories except a documented, justified allowlist
+        # (build-time-only transitive advisories we can't fix without breaking the
+        # framework). See scripts/check-audit.mjs — strictly narrower than lowering the
+        # audit level, so new high/critical runtime vulns still fail the build.
+        run: |
+          npm audit --json > audit.json || true
+          node scripts/check-audit.mjs

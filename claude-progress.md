@@ -100,6 +100,15 @@ A `work.count()` pool timeout (**still printing "connection limit: 5"**) crashed
 
 `tsc` + lint clean.
 
+## Dependency CVEs + audit-gate allowlist — 2026-07-23
+
+CI's `npm audit --audit-level=high` went red (newly-disclosed advisories; the #160 fix made the audit step actually block). NOT introduced by our code. Two classes:
+- **Auth.js `@auth/core` CRITICAL** (getToken exception, homoglyph @ bypass, OAuth state cookie binding) — runtime-relevant on an auth-heavy app. **Fixed** cleanly via `npm audit fix` (non-force): `next-auth` beta.31→beta.32, `@auth/core` 0.41.2→0.41.3, `@auth/prisma-adapter`→2.11.3, `jose`→6.2.4. 16-line lock diff; `tsc` clean.
+- **PostCSS HIGH** (×2) — reachable only through Next's pinned transitive `postcss@8.4.31`; **build-time only** (postcss runs on our own CSS during `next build`, never runtime input → no runtime attack surface). Not fixable: `npm audit fix --force` wants next@9 (catastrophic), and npm `overrides` can't reach Next's pin.
+- **Gate fix:** new `scripts/check-audit.mjs` — fails on any high/critical EXCEPT a documented, justified allowlist (the two postcss GHSAs). Strictly narrower than lowering `--audit-level` — new high/critical runtime vulns still fail CI (verified: fake critical → exit 1). CI `Security audit` step now runs `npm audit --json` → the checker. Remove the allowlist entries when Next bumps its postcss pin.
+
+Process note: PR #171 was merged while this audit check was red (the red was these pre-existing dep CVEs, not #171's code — lint+tsc+Vercel were green). Now that the audit gate is real (#160), verify it green before merging.
+
 ## Auth surface hardening (rate limits + kill-switch) — 2026-07-23
 
 Fixes from a multi-agent security audit of the auth/anti-abuse surface (both HIGH findings adversarially confirmed). Baseline was already strong (DB-backed login throttle, bcrypt-12, hashed rotating refresh tokens, tokenVersion revocation, enumeration-safe forgot responses, security headers). Closed the exploitable gaps:
