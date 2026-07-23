@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/prisma";
+import { captureError } from "@/lib/monitoring/capture-error";
+import { withDbRetry } from "@/lib/db-retry";
 import Link from "next/link";
 import {
   Activity, Users, Eye, Shield, MonitorPlay,
@@ -241,6 +243,37 @@ function timeAgo(date: Date): string {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
+// This dashboard fans out ~30 concurrent queries across four loaders — the heaviest
+// DB page in the app. On a transient pool/connection blip, retry first (rides out a
+// slow moment), then degrade that one loader to zeros/empties instead of crashing the
+// whole admin overview render. Same pattern as the public homepage.
+async function safe<T>(p: Promise<T>, fallback: T, loader: string): Promise<T> {
+  try {
+    return await p;
+  } catch (err) {
+    captureError(err, { source: "SERVER", route: "/admin", metadata: { loader, degraded: true } });
+    return fallback;
+  }
+}
+
+const EMPTY_STATS: Awaited<ReturnType<typeof getStats>> = {
+  totalWorks: 0, publishedWorks: 0, totalUsers: 0, newThisMonth: 0,
+  onlineCount: 0, onlineGuests: 0, onlineMembers: 0,
+  viewsToday: 0, watchStartsToday: 0, openAlerts: 0, recentUsers: [],
+};
+
+const EMPTY_HEALTH: Awaited<ReturnType<typeof getSystemHealth>> = {
+  videoPending: 0, videoProcessing: 0, videoFailed: 0, videoStuck: 0, videoReadyToday: 0,
+  emailQueued: 0, emailFailed: 0, emailLastSentAt: null,
+  subPending: 0, subProcessing: 0, subFailed: 0,
+  keyHealthy: 0, keyCooldown: 0, keyInvalid: 0,
+  subscribersToday: 0, notifyMeToday: 0, usersToday: 0, unsubscribesToday: 0,
+};
+
+const EMPTY_ATTENTION: Awaited<ReturnType<typeof getNeedsAttention>> = {
+  failedVideoJobs: [], stuckVideoCount: 0, failedSubJobs: [], badKeys: [], openAlerts: [],
+};
+
 export default async function AdminOverviewPage() {
   const [
     { totalWorks, publishedWorks, totalUsers, newThisMonth, onlineCount, onlineGuests,
@@ -248,7 +281,12 @@ export default async function AdminOverviewPage() {
     health,
     attention,
     casting,
-  ] = await Promise.all([getStats(), getSystemHealth(), getNeedsAttention(), getCastingStats()]);
+  ] = await Promise.all([
+    safe(withDbRetry(() => getStats()), EMPTY_STATS, "getStats"),
+    safe(withDbRetry(() => getSystemHealth()), EMPTY_HEALTH, "getSystemHealth"),
+    safe(withDbRetry(() => getNeedsAttention()), EMPTY_ATTENTION, "getNeedsAttention"),
+    getCastingStats(), // already degrades internally (returns ok: false)
+  ]);
 
   const greeting = getGreeting();
 
