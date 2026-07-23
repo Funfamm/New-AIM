@@ -91,6 +91,15 @@ _Nothing currently in progress._
 
 ---
 
+## Admin dashboard resilience + env save never landed — 2026-07-23
+
+A `work.count()` pool timeout (**still printing "connection limit: 5"**) crashed `GET /admin` for the admin. Two findings:
+
+1. **The Jul-22 `DATABASE_URL` edit never saved** — `vercel env ls production` shows the var untouched for **47 days**. The pool params are NOT live; the error message printing "timeout: 10, connection limit: 5" is the proof (would read 15/10 if applied). User must redo the dashboard edit (fresh full pooled string + `&pgbouncer=true&connection_limit=10&pool_timeout=15&connect_timeout=15`, Production env) and confirm the var's "created/updated" age changes; then redeploy.
+2. **Admin dashboard had zero guards** while fanning out ~30 concurrent queries across 4 loaders (getStats 10, getSystemHealth 17, getNeedsAttention 5, casting 9-with-try/catch) — the heaviest DB page in the app; one transient → whole overview crashed. Applied the homepage pattern in `app/admin/page.tsx`: `safe()` + `withDbRetry` per loader with typed zero/empty fallbacks (casting already degraded internally). A blip now renders a degraded dashboard instead of the digest-error crash.
+
+`tsc` + lint clean.
+
 ## Media link checker (admin + daily cron) — 2026-07-23
 
 Born from a real incident: LINE OF SIGHT's `videoUrl` pointed at a deleted R2 object (`…r2.dev/Trailers/LINE OF SIGHT.mp4` → 404, looks like a trailer URL pasted into the wrong field) and `trailerUrl` was empty — a viewer failed playback 15× ("The element has no supported sources") before anyone knew. Broken assets are now caught proactively:
