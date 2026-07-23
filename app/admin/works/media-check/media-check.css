@@ -1,0 +1,30 @@
+/* Media link check — status colors via brand tokens only */
+
+.mc-summary {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin: 0 0 1rem;
+  font-size: 0.8rem;
+  color: var(--color-brand-muted);
+}
+
+.mc-summary strong { color: var(--color-brand-light); font-weight: 600; }
+
+.mc-status { font-weight: 600; white-space: nowrap; }
+.mc-status--ok { color: var(--color-brand-muted); }
+.mc-status--broken { color: var(--color-brand-red); }
+
+.mc-kind { text-transform: capitalize; color: var(--color-brand-muted); }
+
+.mc-url {
+  max-width: 380px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+  vertical-align: bottom;
+  color: var(--color-brand-muted);
+}
+
+.mc-row--broken td { background: rgba(220, 68, 68, 0.06); }

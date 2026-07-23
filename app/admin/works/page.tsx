@@ -3,7 +3,7 @@ import { setWorkStatus, reorderWork } from "@/lib/actions/works";
 import { DeleteWorkButton } from "@/components/delete-work-button";
 import Link from "next/link";
 import "./admin-works.css";
-import { Plus, Pencil, Eye, EyeOff, Heart, Share2, Film, ChevronsUp, ChevronsDown, ChevronUp, ChevronDown } from "lucide-react";
+import { Plus, Pencil, Eye, EyeOff, Heart, Share2, Film, ChevronsUp, ChevronsDown, ChevronUp, ChevronDown, LinkIcon } from "lucide-react";
 import type { Metadata } from "next";
 import type { WorkType, WorkStatus } from "@prisma/client";
 import WorkerStatus from "@/components/admin/worker-status";
@@ -109,6 +109,9 @@ export default async function AdminWorksPage({
         <h1 className="admin-page-title">Works</h1>
         <div className="admin-page-header-actions">
           <WorkerStatus />
+          <Link href="/admin/works/media-check" className="admin-add-btn">
+            <LinkIcon size={15} /> Check Media Links
+          </Link>
           <Link href="/admin/works/new" className="admin-add-btn">
             <Plus size={15} /> Add Work
           </Link>

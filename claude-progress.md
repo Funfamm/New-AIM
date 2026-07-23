@@ -91,6 +91,18 @@ _Nothing currently in progress._
 
 ---
 
+## Media link checker (admin + daily cron) — 2026-07-23
+
+Born from a real incident: LINE OF SIGHT's `videoUrl` pointed at a deleted R2 object (`…r2.dev/Trailers/LINE OF SIGHT.mp4` → 404, looks like a trailer URL pasted into the wrong field) and `trailerUrl` was empty — a viewer failed playback 15× ("The element has no supported sources") before anyone knew. Broken assets are now caught proactively:
+
+- **`lib/media-check.ts`** — `checkAllWorkMediaLinks()`: HEAD-checks every public work's media URLs (playback: videoUrl/trailerUrl/previewClipUrl/teaserUrl; images: poster/hero/thumbnail), batched ×10, 5s timeout, GET+Range fallback for hosts rejecting HEAD; absolute http(s) URLs only; take 500.
+- **`app/api/cron/media-link-check`** (daily 07:30, Bearer CRON_SECRET, registered in vercel.json) — reports broken **playback** links into the error monitor via `captureError` (stable message per work+field → one triageable group per asset, bell rings, regression detection reopens on re-break). Images summarized in the response only (fail soft). 2s settle before return so fire-and-forget writes survive function freeze.
+- **`app/admin/works/media-check`** — on-demand live check page (broken-first table, brand-token CSS), linked from the Works header ("Check Media Links"). Reload = re-check.
+
+Verified: check logic tested against good (200/ok), the actual broken R2 URL (404/flagged), and an unreachable host (null/flagged). `tsc` + lint clean.
+
+**Content fix still needed (admin data, user):** repoint LINE OF SIGHT `videoUrl` to its processed HLS (`works/line-of-sight/hls/<jobId>/master.m3u8` — see the work's video-processing job) and restore/decide the trailer.
+
 ## DB incident CLOSED: pool params + Neon always-on applied — 2026-07-22
 
 The two long-pending config knobs are now live (user applied; deploy verified):
