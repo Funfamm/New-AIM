@@ -104,7 +104,94 @@
   white-space: nowrap;
 }
 .tmpl-action-btn:hover { color: var(--color-brand-white); border-color: var(--color-brand-muted); }
-.tmpl-action-btn--danger:hover { color: var(--color-brand-red); border-color: var(--color-brand-red); }
+.tmpl-action-btn--danger:hover  { color: var(--color-brand-red);    border-color: var(--color-brand-red); }
+.tmpl-action-btn--test          { color: #4ade80; border-color: rgba(74,222,128,0.3); }
+.tmpl-action-btn--test:hover    { color: #4ade80; border-color: rgba(74,222,128,0.7); background: rgba(74,222,128,0.06); }
+.tmpl-action-btn--reset         { color: var(--color-brand-accent); border-color: rgba(232,201,126,0.3); }
+.tmpl-action-btn--reset:hover   { color: var(--color-brand-accent); border-color: rgba(232,201,126,0.7); background: rgba(232,201,126,0.06); }
+.tmpl-action-btn--reset-confirm { color: #0a0a0a; background: var(--color-brand-accent); border-color: var(--color-brand-accent); }
+.tmpl-action-btn--reset-confirm:hover { filter: brightness(1.08); }
+
+/* ── Inline flash message ── */
+.tmpl-msg {
+  font-family: var(--font-body); font-size: 0.78rem;
+  padding: 0.3rem 0.6rem; border-radius: 3px; margin: 0.35rem 0 0;
+}
+.tmpl-msg--ok  { color: #4ade80; background: rgba(74,222,128,0.08); }
+.tmpl-msg--err { color: var(--color-brand-red); background: rgba(192,57,43,0.1); }
+
+/* ── Preview modal ── */
+.tmpl-modal-overlay {
+  position: fixed; inset: 0; z-index: 300;
+  background: rgba(0,0,0,0.72);
+  display: flex; align-items: center; justify-content: center;
+  padding: 1.5rem;
+}
+
+.tmpl-modal {
+  background: #111;
+  border: 1px solid #2a2a2a;
+  border-radius: 10px;
+  width: 100%;
+  max-width: 620px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.tmpl-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem 0.75rem;
+  border-bottom: 1px solid #2a2a2a;
+  flex-shrink: 0;
+}
+
+.tmpl-modal-label {
+  font-family: var(--font-body); font-size: 0.65rem; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--color-brand-muted); margin: 0 0 0.25rem;
+}
+
+.tmpl-modal-subject {
+  font-family: var(--font-body); font-size: 0.9rem; font-weight: 600;
+  color: var(--color-brand-white); margin: 0;
+}
+
+.tmpl-modal-close {
+  background: none; border: none; cursor: pointer;
+  color: var(--color-brand-muted); font-size: 1rem;
+  padding: 0.1rem 0.3rem; line-height: 1;
+  transition: color 0.15s; flex-shrink: 0;
+}
+.tmpl-modal-close:hover { color: var(--color-brand-white); }
+
+.tmpl-modal-loading {
+  padding: 3rem 2rem; text-align: center;
+  font-family: var(--font-body); font-size: 0.875rem;
+  color: var(--color-brand-muted);
+}
+
+/* Override preview frame height inside modal */
+.tmpl-modal .tmpl-preview-frame {
+  flex: 1;
+  min-height: 0;
+  border: none;
+  border-radius: 0;
+  height: auto;
+  max-height: 65vh;
+}
+
+.tmpl-modal-note {
+  font-family: var(--font-body); font-size: 0.72rem;
+  color: var(--color-brand-muted); margin: 0;
+  padding: 0.6rem 1.25rem;
+  border-top: 1px solid #2a2a2a;
+  flex-shrink: 0;
+}
 
 /* ── Empty ── */
 .tmpl-empty {

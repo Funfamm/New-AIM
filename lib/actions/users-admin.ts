@@ -384,9 +384,13 @@ export async function purgeUser(
 
   // ── Hard delete in dependency order ───────────────────────────
   await prisma.$transaction(async (tx) => {
-    // 1. Clear Auth.js linked accounts + sessions (sessions no-op for JWT, done for completeness)
+    // 1. Clear Auth.js linked accounts + sessions + refresh tokens.
+    //    RefreshToken deletion is critical: without it, a purged user's 30-day
+    //    refresh token keeps renewing their 15-min access token, keeping them
+    //    "logged in" for up to 30 days after purge.
     await tx.account.deleteMany({ where: { userId } });
     await tx.session.deleteMany({ where: { userId } });
+    await tx.refreshToken.deleteMany({ where: { userId } });
 
     // 2. Clear password reset tokens (by email — plain string, not FK)
     await tx.passwordResetToken.deleteMany({ where: { email: emailSnapshot } });
@@ -443,6 +447,171 @@ export async function purgeUser(
     type:        "USER_PURGED",
     severity:    "CRITICAL",
     metadata:    { targetId: userId, purgedBy: actor.id },
+  });
+
+  revalidatePath("/admin/users");
+  return { ok: true };
+}
+
+// ── Bulk deactivate ───────────────────────────────────────────
+export async function bulkDeactivate(
+  userIds: string[]
+): Promise<{ ok: boolean; error?: string }> {
+  const actor = await requireAdmin();
+  if (userIds.length === 0) return { ok: true };
+
+  const candidateIds = userIds.filter((id) => id !== actor.id);
+  if (candidateIds.length === 0) return { ok: false, error: "No eligible users selected." };
+
+  // Protect the last active admin
+  const adminTargets = await prisma.user.findMany({
+    where: { id: { in: candidateIds }, role: { in: ["ADMIN", "SUPER_ADMIN"] }, status: "ACTIVE" },
+    select: { id: true },
+  });
+  const adminIdSet = new Set(adminTargets.map((u) => u.id));
+
+  let adminIdsToDeactivate: string[] = [];
+  if (adminIdSet.size > 0) {
+    const activeAdminCount = await prisma.user.count({
+      where: { role: { in: ["ADMIN", "SUPER_ADMIN"] }, status: "ACTIVE" },
+    });
+    if (activeAdminCount - adminIdSet.size >= 1) {
+      adminIdsToDeactivate = Array.from(adminIdSet);
+    }
+  }
+
+  const nonAdminIds = candidateIds.filter((id) => !adminIdSet.has(id));
+  const finalIds = [...nonAdminIds, ...adminIdsToDeactivate];
+  if (finalIds.length === 0) return { ok: false, error: "Cannot deactivate the last active admin." };
+
+  const result = await prisma.user.updateMany({
+    where: { id: { in: finalIds }, status: { in: ["ACTIVE", "SUSPENDED"] } },
+    data: {
+      status: "DEACTIVATED",
+      deletedAt: new Date(),
+      deletedById: actor.id,
+      tokenVersion: { increment: 1 },
+    },
+  });
+
+  void writeAudit({
+    actorId:    actor.id!,
+    actorEmail: actor.email ?? "unknown",
+    action:     "BULK_DEACTIVATE",
+    detail:     `${result.count} user${result.count !== 1 ? "s" : ""} deactivated`,
+  });
+
+  revalidatePath("/admin/users");
+  return { ok: true };
+}
+
+// ── Bulk restore ──────────────────────────────────────────────
+export async function bulkRestore(
+  userIds: string[]
+): Promise<{ ok: boolean; error?: string }> {
+  const actor = await requireAdmin();
+  if (userIds.length === 0) return { ok: true };
+
+  const result = await prisma.user.updateMany({
+    where: { id: { in: userIds }, status: "DEACTIVATED" },
+    data: { status: "ACTIVE", deletedAt: null, deletedById: null },
+  });
+
+  void writeAudit({
+    actorId:    actor.id!,
+    actorEmail: actor.email ?? "unknown",
+    action:     "BULK_RESTORE",
+    detail:     `${result.count} user${result.count !== 1 ? "s" : ""} restored`,
+  });
+
+  revalidatePath("/admin/users");
+  return { ok: true };
+}
+
+// ── Bulk purge ────────────────────────────────────────────────
+// Hard-deletes multiple users. Requires "PURGE" confirmation phrase.
+// Runs individual transactions per user so one failure does not abort the rest.
+export async function bulkPurge(
+  userIds: string[],
+  confirmationPhrase: string
+): Promise<{ ok: boolean; error?: string }> {
+  const actor = await requireAdmin();
+
+  if (confirmationPhrase !== "PURGE") {
+    return { ok: false, error: "Type PURGE to confirm." };
+  }
+  if (userIds.length === 0) return { ok: true };
+
+  const candidateIds = userIds.filter((id) => id !== actor.id);
+  if (candidateIds.length === 0) return { ok: false, error: "Cannot purge yourself." };
+
+  // Guard: cannot purge all admins (actor is excluded from candidateIds already)
+  const adminTargets = await prisma.user.findMany({
+    where: { id: { in: candidateIds }, role: { in: ["ADMIN", "SUPER_ADMIN"] } },
+    select: { id: true },
+  });
+  if (adminTargets.length > 0) {
+    const totalAdminCount = await prisma.user.count({
+      where: { role: { in: ["ADMIN", "SUPER_ADMIN"] } },
+    });
+    if (totalAdminCount - adminTargets.length < 1) {
+      return { ok: false, error: "Cannot purge all admin accounts. At least one must remain." };
+    }
+  }
+
+  let purgedCount = 0;
+  for (const userId of candidateIds) {
+    try {
+      const target = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { email: true },
+      });
+      if (!target) continue;
+      const emailSnapshot = target.email;
+
+      await prisma.$transaction(async (tx) => {
+        await tx.account.deleteMany({ where: { userId } });
+        await tx.session.deleteMany({ where: { userId } });
+        await tx.refreshToken.deleteMany({ where: { userId } });
+        await tx.passwordResetToken.deleteMany({ where: { email: emailSnapshot } });
+        await tx.workLike.deleteMany({ where: { userId } });
+        await tx.watchProgress.deleteMany({ where: { userId } });
+        await tx.savedWork.deleteMany({ where: { userId } });
+        await tx.notification.deleteMany({ where: { userId } });
+        await tx.userPreferences.deleteMany({ where: { userId } });
+        await tx.emailQueue.updateMany({
+          where: { to: emailSnapshot, status: "QUEUED" },
+          data:  { status: "SKIPPED", error: "Recipient account purged" },
+        });
+        await tx.loginAttempt.deleteMany({ where: { userId } });
+        await tx.notifyMeSignup.deleteMany({ where: { email: emailSnapshot } });
+        await tx.analyticsEvent.updateMany({ where: { userId }, data: { userId: null } });
+        await tx.visitorSession.updateMany({ where: { userId }, data: { userId: null } });
+        await tx.userDevice.deleteMany({ where: { userId } });
+        await tx.securityAlert.updateMany({
+          where: { userId, status: "OPEN" },
+          data:  { status: "RESOLVED", resolvedAt: new Date() },
+        });
+        await tx.user.delete({ where: { id: userId } });
+      });
+
+      purgedCount++;
+    } catch {
+      // Continue — one failure does not abort the rest of the batch
+    }
+  }
+
+  void writeAudit({
+    actorId:    actor.id!,
+    actorEmail: actor.email ?? "unknown",
+    action:     "BULK_PURGE",
+    detail:     `${purgedCount} user${purgedCount !== 1 ? "s" : ""} permanently purged`,
+  });
+  void writeSecurityEvent({
+    actorUserId: actor.id,
+    type:        "USER_PURGED",
+    severity:    "CRITICAL",
+    metadata:    { count: purgedCount, purgedBy: actor.id },
   });
 
   revalidatePath("/admin/users");

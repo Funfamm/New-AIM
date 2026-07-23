@@ -1,65 +1,126 @@
 import { prisma } from "@/lib/prisma";
+import { unstable_cache } from "next/cache";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 import { auth } from "@/lib/auth";
 import { notFound, redirect } from "next/navigation";
 import { after } from "next/server";
 import { cookies } from "next/headers";
 import Link from "next/link";
+import { Fragment } from "react";
 import "./watch.css";
-import { ChevronLeft, ChevronRight, Lock } from "lucide-react";
+import "../../works/[slug]/detail.css";
+import "@/components/action-buttons.css";
+
+import { ChevronLeft, ChevronRight, Lock, Check, Play, Clock } from "lucide-react";
+import Image from "next/image";
 import type { Metadata } from "next";
-import EpisodePlayer from "@/components/episode-player";
-import VideoPlayer from "@/components/video-player";
-import { getWatchProgress } from "@/lib/actions/progress";
+import AimPlayer from "@/components/aim-player-loader";
+import SynopsisToggle from "@/components/synopsis-toggle";
+import { getWatchProgress, getEpisodeProgressMap } from "@/lib/actions/progress";
 import SaveButton from "@/components/save-button";
-import LikeButton from "@/components/like-button";
+import CommentSection from "@/components/comment-section";
 import ShareButton from "@/components/share-button";
 import { isWorkSaved } from "@/lib/actions/watchlist";
 import { getWorkLikeState } from "@/lib/actions/likes";
 import { getOrCreateSession, trackEvent } from "@/lib/analytics";
+import { listPublishedSubtitles } from "@/lib/subtitles/subtitle-repo";
+import { getVttUrl } from "@/lib/subtitles/vtt-storage";
+import { getLangName } from "@/lib/subtitles/subtitle-languages";
+
+const WORK_TYPE_LABEL: Record<string, string> = {
+  FULL_FILM: "Film", SHORT_FILM: "Short Film", SERIES: "Series",
+  EPISODE: "Episode", TRAILER: "Trailer", COMMERCIAL: "Commercial",
+  BRANDING: "Branding", CAMPAIGN: "Campaign", CASE_STUDY: "Case Study",
+};
 
 type Props = {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ full?: string; trailer?: string }>;
+  searchParams: Promise<{ full?: string; trailer?: string; preview?: string; clipStart?: string; clipEnd?: string }>;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const work = await prisma.work.findUnique({ where: { slug }, select: { title: true } });
-  return { title: work ? `Watch: ${work.title}` : "Watch" };
+  const work = await getWork(slug);
+  if (!work) return { title: "Watch" };
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://impactaistudio.com";
+  // Fallback chain: posterUrl → heroDesktopUrl → thumbnailUrl → heroMobileUrl → logo
+  const shareImage =
+    work.posterUrl ??
+    work.heroDesktopUrl ??
+    work.thumbnailUrl ??
+    work.heroMobileUrl ??
+    `${appUrl}/images/SP_Logo.jpg`;
+
+  const ogImage = { url: shareImage, width: 1200, height: 630, alt: work.title };
+
+  return {
+    title: `Watch: ${work.title}`,
+    description: work.description ?? undefined,
+    alternates: { canonical: `${appUrl}/watch/${slug}` },
+    openGraph: {
+      title: work.title,
+      description: work.description ?? undefined,
+      url: `${appUrl}/watch/${slug}`,
+      images: [ogImage],
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: work.title,
+      description: work.description ?? undefined,
+      images: [shareImage],
+    },
+  };
 }
 
-async function getWork(slug: string) {
+// Cached, user-independent work-by-slug loader for the watch page — shared with
+// generateMetadata (one cached lookup instead of two DB reads). Access-control and
+// redirect decisions run against the LIVE session in the page body, NOT here, so
+// caching this public work data is safe. Invalidated by the "works" tag (admin Work
+// mutations + HLS completion), so new episodes/videos refresh it.
+const getWork = unstable_cache(async (slug: string) => {
   return prisma.work.findUnique({
     where: { slug },
     select: {
       id: true, slug: true, title: true, status: true, type: true,
-      trailerUrl: true, videoUrl: true,
+      commentsEnabled: true,
+      trailerUrl: true, previewClipUrl: true, videoUrl: true,
       requiresAuth: true, requiresLoginToViewTrailer: true,
-      posterUrl: true, description: true,
+      posterUrl: true, heroMobileUrl: true, heroDesktopUrl: true, thumbnailUrl: true, description: true,
       episodeNumber: true, seasonNumber: true, duration: true,
-      // SERIES: need first episode slug for redirect
+      introStart: true, introEnd: true, creditsStart: true,
+      contentRating: true, contentDescriptors: true,
+      // SERIES: all published episodes — used for redirect, player panel, and
+      // the "Watch Series" section on the trailer watch page.
       episodes: {
         where: { status: "PUBLISHED" },
         orderBy: [{ seasonNumber: "asc" }, { episodeNumber: "asc" }, { order: "asc" }],
-        select: { id: true, slug: true },
-        take: 1,
+        select: {
+          id: true, slug: true, title: true,
+          episodeNumber: true, seasonNumber: true,
+          duration: true, thumbnailUrl: true, posterUrl: true,
+        },
       },
-      // EPISODE: need parent series info and all sibling episodes
+      // EPISODE: parent series controls access, intro timings, and content advisory
+      // TRAILER type: parent is the linked full film (status + videoUrl needed for upsell)
       parent: {
         select: {
           id: true, slug: true, title: true, requiresAuth: true,
+          status: true, videoUrl: true,
+          introStart: true, introEnd: true, creditsStart: true,
+          contentRating: true, contentDescriptors: true,
           episodes: {
             where: { status: "PUBLISHED" },
             orderBy: [{ seasonNumber: "asc" }, { episodeNumber: "asc" }, { order: "asc" }],
             select: {
               id: true, slug: true, title: true,
               episodeNumber: true, seasonNumber: true,
-              duration: true,
+              duration: true, thumbnailUrl: true, posterUrl: true,
             },
           },
         },
       },
-      // Notify Me CTA — only enabled ones matter on the public side
       notifyMeCta: {
         select: {
           id: true, type: true, isEnabled: true,
@@ -69,7 +130,7 @@ async function getWork(slug: string) {
       },
     },
   });
-}
+}, ["watch-work-detail"], { tags: [CACHE_TAGS.works], revalidate: 300 });
 
 function toEmbedUrl(url: string): string {
   if (url.includes("youtube.com/watch")) {
@@ -87,17 +148,24 @@ function toEmbedUrl(url: string): string {
   return url;
 }
 
+function fmtDur(min: number) {
+  const h = Math.floor(min / 60);
+  return h > 0 ? `${h}h ${min % 60}m` : `${min}m`;
+}
+
 export default async function WatchPage({ params, searchParams }: Props) {
   const { slug } = await params;
-  const { full, trailer } = await searchParams;
+  const { full, trailer, preview, clipStart: clipStartStr, clipEnd: clipEndStr } = await searchParams;
+  const clipStartParam = clipStartStr != null ? Math.max(0, Math.floor(Number(clipStartStr))) : null;
+  const clipEndParam   = clipEndStr   != null ? Math.floor(Number(clipEndStr)) : null;
+  const isClipMode     = clipStartParam !== null && clipEndParam !== null;
   const work = await getWork(slug);
 
   const PUBLIC_WATCH_STATUSES = new Set(["PUBLISHED", "UPCOMING", "IN_PRODUCTION"]);
   if (!work || !PUBLIC_WATCH_STATUSES.has(work.status)) notFound();
 
-  // SERIES with episodes → redirect to episode 1
-  // Skip redirect when ?trailer=1 so the series trailer can play on the watch page
-  if (work.type === "SERIES" && work.episodes.length > 0 && !trailer) {
+  // SERIES with episodes → redirect to Episode 1 (smart resume handled on detail page)
+  if (work.type === "SERIES" && work.episodes.length > 0 && !trailer && !preview) {
     redirect(`/watch/${work.episodes[0].slug}`);
   }
 
@@ -105,95 +173,136 @@ export default async function WatchPage({ params, searchParams }: Props) {
   const isEpisode = work.type === "EPISODE";
   const wantFull  = isEpisode ? true : full === "1";
 
-  // ── Access control ────────────────────────────────────────────
-  // Episodes: inherit requiresAuth from parent Series (episodes never carry their own lock)
+  // Access control
   const mainRequiresAuth =
-    isEpisode
-      ? (work.parent?.requiresAuth ?? false)
-      : work.requiresAuth;
-
-  // Trailers: governed by requiresLoginToViewTrailer, independent of main content lock
+    isEpisode ? (work.parent?.requiresAuth ?? false) : work.requiresAuth;
   const trailerRequiresAuth = work.requiresLoginToViewTrailer;
-
-  // Determine which guard applies to this visit
-  const isTrailerVisit = !isEpisode && !wantFull; // not full=1 and not an episode → trailer mode
-  const requiresAuth   = isTrailerVisit ? trailerRequiresAuth : mainRequiresAuth;
+  const isPreviewVisit = preview === "1";
+  // isPreview: visitor explicitly requested the preview clip and it exists
+  const isPreview      = isPreviewVisit && !!work.previewClipUrl;
+  const isTrailerVisit = work.type === "TRAILER" || (!isEpisode && !wantFull && !isPreviewVisit);
+  const requiresAuth   = (isTrailerVisit || isPreviewVisit) ? trailerRequiresAuth : mainRequiresAuth;
 
   if (requiresAuth && !session?.user) {
-    const from = isEpisode ? `/watch/${slug}` : `/watch/${slug}${wantFull ? "?full=1" : ""}`;
+    const from = isEpisode ? `/watch/${slug}` : `/watch/${slug}${wantFull ? "?full=1" : isPreviewVisit ? "?preview=1" : ""}`;
     redirect(`/login?from=${from}`);
   }
+
+  // Block full-film viewing for non-published upcoming works
+  if (work.status !== "PUBLISHED" && wantFull && !isEpisode) notFound();
 
   // Video selection
   const videoUrl = isEpisode
     ? work.videoUrl
+    : work.type === "TRAILER"
+    ? work.videoUrl
+    : isPreviewVisit && work.previewClipUrl
+    ? work.previewClipUrl
     : wantFull && work.videoUrl
     ? work.videoUrl
     : work.trailerUrl;
-  const isTrailer = !isEpisode && (!wantFull || !work.videoUrl);
+  const isTrailer = work.type === "TRAILER" || (!isEpisode && !isPreview && (!wantFull || !work.videoUrl));
 
   const isYouTube = videoUrl?.includes("youtube.com") || videoUrl?.includes("youtu.be");
   const isVimeo   = videoUrl?.includes("vimeo.com");
   const isEmbed   = isYouTube || isVimeo;
   const embedUrl  = videoUrl ? toEmbedUrl(videoUrl) : null;
 
-  // Trailers always restart from the beginning — never resume
-  // Block full-film viewing for non-published works (upcoming/in-production can only show trailers)
-  if (work.status !== "PUBLISHED" && wantFull) notFound();
-
+  // Resume position (0 if completed — player restarts from beginning)
   const initialSeconds = session?.user && !isEmbed && !isTrailer && work.id
     ? await getWatchProgress(work.id)
     : 0;
 
-  const [isSaved, { isLiked, likeCount }] = await Promise.all([
+  const [isSaved, { isLiked, likeCount }, publishedSubs] = await Promise.all([
     session?.user ? isWorkSaved(work.id) : Promise.resolve(false),
     getWorkLikeState(work.id),
+    !isEmbed ? listPublishedSubtitles(work.id) : Promise.resolve([]),
   ]);
 
-  // ── Episode navigation (computed before CTA so we can detect last episode) ──
-  const siblings = work.parent?.episodes ?? [];
-  const currentIdx = siblings.findIndex((ep) => ep.slug === slug);
-  const nextEp = currentIdx >= 0 && currentIdx < siblings.length - 1
-    ? siblings[currentIdx + 1]
+  // Build subtitle track list for the player (<track> elements)
+  const subtitleTracks: { lang: string; label: string; src: string; isDefault?: boolean }[] = [];
+  for (const sub of publishedSubs) {
+    const vttKeys = (sub.vttKeysJson ?? {}) as Record<string, string>;
+    const srcLang = sub.sourceLanguage;
+    const addedLangs = new Set<string>();
+
+    // Source language — prefer R2 CDN key, fall back to on-demand VTT route
+    const srcSrc =
+      getVttUrl(srcLang, vttKeys) ??
+      (sub.segmentsJson.length > 0
+        ? `/api/subtitles/${work.id}/vtt?subtitleId=${sub.id}&lang=${encodeURIComponent(srcLang)}`
+        : null);
+    if (srcSrc) {
+      subtitleTracks.push({
+        lang: srcLang,
+        src: srcSrc,
+        label: sub.label,
+        isDefault: sub.isDefault && subtitleTracks.length === 0,
+      });
+      addedLangs.add(srcLang);
+    }
+
+    // Translated languages from R2 keys
+    for (const lang of Object.keys(vttKeys)) {
+      if (addedLangs.has(lang)) continue;
+      const src = getVttUrl(lang, vttKeys);
+      if (src) {
+        subtitleTracks.push({ lang, src, label: getLangName(lang), isDefault: false });
+        addedLangs.add(lang);
+      }
+    }
+  }
+
+  // Episode nav (for episode pages — siblings from parent series)
+  const siblings    = work.parent?.episodes ?? [];
+  const currentIdx  = siblings.findIndex((ep) => ep.slug === slug);
+  const nextEp      = currentIdx >= 0 && currentIdx < siblings.length - 1
+    ? siblings[currentIdx + 1] : null;
+  const isLastEp    = isEpisode && siblings.length > 0 && currentIdx === siblings.length - 1;
+
+  // Episode progress map for sidebar — plain object, not Map (must be serializable)
+  const siblingProgressMap = session?.user && siblings.length > 0
+    ? await getEpisodeProgressMap(siblings.map((e) => e.id))
+    : {} as Record<string, { seconds: number; completed: boolean }>;
+
+  // For series trailer pages: episodes fetched in getWork (all published episodes)
+  // used to populate the player episodes panel and the "Watch Series" section.
+  const isSeriesTrailer = work.type === "SERIES" && !!trailer;
+  const seriesEpisodes  = isSeriesTrailer ? work.episodes : [];
+
+  // Notify Me CTA gate:
+  // • Full film published → only fire on the full film watch, not trailer/preview
+  // • Full film NOT published yet (project only has trailer/preview) → fire on trailer/preview
+  // • Series with episodes → only fire on the last episode
+  // • Series with no episodes yet → fire on the series trailer page
+  const isFullFilmWatch = !isTrailer && !isPreview && !isEpisode;
+  const fullFilmAvailable = !isEpisode && work.status === "PUBLISHED" && !!work.videoUrl;
+  const seriesEpisodesAvailable = work.type === "SERIES" && work.episodes.length > 0;
+  const onTrailerOrPreviewOnly = (isTrailer || isPreview) && !fullFilmAvailable && !seriesEpisodesAvailable;
+  let rawCta = (isFullFilmWatch || isLastEp || onTrailerOrPreviewOnly) && work.notifyMeCta?.isEnabled && !isEmbed
+    ? work.notifyMeCta
     : null;
-  const isLastEpisode = isEpisode && siblings.length > 0 && currentIdx === siblings.length - 1;
-
-  // ── Notify Me CTA ─────────────────────────────────────────────────────────
-  // Shown on native video (not embeds). Trailers now also eligible (guest use case).
-  // For last episode of a series: fall back to the parent series CTA.
-  let rawCta = work.notifyMeCta?.isEnabled && !isEmbed ? work.notifyMeCta : null;
-
-  if (!rawCta && isLastEpisode && work.parent?.id) {
-    // Fetch series CTA — only runs on the last episode, one extra query
+  if (!rawCta && isLastEp && work.parent?.id) {
     const seriesCta = await prisma.notifyMeCta.findUnique({
       where: { workId: work.parent.id },
-      select: {
-        id: true, type: true, isEnabled: true,
-        headline: true, body: true, ctaLabel: true,
-        triggerSecondsFromEnd: true,
-      },
+      select: { id: true, type: true, isEnabled: true, headline: true, body: true, ctaLabel: true, triggerSecondsFromEnd: true },
     });
     if (seriesCta?.isEnabled) rawCta = seriesCta;
   }
 
-  const ctaAlreadySigned =
-    rawCta && session?.user?.email
-      ? await prisma.notifyMeSignup.findFirst({
-          where: { ctaId: rawCta.id, email: session.user.email.toLowerCase() },
-          select: { id: true },
-        })
-      : null;
+  const ctaAlreadySigned = rawCta && session?.user?.email
+    ? await prisma.notifyMeSignup.findFirst({
+        where: { ctaId: rawCta.id, email: session.user.email.toLowerCase() },
+        select: { id: true },
+      })
+    : null;
 
   const ctaProp = rawCta && !ctaAlreadySigned
     ? ({
-        id:                    rawCta.id,
-        type:                  rawCta.type as string,
-        headline:              rawCta.headline,
-        body:                  rawCta.body,
-        ctaLabel:              rawCta.ctaLabel,
+        id: rawCta.id, type: rawCta.type as string,
+        headline: rawCta.headline, body: rawCta.body, ctaLabel: rawCta.ctaLabel,
         triggerSecondsFromEnd: rawCta.triggerSecondsFromEnd,
-        workId:                work.id,
-        workTitle:             work.title,
+        workId: work.id, workTitle: work.title,
       } satisfies import("@/components/notify-cta-overlay").CtaData)
     : null;
 
@@ -201,43 +310,56 @@ export default async function WatchPage({ params, searchParams }: Props) {
     ? { email: session.user.email, name: session.user.name ?? null }
     : undefined;
 
-  // Track TRAILER_CLICK after response — fires when the watch page loads in trailer mode
+  // Episodes: use episode-level timing first, then fall back to parent series
+  // This lets admins override per-episode (e.g. different season intros)
+  const introStart   = isEpisode ? (work.introStart   ?? work.parent?.introStart   ?? null) : work.introStart;
+  const introEnd     = isEpisode ? (work.introEnd     ?? work.parent?.introEnd     ?? null) : work.introEnd;
+  const creditsStart = isEpisode ? (work.creditsStart ?? work.parent?.creditsStart ?? null) : work.creditsStart;
+  const contentRating   = isEpisode ? (work.parent?.contentRating   ?? null) : work.contentRating;
+  const contentDescriptors = isEpisode
+    ? (work.parent?.contentDescriptors ?? [])
+    : work.contentDescriptors;
+
+  const hasContentWarning =
+    !isEmbed && (!!contentRating || contentDescriptors.length > 0);
+
+  // Analytics
   if (isTrailer) {
     const jar = await cookies();
     const _visitorId = jar.get("aim-vid")?.value;
-    const _userId    = session?.user?.id ?? undefined;
-    const _workId    = work.id;
-    const _path      = `/watch/${slug}`;
+    const _userId = session?.user?.id ?? undefined;
+    const _workId = work.id;
+    const _path   = `/watch/${slug}`;
     after(async () => {
       if (!_visitorId) return;
       try {
-        const sessionId = await getOrCreateSession({ visitorId: _visitorId })
-          .catch(() => undefined);
-        await trackEvent({
-          visitorId: _visitorId,
-          userId: _userId,
-          sessionId,
-          type: "TRAILER_CLICK",
-          path: _path,
-          workId: _workId,
-        });
-      } catch { /* never block watch page */ }
+        const sessionId = await getOrCreateSession({ visitorId: _visitorId }).catch(() => undefined);
+        await trackEvent({ visitorId: _visitorId, userId: _userId, sessionId, type: "TRAILER_CLICK", path: _path, workId: _workId });
+      } catch {}
     });
   }
 
-  // Episode label (e.g. "S1 E2")
   const epLabel =
     isEpisode && (work.seasonNumber != null || work.episodeNumber != null)
       ? [
           work.seasonNumber != null ? `S${work.seasonNumber}` : null,
           work.episodeNumber != null ? `E${work.episodeNumber}` : null,
-        ]
-          .filter(Boolean)
-          .join(" ")
+        ].filter(Boolean).join(" ")
       : null;
 
-  const backHref = isEpisode && work.parent ? `/works/${work.parent.slug}` : `/works/${work.slug}`;
-  const backLabel = isEpisode && work.parent ? work.parent.title : work.title;
+  const backHref  = isEpisode && work.parent ? `/works/${work.parent.slug}` : `/works/${work.slug}`;
+  const backLabel = isEpisode && work.parent
+    ? `${work.parent.title} — Details`
+    : `${work.title} — Details`;
+
+  // Group sidebar siblings by season
+  const seasonGroups = siblings.reduce<Map<number | null, typeof siblings>>((acc, ep) => {
+    const s = ep.seasonNumber;
+    if (!acc.has(s)) acc.set(s, []);
+    acc.get(s)!.push(ep);
+    return acc;
+  }, new Map());
+  const hasMultipleSeasons = seasonGroups.size > 1;
 
   return (
     <main className="watch-page">
@@ -247,85 +369,71 @@ export default async function WatchPage({ params, searchParams }: Props) {
         </Link>
 
         <p className="watch-label">
-          {isEpisode
-            ? (epLabel ?? "Episode")
-            : isTrailer
-            ? "Trailer"
-            : "Full Film"}
+          {isEpisode ? (epLabel ?? "Episode") : isPreview ? "Preview" : isTrailer ? "Trailer" : "Full Film"}
         </p>
 
         <div className="watch-layout">
           {/* ── Main column ── */}
           <div className="watch-main">
+
             <div className="watch-player-wrap">
-              {videoUrl ? (
-                isEmbed ? (
-                  <iframe
-                    src={embedUrl!}
-                    className="watch-iframe"
-                    allow="fullscreen; picture-in-picture"
-                    allowFullScreen
-                    title={work.title}
-                  />
-                ) : isEpisode && nextEp ? (
-                  <EpisodePlayer
-                    src={videoUrl}
-                    poster={work.posterUrl ?? undefined}
-                    nextSlug={nextEp.slug}
-                    workId={work.id}
-                    initialSeconds={initialSeconds}
-                    durationMinutes={work.duration ?? undefined}
-                    cta={ctaProp}
-                    ctaUser={ctaUser}
-                  />
-                ) : isEpisode ? (
-                  <EpisodePlayer
-                    src={videoUrl}
-                    poster={work.posterUrl ?? undefined}
-                    workId={work.id}
-                    initialSeconds={initialSeconds}
-                    durationMinutes={work.duration ?? undefined}
-                    cta={ctaProp}
-                    ctaUser={ctaUser}
-                  />
-                ) : (
-                  <VideoPlayer
-                    src={videoUrl}
-                    poster={work.posterUrl ?? undefined}
-                    workId={work.id}
-                    initialSeconds={initialSeconds}
-                    durationMinutes={work.duration ?? undefined}
-                    cta={ctaProp}
-                    ctaUser={ctaUser}
-                  />
-                )
+              {videoUrl && !isEmbed ? (
+                <AimPlayer
+                  src={videoUrl}
+                  poster={work.posterUrl ?? undefined}
+                  workId={work.id}
+                  isTrailer={isTrailer}
+                  workTitle={work.title}
+                  workTypeLabel={isPreview ? "Preview" : isTrailer && work.type !== "TRAILER" ? "Trailer" : (WORK_TYPE_LABEL[work.type] ?? work.type)}
+                  epLabel={epLabel}
+                  backHref={backHref}
+                  currentSlug={slug}
+                  initialSeconds={initialSeconds}
+                  durationMinutes={work.duration ?? undefined}
+                  introStart={introStart}
+                  introEnd={introEnd}
+                  creditsStart={creditsStart}
+                  contentRating={contentRating}
+                  contentDescriptors={contentDescriptors}
+                  nextSlug={nextEp?.slug}
+                  nextTitle={nextEp?.title}
+                  siblings={isSeriesTrailer ? seriesEpisodes : siblings}
+                  siblingProgress={siblingProgressMap}
+                  isGuest={!session?.user}
+                  initialLiked={isLiked}
+                  initialLikeCount={likeCount}
+                  cta={ctaProp}
+                  ctaUser={ctaUser}
+                  clipStartParam={clipStartParam}
+                  clipEndParam={clipEndParam}
+                  isClipMode={isClipMode}
+                  subtitleTracks={subtitleTracks.length > 0 ? subtitleTracks : undefined}
+                />
+              ) : isEmbed && embedUrl ? (
+                <iframe
+                  src={embedUrl}
+                  className="watch-iframe"
+                  allow="fullscreen; picture-in-picture"
+                  allowFullScreen
+                  title={work.title}
+                />
               ) : (
                 <div className="watch-no-video">
-                  <p>Video not available.</p>
+                  <p>This video is unavailable right now. Please try again later.</p>
                 </div>
               )}
             </div>
 
             <div className="watch-info">
               <h1 className="watch-title">{work.title}</h1>
-              {work.description && <p className="watch-desc">{work.description}</p>}
+              {work.description && (
+                <SynopsisToggle text={work.description} className="watch-desc" />
+              )}
 
               <div className="watch-engagement">
                 {session?.user && (
-                  <SaveButton
-                    workId={work.id}
-                    initialSaved={isSaved}
-                    className="save-btn save-btn--sm"
-                  />
+                  <SaveButton workId={work.id} initialSaved={isSaved} className="action-btn--sm" />
                 )}
-                <LikeButton
-                  workId={work.id}
-                  initialLiked={isLiked}
-                  likeCount={likeCount}
-                  isGuest={!session?.user}
-                  slug={isEpisode && work.parent ? work.parent.slug : work.slug}
-                  size="sm"
-                />
                 <ShareButton
                   title={isEpisode && work.parent ? work.parent.title : work.title}
                   slug={isEpisode && work.parent ? work.parent.slug : work.slug}
@@ -334,15 +442,69 @@ export default async function WatchPage({ params, searchParams }: Props) {
                 />
               </div>
 
-              {/* Next Episode button */}
+              {/* Next Episode button (below player on mobile) */}
               {isEpisode && nextEp && (
                 <Link href={`/watch/${nextEp.slug}`} className="watch-next-ep">
                   Next Episode <ChevronRight size={15} />
                 </Link>
               )}
 
-              {/* Trailer → Full Film upsell */}
-              {isTrailer && work.videoUrl && (
+              {/* Series trailer: Watch Series upsell */}
+              {isSeriesTrailer && seriesEpisodes.length > 0 && (
+                <div className="watch-upsell">
+                  {mainRequiresAuth && !session?.user ? (
+                    <>
+                      <Lock size={14} />
+                      <span>
+                        <Link href="/register">Create a free account</Link> to watch all episodes.
+                      </span>
+                    </>
+                  ) : (
+                    <Link href={`/watch/${seriesEpisodes[0].slug}`} className="watch-upsell-btn">
+                      Watch Series — {seriesEpisodes.length} {seriesEpisodes.length === 1 ? "Episode" : "Episodes"} →
+                    </Link>
+                  )}
+                </div>
+              )}
+
+              {/* Non-series trailer → Full Film upsell (same work, e.g. FULL_FILM viewed as trailer) */}
+              {isTrailer && work.type !== "TRAILER" && !isSeriesTrailer && work.status === "PUBLISHED" && work.videoUrl && (
+                <div className="watch-upsell">
+                  {mainRequiresAuth && !session?.user ? (
+                    <>
+                      <Lock size={14} />
+                      <span>
+                        <Link href="/register">Create a free account</Link> to watch the full film.
+                      </span>
+                    </>
+                  ) : (
+                    <Link href={`/watch/${work.slug}?full=1`} className="watch-upsell-btn">
+                      Watch Full Film →
+                    </Link>
+                  )}
+                </div>
+              )}
+
+              {/* TRAILER type work → linked parent full film upsell */}
+              {work.type === "TRAILER" && work.parent?.status === "PUBLISHED" && work.parent.videoUrl && (
+                <div className="watch-upsell">
+                  {work.parent.requiresAuth && !session?.user ? (
+                    <>
+                      <Lock size={14} />
+                      <span>
+                        <Link href="/register">Create a free account</Link> to watch the full film.
+                      </span>
+                    </>
+                  ) : (
+                    <Link href={`/watch/${work.parent.slug}?full=1`} className="watch-upsell-btn">
+                      Watch Full Film →
+                    </Link>
+                  )}
+                </div>
+              )}
+
+              {/* Preview clip → Full Film upsell */}
+              {isPreview && work.status === "PUBLISHED" && work.videoUrl && (
                 <div className="watch-upsell">
                   {mainRequiresAuth && !session?.user ? (
                     <>
@@ -366,52 +528,179 @@ export default async function WatchPage({ params, searchParams }: Props) {
             <aside className="watch-ep-sidebar">
               <p className="watch-ep-sidebar-label">Episodes</p>
               <ol className="watch-ep-list">
-                {siblings.map((ep) => {
-                  const isCurrent = ep.slug === slug;
-                  const num = [
-                    ep.seasonNumber != null ? `S${ep.seasonNumber}` : null,
-                    ep.episodeNumber != null ? `E${ep.episodeNumber}` : null,
-                  ]
-                    .filter(Boolean)
-                    .join(" ");
-                  const dur = ep.duration
-                    ? Math.floor(ep.duration / 60) > 0
-                      ? `${Math.floor(ep.duration / 60)}h ${ep.duration % 60}m`
-                      : `${ep.duration}m`
-                    : null;
+                {Array.from(seasonGroups.entries()).map(([season, eps]) => (
+                  <Fragment key={season ?? "no-season"}>
+                    {hasMultipleSeasons && (
+                      <li className="watch-season-head" aria-hidden="true">
+                        {season != null ? `Season ${season}` : "Episodes"}
+                      </li>
+                    )}
+                    {eps.map((ep) => {
+                      const isCurrent = ep.slug === slug;
+                      const prog = siblingProgressMap[ep.id];
+                      const pct = prog && ep.duration
+                        ? Math.min(100, Math.round((prog.seconds / (ep.duration * 60)) * 100))
+                        : 0;
+                      const isWatched = prog?.completed ?? false;
+                      const num = [
+                        ep.seasonNumber != null ? `S${ep.seasonNumber}` : null,
+                        ep.episodeNumber != null ? `E${ep.episodeNumber}` : null,
+                      ].filter(Boolean).join(" ");
+                      const dur = ep.duration ? fmtDur(ep.duration) : null;
+                      const thumb = ep.thumbnailUrl ?? ep.posterUrl ?? null;
 
-                  return (
-                    <li
-                      key={ep.id}
-                      className={`watch-ep-item${isCurrent ? " watch-ep-item--current" : ""}`}
-                    >
-                      {isCurrent ? (
-                        <div className="watch-ep-link watch-ep-link--static">
-                          <div className="watch-ep-meta">
-                            {num && <span className="watch-ep-num">{num}</span>}
-                            {dur && <span className="watch-ep-dur">{dur}</span>}
-                          </div>
-                          <span className="watch-ep-title">{ep.title}</span>
-                          <span className="watch-ep-now">Now Playing</span>
-                        </div>
-                      ) : (
-                        <Link href={`/watch/${ep.slug}`} className="watch-ep-link">
-                          <div className="watch-ep-meta">
-                            {num && <span className="watch-ep-num">{num}</span>}
-                            {dur && <span className="watch-ep-dur">{dur}</span>}
-                          </div>
-                          <span className="watch-ep-title">{ep.title}</span>
-                        </Link>
-                      )}
-                    </li>
-                  );
-                })}
+                      return (
+                        <li
+                          key={ep.id}
+                          className={`watch-ep-item${isCurrent ? " watch-ep-item--current" : ""}`}
+                        >
+                          {isCurrent ? (
+                            <div className="watch-ep-link watch-ep-link--static">
+                              {thumb && (
+                                <div className="watch-ep-thumb" aria-hidden="true">
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img src={thumb} alt="" loading="lazy" />
+                                </div>
+                              )}
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div className="watch-ep-meta">
+                                  {num && <span className="watch-ep-num">{num}</span>}
+                                  {dur && <span className="watch-ep-dur">{dur}</span>}
+                                </div>
+                                <span className="watch-ep-title">{ep.title}</span>
+                                <span className="watch-ep-now">Now Playing</span>
+                                {pct > 0 && !isWatched && (
+                                  <div className="watch-ep-progress-bar">
+                                    <div className="watch-ep-progress-fill" style={{ width: `${pct}%` }} />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ) : (
+                            <Link href={`/watch/${ep.slug}`} className="watch-ep-link">
+                              {thumb && (
+                                <div className="watch-ep-thumb" aria-hidden="true">
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img src={thumb} alt="" loading="lazy" />
+                                </div>
+                              )}
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div className="watch-ep-meta">
+                                  {num && <span className="watch-ep-num">{num}</span>}
+                                  {dur && <span className="watch-ep-dur">{dur}</span>}
+                                </div>
+                                <span className="watch-ep-title">{ep.title}</span>
+                                {isWatched && (
+                                  <div className="watch-ep-watched">
+                                    <Check size={9} style={{ display: "inline", marginRight: 2 }} />
+                                    Watched
+                                  </div>
+                                )}
+                                {!isWatched && pct > 0 && (
+                                  <div className="watch-ep-progress-bar">
+                                    <div className="watch-ep-progress-fill" style={{ width: `${pct}%` }} />
+                                  </div>
+                                )}
+                              </div>
+                            </Link>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </Fragment>
+                ))}
               </ol>
             </aside>
           )}
         </div>
       </div>
 
+      {/* ── Series episodes list (shown below player on series trailer pages) ── */}
+      {isSeriesTrailer && seriesEpisodes.length > 0 && (
+        <div className="container-app">
+          <section className="episodes-section">
+            <div className="episodes-head">
+              <h2 className="episodes-title">Episodes</h2>
+              <span className="episodes-count">
+                {seriesEpisodes.length} {seriesEpisodes.length === 1 ? "Episode" : "Episodes"}
+              </span>
+            </div>
+            <ol className="episodes-list">
+              {seriesEpisodes.map((ep) => {
+                const label =
+                  ep.seasonNumber != null && ep.episodeNumber != null
+                    ? `S${ep.seasonNumber} E${ep.episodeNumber}`
+                    : ep.episodeNumber != null
+                    ? `E${ep.episodeNumber}`
+                    : null;
+                const epLocked = mainRequiresAuth && !session?.user;
+                const thumb = ep.thumbnailUrl ?? ep.posterUrl;
+                return (
+                  <li key={ep.id}>
+                    <div className="ep-card">
+                      <div className="ep-thumb-wrap">
+                        {thumb ? (
+                          <Image
+                            src={thumb}
+                            alt={ep.title}
+                            fill
+                            sizes="(max-width: 640px) 100px, 160px"
+                            className="ep-thumb-img"
+                            quality={75}
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="ep-thumb-placeholder">
+                            {label ?? ep.title.charAt(0)}
+                          </div>
+                        )}
+                      </div>
+                      <div className="ep-body">
+                        <div className="ep-meta-row">
+                          {label && <span className="ep-label">{label}</span>}
+                          {ep.duration && (
+                            <span className="ep-duration">
+                              <Clock size={10} />
+                              {ep.duration >= 60
+                                ? `${Math.floor(ep.duration / 60)}h ${ep.duration % 60}m`
+                                : `${ep.duration}m`}
+                            </span>
+                          )}
+                        </div>
+                        <p className="ep-title">{ep.title}</p>
+                      </div>
+                      <div className="ep-watch">
+                        {epLocked ? (
+                          <Link href={`/login?from=/watch/${ep.slug}`} className="ep-btn ep-btn--locked">
+                            <Lock size={11} /> Watch Episode
+                          </Link>
+                        ) : (
+                          <Link href={`/watch/${ep.slug}`} className="ep-btn">
+                            <Play size={11} fill="currentColor" /> Watch Episode
+                          </Link>
+                        )}
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+          </section>
+        </div>
+      )}
+
+      {/* ── Comments ── episodes attach to episode; others attach to work ── */}
+      {work.commentsEnabled && work.status === "PUBLISHED" && (
+        <div className="container-app">
+          <CommentSection
+            workId={work.id}
+            workSlug={isEpisode && work.parent ? work.parent.slug : work.slug}
+            currentUser={session?.user
+              ? { id: session.user.id!, name: session.user.name ?? null, image: session.user.image ?? null, role: session.user.role as string }
+              : null}
+          />
+        </div>
+      )}
     </main>
   );
 }

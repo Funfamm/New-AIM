@@ -2,7 +2,10 @@
 
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth-guard";
+import { auth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { rateLimit } from "@/lib/rate-limit";
+import { getClientIpHash } from "@/lib/request-ip";
 import type { CtaType } from "@prisma/client";
 
 
@@ -75,6 +78,8 @@ export async function toggleCtaEnabled(
 
 // ── Public: sign up for a CTA ────────────────────────────────────────────────
 // Deduplication: server checks DB; client stores in localStorage after success.
+// For logged-in users: email and userId come from the server session only —
+// client-supplied email is ignored to prevent spoofing.
 export async function notifyMeSignup(
   ctaId: string,
   workId: string,
@@ -82,31 +87,59 @@ export async function notifyMeSignup(
   email: string,
   name?: string
 ): Promise<{ ok: boolean; error?: string }> {
-  const trimmedEmail = email.trim().toLowerCase();
-  if (!trimmedEmail || !trimmedEmail.includes("@"))
+  // Resolve the authenticated session server-side
+  const session = await auth();
+  const sessionUser = session?.user as { id?: string; email?: string; name?: string } | undefined;
+
+  // Determine the canonical email: session email for logged-in users,
+  // client-submitted email for guests. Never trust client for logged-in.
+  const resolvedEmail = sessionUser?.email
+    ? sessionUser.email.trim().toLowerCase()
+    : email.trim().toLowerCase();
+
+  const userId   = sessionUser?.id   ?? null;
+  const userName = sessionUser?.name ?? name?.trim() ?? null;
+
+  if (!resolvedEmail || !resolvedEmail.includes("@"))
     return { ok: false, error: "Please enter a valid email address." };
+
+  // Rate limit per email (10/hr) AND per IP (20/hr). Guests submit a client-controlled
+  // email, so the email key alone is bypassable by rotating it — the IP key backstops it.
+  const rlEmail = rateLimit(`ncta:${resolvedEmail}`, 10, 60 * 60 * 1000);
+  const rlIp    = rateLimit(`ncta-ip:${await getClientIpHash()}`, 20, 60 * 60 * 1000);
+  if (!rlEmail.allowed || !rlIp.allowed) return { ok: false, error: "Too many requests. Please try again later." };
 
   // Check suppression list — silently succeed so we don't leak suppression status
   const suppressed = await prisma.emailSuppression.findUnique({
-    where: { email: trimmedEmail },
+    where: { email: resolvedEmail },
     select: { active: true },
   });
   if (suppressed?.active) return { ok: true };
 
   // Deduplicate: already signed up for this CTA
   const existing = await prisma.notifyMeSignup.findFirst({
-    where: { ctaId, email: trimmedEmail },
-    select: { id: true },
+    where: { ctaId, email: resolvedEmail },
+    select: { id: true, userId: true },
   });
-  if (existing) return { ok: true };
+  if (existing) {
+    // Back-fill userId if this was a previous guest signup and user is now logged in
+    if (!existing.userId && userId) {
+      await prisma.notifyMeSignup.update({
+        where: { id: existing.id },
+        data:  { userId },
+      });
+    }
+    return { ok: true };
+  }
 
   await prisma.notifyMeSignup.create({
     data: {
       ctaId,
       workId,
       workTitle,
-      email: trimmedEmail,
-      name: name?.trim() || null,
+      email:  resolvedEmail,
+      name:   sessionUser ? (sessionUser.name ?? null) : (name?.trim() || null),
+      userId,
     },
   });
 

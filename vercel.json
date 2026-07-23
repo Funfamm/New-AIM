@@ -1,0 +1,36 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/morning-report",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/scheduled-outreach",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/heal-video-jobs",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/heal-email-queue",
+      "schedule": "*/30 * * * *"
+    },
+    {
+      "path": "/api/cron/reconcile-counts",
+      "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/error-retention",
+      "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/error-digest",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/media-link-check",
+      "schedule": "30 7 * * *"
+    }
+  ]
+}

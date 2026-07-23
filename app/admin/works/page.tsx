@@ -1,11 +1,13 @@
 import { prisma } from "@/lib/prisma";
-import { setWorkStatus } from "@/lib/actions/works";
+import { setWorkStatus, reorderWork } from "@/lib/actions/works";
 import { DeleteWorkButton } from "@/components/delete-work-button";
 import Link from "next/link";
 import "./admin-works.css";
-import { Plus, Pencil, Eye, EyeOff } from "lucide-react";
+import { Plus, Pencil, Eye, EyeOff, Heart, Share2, Film, ChevronsUp, ChevronsDown, ChevronUp, ChevronDown, LinkIcon } from "lucide-react";
 import type { Metadata } from "next";
 import type { WorkType, WorkStatus } from "@prisma/client";
+import WorkerStatus from "@/components/admin/worker-status";
+import WorksFilterBar from "@/components/admin/works-filter-bar";
 
 export const metadata: Metadata = { title: "Admin — Works" };
 
@@ -23,46 +25,172 @@ const STATUS_CLASS: Record<WorkStatus, string> = {
   UPCOMING:      "badge--upcoming",
 };
 
-export default async function AdminWorksPage() {
+const WORK_TYPES: WorkType[] = [
+  "SHORT_FILM","FULL_FILM","SERIES","TRAILER","COMMERCIAL","BRANDING","CAMPAIGN","CASE_STUDY",
+];
+const WORK_STATUSES: WorkStatus[] = ["PUBLISHED","DRAFT","PRIVATE","IN_PRODUCTION","UPCOMING"];
+
+export default async function AdminWorksPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ search?: string; type?: string; status?: string; jobs?: string; subtitles?: string }>;
+}) {
+  const sp = await searchParams;
+  const search         = sp.search?.trim() ?? "";
+  const typeFilter     = (WORK_TYPES.includes(sp.type as WorkType)     ? sp.type   : "") as WorkType | "";
+  const statusFilter   = (WORK_STATUSES.includes(sp.status as WorkStatus) ? sp.status : "") as WorkStatus | "";
+  const jobsFilter     = sp.jobs     === "failed" ? "failed" : "";
+  const subtitlesFilter = sp.subtitles === "failed" ? "failed" : "";
+
+  // ── Total counts for stat cards (unfiltered) ────────────────────────────
+  const [totalCount, publishedCount, draftCount, seriesCount] = await Promise.all([
+    prisma.work.count({ where: { type: { not: "EPISODE" } } }),
+    prisma.work.count({ where: { type: { not: "EPISODE" }, status: "PUBLISHED" } }),
+    prisma.work.count({ where: { type: { not: "EPISODE" }, status: "DRAFT" } }),
+    prisma.work.count({ where: { type: "SERIES" } }),
+  ]);
+
+  // ── Filtered works query ─────────────────────────────────────────────────
   const works = await prisma.work.findMany({
-    where: { type: { not: "EPISODE" } },
-    orderBy: { createdAt: "desc" },
+    where: {
+      type: typeFilter ? { equals: typeFilter } : { not: "EPISODE" },
+      ...(statusFilter ? { status: statusFilter } : {}),
+      ...(search ? { title: { contains: search, mode: "insensitive" } } : {}),
+      ...(jobsFilter === "failed"
+        ? { videoProcessingJobs: { some: { status: "FAILED" } } }
+        : {}),
+      ...(subtitlesFilter === "failed"
+        ? { subtitles: { some: { jobs: { some: { status: "FAILED" } } } } }
+        : {}),
+    },
+    orderBy: [{ order: "asc" }, { createdAt: "desc" }],
     select: {
       id: true, slug: true, title: true, type: true, status: true,
       featured: true, showOnHome: true, clientName: true, genre: true,
-      videoUrl: true, trailerUrl: true, createdAt: true,
+      videoUrl: true, trailerUrl: true, previewClipUrl: true, createdAt: true,
+      order: true,
+      episodes: { select: { id: true } },
     },
   });
+
+  // ── Like + share aggregation ─────────────────────────────────────────────
+  const allIds = works.flatMap((w) => [w.id, ...w.episodes.map((e) => e.id)]);
+
+  const [likeRows, shareRows] = await Promise.all([
+    prisma.workLike.groupBy({
+      by: ["workId"],
+      where: { workId: { in: allIds } },
+      _count: { _all: true },
+    }),
+    prisma.analyticsEvent.groupBy({
+      by: ["workId"],
+      where: { type: "SHARE_WORK", workId: { in: allIds } },
+      _count: { _all: true },
+    }),
+  ]);
+
+  const likeMap  = new Map(likeRows.map((r) => [r.workId, r._count._all]));
+  const shareMap = new Map(shareRows.filter((r) => r.workId != null).map((r) => [r.workId!, r._count._all]));
+
+  const worksWithStats = works.map((w) => {
+    const ids = [w.id, ...w.episodes.map((e) => e.id)];
+    return {
+      ...w,
+      totalLikes:  ids.reduce((s, id) => s + (likeMap.get(id)  ?? 0), 0),
+      totalShares: ids.reduce((s, id) => s + (shareMap.get(id) ?? 0), 0),
+    };
+  });
+
+  const isFiltered = !!(search || typeFilter || statusFilter || jobsFilter || subtitlesFilter);
 
   return (
     <div className="admin-page">
       <div className="admin-page-header">
         <h1 className="admin-page-title">Works</h1>
-        <Link href="/admin/works/new" className="admin-add-btn">
-          <Plus size={15} /> Add Work
-        </Link>
+        <div className="admin-page-header-actions">
+          <WorkerStatus />
+          <Link href="/admin/works/media-check" className="admin-add-btn">
+            <LinkIcon size={15} /> Check Media Links
+          </Link>
+          <Link href="/admin/works/new" className="admin-add-btn">
+            <Plus size={15} /> Add Work
+          </Link>
+        </div>
       </div>
 
+      {/* Stat cards */}
+      <div className="admin-stat-grid">
+        <div className="admin-stat-card admin-stat-card--gold">
+          <span className="admin-stat-value">{totalCount}</span>
+          <span className="admin-stat-label">Total Works</span>
+        </div>
+        <div className="admin-stat-card admin-stat-card--green">
+          <span className="admin-stat-value">{publishedCount}</span>
+          <span className="admin-stat-label">Published</span>
+        </div>
+        <div className="admin-stat-card">
+          <span className="admin-stat-value">{draftCount}</span>
+          <span className="admin-stat-label">Drafts</span>
+        </div>
+        <div className="admin-stat-card admin-stat-card--blue">
+          <span className="admin-stat-value">{seriesCount}</span>
+          <span className="admin-stat-label">Series</span>
+        </div>
+      </div>
+
+      {/* Health-filter alert banner */}
+      {(jobsFilter || subtitlesFilter) && (
+        <div className="admin-filter-alert">
+          <span className="admin-filter-alert-text">
+            {jobsFilter      ? "Showing works with failed video jobs"    : ""}
+            {subtitlesFilter ? "Showing works with failed subtitle jobs" : ""}
+          </span>
+          <Link href="/admin/works" className="admin-filter-alert-clear">
+            Clear filter ×
+          </Link>
+        </div>
+      )}
+
+      {/* Filter bar */}
+      <WorksFilterBar
+        search={search}
+        typeFilter={typeFilter}
+        statusFilter={statusFilter}
+        typeOptions={WORK_TYPES.map((t) => ({ value: t, label: TYPE_LABELS[t] }))}
+        statusOptions={WORK_STATUSES.map((s) => ({ value: s, label: s.charAt(0) + s.slice(1).toLowerCase().replace(/_/g," ") }))}
+        resultCount={works.length}
+        isFiltered={isFiltered}
+      />
+
       <div className="admin-table-wrap">
-        <table className="admin-table">
+        <table className="admin-table admin-works-table">
           <thead>
             <tr>
               <th>Title</th>
               <th>Type</th>
               <th>Status</th>
-              <th>Video</th>
+              <th title="Main video">Video</th>
+              <th title="Trailer">Trailer</th>
+              <th title="Preview clip">Preview</th>
               <th>Featured</th>
               <th>Home</th>
+              <th className="th-stat" title="Likes">
+                <Heart size={12} />
+              </th>
+              <th className="th-stat" title="Shares">
+                <Share2 size={12} />
+              </th>
+              <th title="Position within category (lower = first)">Pos.</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {works.map((w) => {
+            {worksWithStats.map((w) => {
               const nextStatus: WorkStatus = w.status === "PUBLISHED" ? "PRIVATE" : "PUBLISHED";
               return (
                 <tr key={w.id}>
                   <td className="td-title">
-                    {w.title}
+                    <span className="admin-work-title">{w.title}</span>
                     {w.clientName && (
                       <span className="td-sub">{w.clientName}</span>
                     )}
@@ -72,14 +200,69 @@ export default async function AdminWorksPage() {
                   </td>
                   <td>
                     <span className={`status-badge ${STATUS_CLASS[w.status]}`}>
-                      {w.status.toLowerCase()}
+                      {w.status.toLowerCase().replace(/_/g," ")}
                     </span>
                   </td>
                   <td>
-                    <span className={`dot ${w.videoUrl || w.trailerUrl ? "dot--green" : "dot--red"}`} />
+                    <span className={`dot ${w.videoUrl ? "dot--green" : "dot--red"}`} />
+                  </td>
+                  <td>
+                    <span className={`dot ${w.trailerUrl ? "dot--green" : "dot--empty"}`} />
+                  </td>
+                  <td>
+                    <span className={`dot ${w.previewClipUrl ? "dot--green" : "dot--empty"}`} />
                   </td>
                   <td>{w.featured ? <span className="check">✓</span> : <span className="dash">—</span>}</td>
                   <td>{w.showOnHome ? <span className="check">✓</span> : <span className="dash">—</span>}</td>
+                  <td className="td-stat">
+                    {w.totalLikes > 0 ? (
+                      <span className="stat-val">
+                        {w.totalLikes}
+                        {w.type === "SERIES" && w.episodes.length > 0 && (
+                          <span className="stat-agg" title={`Includes ${w.episodes.length} episode(s)`}>*</span>
+                        )}
+                      </span>
+                    ) : (
+                      <span className="dash">—</span>
+                    )}
+                  </td>
+                  <td className="td-stat">
+                    {w.totalShares > 0 ? (
+                      <span className="stat-val">
+                        {w.totalShares}
+                        {w.type === "SERIES" && w.episodes.length > 0 && (
+                          <span className="stat-agg" title={`Includes ${w.episodes.length} episode(s)`}>*</span>
+                        )}
+                      </span>
+                    ) : (
+                      <span className="dash">—</span>
+                    )}
+                  </td>
+                  <td className="td-pos">
+                    <div className="pos-controls">
+                      <form action={reorderWork.bind(null, w.id, "first")}>
+                        <button type="submit" className="pos-btn" title="Move to first in category">
+                          <ChevronsUp size={12} />
+                        </button>
+                      </form>
+                      <form action={reorderWork.bind(null, w.id, "up")}>
+                        <button type="submit" className="pos-btn" title="Move up">
+                          <ChevronUp size={12} />
+                        </button>
+                      </form>
+                      <span className="pos-num" title={`Order value: ${w.order}`}>{w.order}</span>
+                      <form action={reorderWork.bind(null, w.id, "down")}>
+                        <button type="submit" className="pos-btn" title="Move down">
+                          <ChevronDown size={12} />
+                        </button>
+                      </form>
+                      <form action={reorderWork.bind(null, w.id, "last")}>
+                        <button type="submit" className="pos-btn" title="Move to last in category">
+                          <ChevronsDown size={12} />
+                        </button>
+                      </form>
+                    </div>
+                  </td>
                   <td>
                     <div className="action-btns">
                       <Link href={`/admin/works/${w.id}`} className="action-btn" title="Edit">
@@ -100,15 +283,36 @@ export default async function AdminWorksPage() {
                 </tr>
               );
             })}
-            {works.length === 0 && (
+            {worksWithStats.length === 0 && (
               <tr>
-                <td colSpan={7} className="table-empty">No works yet. Add one above.</td>
+                <td colSpan={12}>
+                  {isFiltered ? (
+                    <div className="admin-empty-state">
+                      <div className="admin-empty-state-icon">
+                        <Film size={22} />
+                      </div>
+                      <p className="admin-empty-state-title">No works match your filters</p>
+                      <p className="admin-empty-state-text">
+                        Try adjusting the search or filter criteria.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="admin-empty-state">
+                      <div className="admin-empty-state-icon">
+                        <Film size={22} />
+                      </div>
+                      <p className="admin-empty-state-title">No works yet</p>
+                      <p className="admin-empty-state-text">
+                        Add your first work to get started.
+                      </p>
+                    </div>
+                  )}
+                </td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
-
     </div>
   );
 }

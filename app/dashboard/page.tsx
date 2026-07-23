@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth";
-import { getAllWatchProgress } from "@/lib/actions/progress";
+import { redirect } from "next/navigation";
 import { getDashboardSavedWorks, unsaveWork } from "@/lib/actions/watchlist";
 import { getUserNotifications, markAllNotificationsRead, getUnreadNotificationCount } from "@/lib/actions/notifications";
 import { logoutUser } from "@/lib/actions/auth";
@@ -7,12 +7,12 @@ import Link from "next/link";
 import Image from "next/image";
 import "./dashboard.css";
 import {
-  Clock, Play, LogOut, X, Bell, Settings, ChevronRight, Bookmark,
+  Play, LogOut, X, Bell, Settings, ChevronRight, Bookmark,
   Film, Clapperboard, Megaphone, Timer, User, Wrench,
 } from "lucide-react";
 import NavWrapper from "@/components/nav-wrapper";
 import Footer from "@/components/footer";
-import { RemoveProgressBtn, ResetProgressBtn, ClearContinueWatchingBtn, ClearMyListBtn } from "./history-actions";
+import { ClearMyListBtn } from "./history-actions";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Dashboard — AIM Studio" };
@@ -37,9 +37,11 @@ function NotifIcon({ type }: { type: string }) {
 
 export default async function DashboardPage() {
   const session = await auth();
+  // Guard before any data action runs — those throw "Not authenticated" without a
+  // user id, which would crash the render instead of sending the user to sign in.
+  if (!session?.user?.id) redirect("/login?from=/dashboard");
 
-  const [progress, savedWorks, notifications, unreadCount] = await Promise.all([
-    getAllWatchProgress(),
+  const [savedWorks, notifications, unreadCount] = await Promise.all([
     getDashboardSavedWorks(),
     getUserNotifications(),
     getUnreadNotificationCount(),
@@ -81,79 +83,12 @@ export default async function DashboardPage() {
 
             {/* ── Quick nav ── */}
             <nav className="dashboard-quicknav" aria-label="Dashboard sections">
-              <Link href="#continue-watching" className="quicknav-chip">Continue Watching</Link>
               <Link href="#my-list" className="quicknav-chip">My List</Link>
               <Link href="/dashboard/notifications" className="quicknav-chip">
                 Notifications {unreadCount > 0 && <span className="quicknav-badge">{unreadCount}</span>}
               </Link>
               <Link href="/dashboard/settings" className="quicknav-chip">Settings</Link>
             </nav>
-
-            {/* ── Continue Watching ── */}
-            <section id="continue-watching" className="dashboard-section">
-              <div className="section-head">
-                <h2 className="section-heading">Continue Watching</h2>
-                {progress.length > 0 && <ClearContinueWatchingBtn />}
-              </div>
-              {progress.length > 0 ? (
-                <div className="progress-grid">
-                  {progress.slice(0, 8).map((p) => {
-                    const watchHref =
-                      p.work.type === "EPISODE" || p.work.type === "SERIES"
-                        ? `/watch/${p.work.slug}`
-                        : `/watch/${p.work.slug}?full=1`;
-                    const pct = p.work.duration
-                      ? Math.min(100, (p.seconds / (p.work.duration * 60)) * 100)
-                      : null;
-                    return (
-                      <div key={p.id} className="progress-card-wrap">
-                        <Link href={watchHref} className="progress-card">
-                          {p.work.posterUrl ? (
-                            <Image
-                              src={p.work.posterUrl}
-                              alt={p.work.title}
-                              width={54}
-                              height={80}
-                              className="progress-poster"
-                              loading="lazy"
-                            />
-                          ) : (
-                            <div className="progress-poster-placeholder">
-                              {p.work.title.charAt(0)}
-                            </div>
-                          )}
-                          <div className="progress-info">
-                            <p className="progress-type">{TYPE_LABEL[p.work.type] ?? p.work.type}</p>
-                            <h3 className="progress-title">{p.work.title}</h3>
-                            <div className="progress-meta">
-                              <Clock size={12} />
-                              {Math.floor(p.seconds / 60)}m {p.seconds % 60}s watched
-                            </div>
-                            {pct !== null && (
-                              <div className="progress-bar-wrap" aria-label={`${Math.round(pct)}% watched`}>
-                                <div className="progress-bar-fill" style={{ width: `${pct}%` }} />
-                              </div>
-                            )}
-                          </div>
-                          <div className="progress-play" aria-hidden="true">
-                            <Play size={18} fill="currentColor" />
-                          </div>
-                        </Link>
-                        <div className="progress-card-actions">
-                          <ResetProgressBtn workId={p.work.id} title={p.work.title} />
-                          <RemoveProgressBtn workId={p.work.id} title={p.work.title} />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="dashboard-empty">
-                  <p>No watch history yet.</p>
-                  <Link href="/works" className="browse-btn">Browse Works</Link>
-                </div>
-              )}
-            </section>
 
             {/* ── My List ── */}
             <section id="my-list" className="dashboard-section">

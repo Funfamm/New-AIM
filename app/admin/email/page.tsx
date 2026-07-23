@@ -9,22 +9,22 @@ import TabOverview    from "./tab-overview";
 import TabSuppression from "./tab-suppression";
 import TabLogs        from "./tab-logs";
 import TabQueue       from "./tab-queue";
-import TabTemplates   from "./tab-templates";
 import TabImport      from "./tab-import";
 import TabSettings    from "./tab-settings";
+import TabTest        from "./tab-test";
 
 export const metadata: Metadata = { title: "Email — Admin" };
 
-type Tab = "overview" | "suppression" | "logs" | "queue" | "templates" | "import" | "settings";
+type Tab = "overview" | "suppression" | "logs" | "queue" | "import" | "settings" | "test";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "overview",    label: "Overview"    },
   { id: "suppression", label: "Suppression" },
   { id: "logs",        label: "Logs"        },
   { id: "queue",       label: "Queue"       },
-  { id: "templates",   label: "Templates"   },
   { id: "import",      label: "Import"      },
   { id: "settings",    label: "Settings"    },
+  { id: "test",        label: "Test Email"  },
 ];
 
 type Props = {
@@ -44,7 +44,7 @@ export default async function AdminEmailPage({ searchParams }: Props) {
 
   const params  = await searchParams;
   const rawTab  = (params.tab ?? "overview") as Tab;
-  const tab: Tab = TABS.some((t) => t.id === rawTab) ? rawTab : "overview";
+  const tab: Tab = (TABS.some((t) => t.id === rawTab) ? rawTab : "overview") as Tab;
 
   // Logs tab filters
   const rawStatus    = (params.status ?? "ALL").toUpperCase();
@@ -78,9 +78,9 @@ export default async function AdminEmailPage({ searchParams }: Props) {
       {tab === "suppression" && <TabSuppression error={error} />}
       {tab === "logs"        && <TabLogs statusFilter={statusFilter} typeFilter={typeFilter} />}
       {tab === "queue"       && <TabQueue />}
-      {tab === "templates"   && <TabTemplates />}
       {tab === "import"      && <TabImport imported={imported} skipped={skipped} error={error} />}
       {tab === "settings"    && <TabSettings />}
+      {tab === "test"        && <TabTest />}
     </div>
   );
 }

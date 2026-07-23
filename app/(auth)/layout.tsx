@@ -1,7 +1,9 @@
-// Auth pages share a centered, minimal layout
+// Auth pages share a centered, cinematic background layout
+import "./auth-layout.css";
+
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ background: "var(--color-brand-black)", minHeight: "100dvh" }}>
+    <div className="auth-layout">
       {children}
     </div>
   );

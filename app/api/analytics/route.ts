@@ -14,7 +14,8 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { trackEvent, getOrCreateSession, parseUserAgent } from "@/lib/analytics";
+import { trackEvent, getOrCreateSession, parseUserAgent, looksAutomated } from "@/lib/analytics";
+import { rateLimit } from "@/lib/rate-limit";
 import type { AnalyticsEventType, Prisma } from "@prisma/client";
 
 const VALID_TYPES = new Set<string>([
@@ -50,6 +51,13 @@ export async function POST(request: NextRequest) {
     const visitorId = request.cookies.get("aim-vid")?.value;
     if (!visitorId) return new NextResponse(null, { status: 204 });
 
+    // Cap event floods per visitor (the cookie is the natural key). A cheap POST fans
+    // out to auth() + getOrCreateSession + trackEvent (several DB ops), so uncapped this
+    // is a write-DoS and metrics-poisoning vector. 120/min is far above real usage.
+    if (!rateLimit(`analytics:${visitorId}`, 120, 60 * 1000).allowed) {
+      return new NextResponse(null, { status: 204 });
+    }
+
     // Parse device/browser/OS from UA — no raw UA stored
     const ua = request.headers.get("user-agent") ?? "";
     const { browser, os, deviceType } = parseUserAgent(ua);
@@ -61,6 +69,11 @@ export async function POST(request: NextRequest) {
     const country = request.headers.get("x-vercel-ip-country") ?? undefined;
     const region  = request.headers.get("x-vercel-ip-region")  ?? undefined;
     const city    = request.headers.get("x-vercel-ip-city")    ?? undefined;
+
+    // Flag automated/datacenter traffic that slips past UA detection (real browser UA
+    // from a script or a cloud datacenter). isBot sessions are excluded from every
+    // human-facing analytics view, so the visitor feed stays real people only.
+    const isBot = looksAutomated({ acceptLanguage: request.headers.get("accept-language"), city });
 
     // Resolve userId from JWT (decode only — no DB query)
     const session = await auth();
@@ -74,7 +87,7 @@ export async function POST(request: NextRequest) {
       referrer:    request.headers.get("referer")?.slice(0, 512) ?? undefined,
       country, region, city,
       browser, os, deviceType,
-      isBot: false,
+      isBot,
     });
 
     // Write the event

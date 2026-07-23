@@ -1,11 +1,137 @@
-.td-title { font-weight: 500; color: var(--color-brand-white); max-width: 220px; }
-.td-sub { display: block; font-size: 0.75rem; color: var(--color-brand-muted); font-weight: 400; margin-top: 0.15rem; }
-.type-label {
-  font-family: var(--font-body); font-size: 0.6875rem; font-weight: 500;
-  color: var(--color-brand-muted); white-space: nowrap;
+/* Narrow the page container so the 11-col table doesn't give title 500px of air */
+.admin-page { max-width: 900px; }
+
+/* ── Works table — fixed column layout so 11 cols fit on desktop ── */
+.admin-works-table { table-layout: fixed; }
+
+/* Reduce horizontal padding on all works cells */
+.admin-works-table th,
+.admin-works-table td {
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
 }
-.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
-.dot--green { background: #4ade80; }
-.dot--red   { background: var(--color-brand-border); }
-.check { color: #4ade80; font-size: 0.9rem; }
-.dash  { color: var(--color-brand-border); }
+
+/* Compact indicator cells: Video, Trailer, Preview, Featured, Home (cols 4–8) */
+.admin-works-table th:nth-child(n+4):nth-child(-n+8),
+.admin-works-table td:nth-child(n+4):nth-child(-n+8) {
+  padding-left: 0.35rem;
+  padding-right: 0.35rem;
+  text-align: center;
+}
+
+/* Stat cells: Likes, Shares (cols 9–10) */
+.admin-works-table th:nth-child(9),
+.admin-works-table th:nth-child(10),
+.admin-works-table td:nth-child(9),
+.admin-works-table td:nth-child(10) {
+  padding-left: 0.35rem;
+  padding-right: 0.35rem;
+  text-align: center;
+}
+
+/* Column widths — Title (col 1) gets all remaining space */
+.admin-works-table th:nth-child(2)  { width: 106px; } /* Type */
+.admin-works-table th:nth-child(3)  { width: 134px; } /* Status — "in production" badge */
+.admin-works-table th:nth-child(4)  { width: 28px;  } /* Video */
+.admin-works-table th:nth-child(5)  { width: 28px;  } /* Trailer */
+.admin-works-table th:nth-child(6)  { width: 28px;  } /* Preview */
+.admin-works-table th:nth-child(7)  { width: 28px;  } /* Featured */
+.admin-works-table th:nth-child(8)  { width: 28px;  } /* Home */
+.admin-works-table th:nth-child(9)  { width: 38px;  } /* Likes */
+.admin-works-table th:nth-child(10) { width: 38px;  } /* Shares */
+.admin-works-table th:nth-child(11) { width: 128px; } /* Actions */
+
+/* ── Title cell ── */
+.td-title {
+  font-weight: 600;
+  color: var(--color-brand-white);
+}
+.td-sub {
+  display: block;
+  font-size: 0.72rem;
+  color: rgba(255,255,255,0.3);
+  font-weight: 400;
+  margin-top: 0.15rem;
+}
+
+/* 2-line title clamp — prevents long names from stretching the title column */
+.admin-work-title {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+/* ── Type label ── */
+.type-label {
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: rgba(255,255,255,0.4);
+  white-space: nowrap;
+}
+
+/* ── Dot indicator ── */
+.dot {
+  display: inline-block;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+}
+.dot--green { background: #4ade80; box-shadow: 0 0 0 2px rgba(74,222,128,0.15); }
+.dot--red   { background: rgba(255,255,255,0.12); }
+.dot--empty { background: rgba(255,255,255,0.07); } /* optional asset — not required */
+
+/* ── Boolean cells ── */
+.check {
+  color: #4ade80;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+.dash { color: rgba(255,255,255,0.14); }
+
+/* ── Stat columns ── */
+.th-stat { width: 44px; text-align: center; padding-inline: 6px; }
+.th-stat svg { display: inline-block; vertical-align: middle; }
+.td-stat { text-align: center; padding-inline: 6px; white-space: nowrap; }
+.stat-val {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-brand-white);
+}
+.stat-agg {
+  font-size: 0.65rem;
+  color: rgba(232,201,126,0.55);
+  margin-left: 1px;
+  vertical-align: super;
+  cursor: default;
+}
+
+/* ── Position controls ── */
+.td-pos { white-space: nowrap; padding-inline: 4px; }
+.pos-controls {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+}
+.pos-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 4px;
+  background: none; border: none;
+  color: rgba(255,255,255,0.38); cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  padding: 0;
+}
+.pos-btn:hover { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.85); }
+.pos-btn:active { background: rgba(255,255,255,0.18); }
+.pos-num {
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.35);
+  min-width: 22px;
+  text-align: center;
+  cursor: default;
+}

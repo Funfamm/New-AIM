@@ -1,21 +1,27 @@
 import { prisma } from "@/lib/prisma";
+import { unstable_cache } from "next/cache";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 import { auth } from "@/lib/auth";
 import { notFound } from "next/navigation";
 import { after } from "next/server";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import "./detail.css";
+import "@/components/action-buttons.css";
 import Image from "next/image";
 import { Play, Clock, Calendar, ChevronLeft, Lock } from "lucide-react";
 import type { Metadata } from "next";
 import SynopsisToggle from "@/components/synopsis-toggle";
 import SaveButton from "@/components/save-button";
+import CommentSection from "@/components/comment-section";
 import LikeButton from "@/components/like-button";
 import ShareButton from "@/components/share-button";
 import { isWorkSaved } from "@/lib/actions/watchlist";
 import { getWorkLikeState } from "@/lib/actions/likes";
 import { getOrCreateSession, trackEvent } from "@/lib/analytics";
 import SeriesTrailerPlayer from "@/components/series-trailer-player";
+import { getWorkCtaState } from "@/lib/work-cta";
+import { getResumeEpisodeSlug } from "@/lib/actions/progress";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -35,35 +41,74 @@ const STATUS_BADGE: Record<string, { label: string; cls: string } | undefined> =
   IN_PRODUCTION: { label: "In Production",  cls: "detail-status-badge detail-status-badge--production" },
 };
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { slug } = await params;
-  const work = await prisma.work.findUnique({
-    where: { slug },
-    select: { title: true, description: true },
-  });
-  if (!work) return { title: "Not Found" };
-  return { title: work.title, description: work.description ?? undefined };
-}
-
-async function getWork(slug: string) {
-  return prisma.work.findUnique({
-    where: { slug },
-    select: {
-      id: true, slug: true, title: true, type: true, status: true,
-      description: true, posterUrl: true, trailerUrl: true, videoUrl: true,
-      year: true, duration: true, genre: true, director: true,
-      requiresAuth: true, requiresLoginToViewTrailer: true,
-      episodes: {
-        where: { status: "PUBLISHED" },
-        orderBy: [{ seasonNumber: "asc" }, { episodeNumber: "asc" }, { order: "asc" }],
-        select: {
-          id: true, slug: true, title: true,
-          description: true, posterUrl: true, videoUrl: true,
-          duration: true, seasonNumber: true, episodeNumber: true,
+// Cached, user-independent work-by-slug loader. Shared by generateMetadata AND the page
+// body, so a crawler hit is ONE cached lookup instead of two duplicate DB reads. Tagged
+// "works" so any admin Work mutation (or HLS completion) invalidates it. Selects a superset
+// covering both the OG/meta fields and the full page render. No cookies/auth inside — public.
+const getWork = unstable_cache(
+  async (slug: string) => {
+    return prisma.work.findUnique({
+      where: { slug },
+      select: {
+        id: true, slug: true, title: true, type: true, status: true, commentsEnabled: true,
+        description: true, posterUrl: true, thumbnailUrl: true, heroMobileUrl: true, heroDesktopUrl: true,
+        trailerUrl: true, videoUrl: true, previewClipUrl: true,
+        year: true, duration: true, genre: true, genres: true, director: true,
+        requiresAuth: true, requiresLoginToViewTrailer: true,
+        cast: {
+          orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+          select: { id: true, name: true, jobTitle: true, character: true, photoUrl: true },
+        },
+        episodes: {
+          where: { status: "PUBLISHED" },
+          orderBy: [{ seasonNumber: "asc" }, { episodeNumber: "asc" }, { order: "asc" }],
+          select: {
+            id: true, slug: true, title: true,
+            description: true, posterUrl: true, videoUrl: true,
+            duration: true, seasonNumber: true, episodeNumber: true,
+          },
         },
       },
+    });
+  },
+  ["work-detail"],
+  { tags: [CACHE_TAGS.works], revalidate: 300 },
+);
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params;
+  const work = await getWork(slug);
+  if (!work) return { title: "Not Found" };
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://impactaistudio.com";
+  // Fallback chain: posterUrl → heroDesktopUrl → thumbnailUrl → heroMobileUrl → logo
+  const shareImage =
+    work.posterUrl ??
+    work.heroDesktopUrl ??
+    work.thumbnailUrl ??
+    work.heroMobileUrl ??
+    `${appUrl}/images/SP_Logo.jpg`;
+
+  const ogImage = { url: shareImage, width: 1200, height: 630, alt: work.title };
+
+  return {
+    title: work.title,
+    description: work.description ?? undefined,
+    alternates: { canonical: `${appUrl}/works/${slug}` },
+    openGraph: {
+      title: work.title,
+      description: work.description ?? undefined,
+      url: `${appUrl}/works/${slug}`,
+      images: [ogImage],
+      type: "website",
     },
-  });
+    twitter: {
+      card: "summary_large_image",
+      title: work.title,
+      description: work.description ?? undefined,
+      images: [shareImage],
+    },
+  };
 }
 
 function fmtDuration(minutes: number): string {
@@ -103,8 +148,8 @@ export default async function WorkDetailPage({ params }: Props) {
 
   const isGuest       = !session?.user;
   const locked        = work.requiresAuth && isGuest;
-  const trailerLocked = work.requiresLoginToViewTrailer && isGuest;
-  const isPublished   = work.status === "PUBLISHED";
+  // CTA shows for any public status — the page already returns 404 for drafts/archived.
+  const isPublished   = true;
 
   const [isSaved, { isLiked, likeCount }] = await Promise.all([
     !isGuest ? isWorkSaved(work.id) : Promise.resolve(false),
@@ -115,17 +160,23 @@ export default async function WorkDetailPage({ params }: Props) {
   const episodeCount = work.type === "SERIES" ? work.episodes.length : null;
   const isSeries     = work.type === "SERIES";
 
-  const hasMainContent =
-    (isSeries && firstEp != null) ||
-    (!isSeries && !!work.videoUrl);
+  // Smart resume: find last-watched / next unwatched episode for this series.
+  // Always falls back to firstEp.slug so the "Watch Series" CTA is never missing.
+  const allEpSlugs = isSeries ? work.episodes.map((e) => e.slug) : [];
+  const resumeSlug = isSeries
+    ? (!isGuest && allEpSlugs.length > 0
+        ? (await getResumeEpisodeSlug(work.id, allEpSlugs)) ?? (firstEp?.slug ?? null)
+        : firstEp?.slug ?? null)
+    : null;
 
-  // Trailer href — series needs ?trailer=1 to bypass the series→ep1 redirect on watch page
-  const trailerHref = isSeries
-    ? `/watch/${work.slug}?trailer=1`
-    : `/watch/${work.slug}`;
-  const trailerLoginHref = isSeries
-    ? `/login?from=/watch/${work.slug}?trailer=1`
-    : `/login?from=/watch/${work.slug}`;
+  // Detect if the entire series is completed (all episodes watched)
+  const allEpisodesCompleted =
+    isSeries && episodeCount != null && episodeCount > 0 && resumeSlug === allEpSlugs[0] &&
+    !isGuest && allEpSlugs.length > 0;
+
+  // Image fallback chain: prefer heroMobileUrl/heroDesktopUrl; fall back to posterUrl
+  const portraitImg = work.heroMobileUrl ?? work.posterUrl;
+  const backdropImg = work.heroDesktopUrl ?? work.heroMobileUrl ?? work.posterUrl;
 
   return (
     <main className="detail-page">
@@ -135,8 +186,9 @@ export default async function WorkDetailPage({ params }: Props) {
           Renders before the hero so it sticks under the fixed nav (top: 68px).  */}
       {isSeries && (
         <SeriesTrailerPlayer
-          posterUrl={work.posterUrl}
+          posterUrl={portraitImg}
           trailerUrl={work.trailerUrl}
+          previewClipUrl={work.previewClipUrl}
           title={work.title}
         />
       )}
@@ -144,10 +196,11 @@ export default async function WorkDetailPage({ params }: Props) {
       {/* ── Hero ──────────────────────────────────────── */}
       <section className="detail-hero">
 
-        {/* Ambient backdrop */}
-        {work.posterUrl && (
+        {/* Ambient backdrop — prefer wide desktop image */}
+        {backdropImg && (
           <div className="detail-backdrop" aria-hidden="true">
-            <img src={work.posterUrl} alt="" className="detail-backdrop-img" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={backdropImg} alt="" className="detail-backdrop-img" />
             <div className="detail-backdrop-gradient" />
           </div>
         )}
@@ -159,11 +212,14 @@ export default async function WorkDetailPage({ params }: Props) {
 
           <div className="detail-layout">
 
-            {/* Portrait poster — hidden on mobile for series (replaced by sticky player) */}
+            {/* Poster + mobile cast column */}
+            <div className="detail-poster-column">
+
+            {/* Portrait poster — prefer heroMobileUrl (9:16), fallback to posterUrl */}
             <div className={`detail-poster-wrap${isSeries ? " detail-poster-wrap--mobile-hide" : ""}`}>
-              {work.posterUrl ? (
+              {portraitImg ? (
                 <Image
-                  src={work.posterUrl}
+                  src={portraitImg}
                   alt={work.title}
                   fill
                   className="detail-poster"
@@ -178,11 +234,39 @@ export default async function WorkDetailPage({ params }: Props) {
               )}
             </div>
 
+            {/* Mobile cast circles — shown only on mobile, beside poster */}
+            {work.cast.length > 0 && (
+              <div className="detail-cast-mobile" aria-label="Cast">
+                <span className="detail-cast-mobile-label" aria-hidden="true">Cast</span>
+                {work.cast.slice(0, 3).map((m) => (
+                  <Link
+                    key={m.id}
+                    href={`/works/${work.slug}/cast`}
+                    className="detail-cast-circle"
+                    title={`${m.name}${m.character ? ` as ${m.character}` : ""}`}
+                    aria-label={`View cast for ${work.title}`}
+                  >
+                    {m.photoUrl
+                      ? <img src={m.photoUrl} alt={m.name} className="detail-cast-img" />
+                      : <span className="detail-cast-initial" aria-hidden="true">{m.name.charAt(0).toUpperCase()}</span>
+                    }
+                  </Link>
+                ))}
+                {work.cast.length > 3 && (
+                  <Link href={`/works/${work.slug}/cast`} className="detail-cast-more" aria-label="View all cast">
+                    +{work.cast.length - 3}
+                  </Link>
+                )}
+              </div>
+            )}
+
+            </div>{/* end detail-poster-column */}
+
             {/* Info */}
             <div className="detail-info">
 
-              {work.genre && (
-                <span className="detail-genre">{work.genre}</span>
+              {(work.genres.length > 0 ? work.genres.join(" · ") : work.genre) && (
+                <span className="detail-genre">{work.genres.length > 0 ? work.genres.join(" · ") : work.genre}</span>
               )}
 
               <h1 className="detail-title">{work.title}</h1>
@@ -212,7 +296,7 @@ export default async function WorkDetailPage({ params }: Props) {
                 )}
               </div>
 
-              {work.description && <SynopsisToggle text={work.description} />}
+              {work.description && <div className="detail-synopsis"><SynopsisToggle text={work.description} /></div>}
 
               {/* Status badge — upcoming / in-production works */}
               {STATUS_BADGE[work.status] && (
@@ -221,58 +305,51 @@ export default async function WorkDetailPage({ params }: Props) {
                 </span>
               )}
 
-              {/* CTAs */}
+              {/* CTAs — powered by shared getWorkCtaState() */}
               <div className="detail-actions">
+                {(() => {
+                  const cta = getWorkCtaState({
+                    slug: work.slug,
+                    type: work.type,
+                    trailerUrl: work.trailerUrl,
+                    videoUrl: work.videoUrl,
+                    previewClipUrl: work.previewClipUrl ?? undefined,
+                    requiresAuth: work.requiresAuth,
+                    requiresLoginToViewTrailer: work.requiresLoginToViewTrailer ?? undefined,
+                    isGuest: isGuest,
+                    firstEpisodeSlug: resumeSlug,
+                  });
+                  // Override label for Watch Again (user finished whole series)
+                  if (allEpisodesCompleted && cta.primaryLabel === "Watch Series") {
+                    cta.primaryLabel = "Watch Again";
+                  }
+                  return (
+                    <>
+                      {/* Primary CTA — always visible on both desktop and mobile.
+                          detail-trailer-desktop-only was previously wrapping
+                          series CTAs, hiding Watch Again/Watch Series on mobile.
+                          The SeriesTrailerPlayer sticky overlay is quick-access
+                          only; the main CTAs must appear in the content area too. */}
+                      {cta.primaryLabel && isPublished && (
+                        <Link href={cta.primaryHref} className="detail-btn-primary">
+                          {cta.isLocked || cta.isTrailerLocked ? <Lock size={14} /> : <Play size={14} fill="currentColor" />}
+                          {" "}{cta.primaryLabel}
+                        </Link>
+                      )}
 
-                {/* Watch Trailer — ghost when full content also exists; primary when no full content */}
-                {work.trailerUrl && (
-                  <div className={isSeries ? "detail-trailer-desktop-only" : undefined}>
-                    {trailerLocked ? (
-                      <Link
-                        href={trailerLoginHref}
-                        className={hasMainContent && isPublished ? "detail-btn-ghost" : "detail-btn-primary"}
-                      >
-                        <Lock size={14} /> Sign In to Watch Trailer
-                      </Link>
-                    ) : (
-                      <Link
-                        href={trailerHref}
-                        className={hasMainContent && isPublished ? "detail-btn-ghost" : "detail-btn-primary"}
-                      >
-                        <Play size={14} fill="currentColor" /> Watch Trailer
-                      </Link>
-                    )}
-                  </div>
-                )}
-
-                {/* SERIES → Watch Series (ep 1) — published + has episodes only */}
-                {isSeries && firstEp && isPublished && (
-                  locked ? (
-                    <Link href={`/login?from=/watch/${firstEp.slug}`} className="detail-btn-primary">
-                      <Lock size={14} /> Sign In to Watch
-                    </Link>
-                  ) : (
-                    <Link href={`/watch/${firstEp.slug}`} className="detail-btn-primary">
-                      <Play size={14} fill="currentColor" /> Watch Series
-                    </Link>
-                  )
-                )}
-
-                {/* Film / short / other → full video — published only */}
-                {!isSeries && work.videoUrl && isPublished && (
-                  locked ? (
-                    <Link href={`/login?from=/watch/${work.slug}?full=1`} className="detail-btn-primary">
-                      <Lock size={14} /> Sign In to Watch
-                    </Link>
-                  ) : (
-                    <Link href={`/watch/${work.slug}?full=1`} className="detail-btn-primary">
-                      <Play size={14} fill="currentColor" /> Watch Full Film
-                    </Link>
-                  )
-                )}
+                      {/* Secondary CTA (trailer ghost button) — always visible */}
+                      {cta.secondaryLabel && cta.secondaryHref && isPublished && (
+                        <Link href={cta.secondaryHref} className="detail-btn-ghost">
+                          {cta.isTrailerLocked ? <Lock size={14} /> : <Play size={14} fill="currentColor" />}
+                          {" "}{cta.secondaryLabel}
+                        </Link>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
 
-              {/* Engagement row — Save (members) + Like + Share */}
+              {/* Engagement row — Save (members) + Like + Share + Cast preview */}
               <div className="detail-engagement">
                 {!isGuest && (
                   <SaveButton workId={work.id} initialSaved={isSaved} />
@@ -282,9 +359,34 @@ export default async function WorkDetailPage({ params }: Props) {
                   initialLiked={isLiked}
                   likeCount={likeCount}
                   isGuest={isGuest}
-                  slug={work.slug}
                 />
                 <ShareButton title={work.title} slug={work.slug} workId={work.id} />
+
+                {/* Desktop cast circles — hidden on mobile */}
+                {work.cast.length > 0 && (
+                  <div className="detail-cast-desktop" aria-label="Cast">
+                    <span className="detail-cast-label">Cast</span>
+                    <div className="detail-cast-circles">
+                      {work.cast.slice(0, 4).map((m) => (
+                        <Link
+                          key={m.id}
+                          href={`/works/${work.slug}/cast`}
+                          className="detail-cast-circle"
+                          title={`${m.name}${m.character ? ` as ${m.character}` : ""}`}
+                          aria-label={`View cast for ${work.title}`}
+                        >
+                          {m.photoUrl
+                            ? <img src={m.photoUrl} alt={m.name} className="detail-cast-img" />
+                            : <span className="detail-cast-initial" aria-hidden="true">{m.name.charAt(0).toUpperCase()}</span>
+                          }
+                        </Link>
+                      ))}
+                    </div>
+                    <Link href={`/works/${work.slug}/cast`} className="detail-cast-viewall">
+                      {work.cast.length > 4 ? `+${work.cast.length - 4} more` : "View all"}
+                    </Link>
+                  </div>
+                )}
               </div>
 
               {/* Guest note — only when content is gated */}
@@ -377,11 +479,11 @@ export default async function WorkDetailPage({ params }: Props) {
                                 href={`/login?from=/watch/${ep.slug}`}
                                 className="ep-btn ep-btn--locked"
                               >
-                                <Lock size={11} /> Watch
+                                <Lock size={11} /> Watch Episode
                               </Link>
                             ) : (
                               <Link href={`/watch/${ep.slug}`} className="ep-btn">
-                                <Play size={11} fill="currentColor" /> Watch
+                                <Play size={11} fill="currentColor" /> Watch Episode
                               </Link>
                             )
                           ) : (
@@ -400,6 +502,18 @@ export default async function WorkDetailPage({ params }: Props) {
         </section>
       )}
 
+      {/* ── Comments ───────────────────────────────────── */}
+      {work.commentsEnabled && work.status === "PUBLISHED" && (
+        <div className="container-app">
+          <CommentSection
+            workId={work.id}
+            workSlug={work.slug}
+            currentUser={session?.user
+              ? { id: session.user.id!, name: session.user.name ?? null, image: session.user.image ?? null, role: session.user.role as string }
+              : null}
+          />
+        </div>
+      )}
     </main>
   );
 }

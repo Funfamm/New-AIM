@@ -2,25 +2,32 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { LayoutDashboard, Clapperboard, Users, BarChart2, Mail, Settings, ScrollText, LogOut, Menu, X, ArrowLeft, BellRing, Shield, Megaphone, Database } from "lucide-react";
+import { LayoutDashboard, Clapperboard, Users, BarChart2, Mail, Settings, ScrollText, LogOut, Menu, X, ArrowLeft, BellRing, Shield, Megaphone, Database, MessageSquare, TrendingUp, Rss, Layers, KeyRound, Bell, Video, AlertTriangle } from "lucide-react";
 import { logoutUser } from "@/lib/actions/auth";
 import "./admin-sidebar.css";
 
 const NAV = [
-  { href: "/admin",            label: "Overview",  icon: LayoutDashboard, exact: true },
-  { href: "/admin/works",      label: "Works",     icon: Clapperboard },
-  { href: "/admin/users",      label: "Users",     icon: Users },
-  { href: "/admin/analytics",  label: "Analytics", icon: BarChart2 },
-  { href: "/admin/outreach",         label: "Outreach",      icon: Megaphone },
-  { href: "/admin/notify-me-ctas", label: "Notify Me",     icon: BellRing },
-  { href: "/admin/security",       label: "Security",      icon: Shield },
-  { href: "/admin/email",          label: "Email",         icon: Mail },
-  { href: "/admin/settings",  label: "Settings",  icon: Settings },
-  { href: "/admin/data",      label: "Data",      icon: Database },
-  { href: "/admin/audit",     label: "Audit Log", icon: ScrollText },
+  { href: "/admin",            label: "Overview",    icon: LayoutDashboard, exact: true },
+  { href: "/admin/works",      label: "Works",       icon: Clapperboard },
+  { href: "/admin/rows",       label: "Rows",        icon: Layers },
+  { href: "/admin/users",      label: "Users",       icon: Users },
+  { href: "/admin/analytics",  label: "Analytics",   icon: BarChart2 },
+  { href: "/admin/outreach",         label: "Outreach",    icon: Megaphone },
+  { href: "/admin/notify-me-ctas", label: "Notify Me",   icon: BellRing },
+  { href: "/admin/subscribers",    label: "Subscribers", icon: Rss },
+  { href: "/admin/comments",        label: "Comments",    icon: MessageSquare },
+  { href: "/admin/engagement",      label: "Engagement",  icon: TrendingUp },
+  { href: "/admin/security",       label: "Security",    icon: Shield },
+  { href: "/admin/email",          label: "Email",       icon: Mail },
+  { href: "/admin/casting",           label: "Casting",     icon: Video },
+  { href: "/admin/translation-keys", label: "AI Keys",     icon: KeyRound },
+  { href: "/admin/settings",  label: "Settings",    icon: Settings },
+  { href: "/admin/data",      label: "Data",        icon: Database },
+  { href: "/admin/audit",     label: "Audit Log",   icon: ScrollText },
+  { href: "/admin/errors",    label: "Errors",      icon: AlertTriangle },
 ];
 
-export default function AdminSidebar() {
+export default function AdminSidebar({ unreadNotifications = 0, openErrorCount = 0 }: { unreadNotifications?: number; openErrorCount?: number }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
@@ -46,25 +53,41 @@ export default function AdminSidebar() {
           <button className="adm-close" onClick={close} aria-label="Close menu">
             <X size={16} />
           </button>
-          <Link href="/" className="adm-logo" onClick={close}>
-            AIM<span>Studio</span>
-          </Link>
+          <div className="adm-top-row">
+            <Link href="/" className="adm-logo" onClick={close}>
+              AIM<span>Studio</span>
+            </Link>
+            {unreadNotifications > 0 && (
+              <Link href="/admin" onClick={close} className="adm-bell" aria-label={`${unreadNotifications} unread alerts`}>
+                <Bell size={13} />
+                <span className="adm-bell-count">{unreadNotifications > 99 ? "99+" : unreadNotifications}</span>
+              </Link>
+            )}
+          </div>
           <span className="adm-sublabel">Admin Panel</span>
         </div>
 
         {/* Nav links */}
         <nav className="adm-nav">
-          {NAV.map((l) => (
-            <Link
-              key={l.href}
-              href={l.href}
-              onClick={close}
-              className={`adm-link${active(l.href, l.exact) ? " adm-link--active" : ""}`}
-            >
-              <l.icon size={15} strokeWidth={1.75} />
-              {l.label}
-            </Link>
-          ))}
+          {NAV.map((l) => {
+            const badge = l.href === "/admin/errors" ? openErrorCount : 0;
+            return (
+              <Link
+                key={l.href}
+                href={l.href}
+                onClick={close}
+                className={`adm-link${active(l.href, l.exact) ? " adm-link--active" : ""}`}
+              >
+                <l.icon size={15} strokeWidth={1.75} />
+                {l.label}
+                {badge > 0 && (
+                  <span className="adm-link-badge" aria-label={`${badge} unresolved`}>
+                    {badge > 99 ? "99+" : badge}
+                  </span>
+                )}
+              </Link>
+            );
+          })}
         </nav>
 
         {/* Bottom: back to site + sign out */}

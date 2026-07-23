@@ -2,7 +2,8 @@
 
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth-guard";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 import type { AdminSettings } from "@prisma/client";
 
 
@@ -53,6 +54,16 @@ export async function saveContentAccessSettings(formData: FormData) {
   });
 }
 
+// ── Section 3a: Casting ───────────────────────────────────────
+export async function saveCastingSettings(formData: FormData) {
+  await requireAdmin();
+  await upsert({
+    showCasting:          formData.get("showCasting")          === "true",
+    castingBackgroundUrl: (formData.get("castingBackgroundUrl") as string) || null,
+  });
+  revalidateTag(CACHE_TAGS.casting); // casting visibility/background gate the public pages
+}
+
 // ── Section 3: Feature Visibility ────────────────────────────
 export async function saveFeatureSettings(formData: FormData) {
   await requireAdmin();
@@ -66,6 +77,7 @@ export async function saveFeatureSettings(formData: FormData) {
     showWatchParty:        formData.get("showWatchParty")        === "true",
     showNotifications:     formData.get("showNotifications")     === "true",
   });
+  revalidateTag(CACHE_TAGS.casting); // this section also toggles showCasting
 }
 
 // ── Section 4: Notifications ──────────────────────────────────
@@ -122,6 +134,7 @@ export async function saveSecuritySettings(
     allowCredentialsSignIn: allowCredentials,
     allowNewRegistrations:  formData.get("allowNewRegistrations") === "true",
   });
+  revalidateTag(CACHE_TAGS.publicSettings); // nav caches allowNewRegistrations
 
   return { ok: true };
 }

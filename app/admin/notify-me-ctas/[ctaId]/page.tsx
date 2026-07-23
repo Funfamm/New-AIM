@@ -216,7 +216,10 @@ export default async function CtaEditPage({ params, searchParams }: Props) {
             </table>
             {signupCount > 20 && (
               <p className="cta-table-more">
-                Showing 20 of {signupCount}. Export from Prisma Studio for full list.
+                Showing 20 of {signupCount}.{" "}
+                <Link href={`/admin/notify-me-ctas/${ctaId}/signups`} className="cta-table-more-link">
+                  View all signups →
+                </Link>
               </p>
             )}
           </div>

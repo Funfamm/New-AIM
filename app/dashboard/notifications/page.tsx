@@ -18,6 +18,9 @@ const NOTIF_ICON: Record<string, string> = {
   ACCOUNT:        "👤",
   SYSTEM:         "⚙️",
   SECURITY:       "🔒",
+  NOTIFY_ME:      "🔔",
+  COMMENT_REPLY:  "💬",
+  COMMENT_REPORT: "🚨",
 };
 
 const NOTIF_LABEL: Record<string, string> = {
@@ -28,6 +31,9 @@ const NOTIF_LABEL: Record<string, string> = {
   ACCOUNT:        "Account",
   SYSTEM:         "System",
   SECURITY:       "Security Alert",
+  NOTIFY_ME:      "Notify Me",
+  COMMENT_REPLY:  "Comment Reply",
+  COMMENT_REPORT: "Comment Report",
 };
 
 function timeAgo(date: Date): string {

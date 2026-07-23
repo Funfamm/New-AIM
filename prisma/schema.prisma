@@ -6,8 +6,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
 }
 
 // ─────────────────────────────────────────────
@@ -47,7 +48,34 @@ enum NotificationType {
   WATCH_PROGRESS
   ACCOUNT
   SYSTEM
-  SECURITY       // NEW — security alerts surfaced in-app
+  SECURITY
+  COMMENT_REPLY   // someone replied to your comment
+  COMMENT_REPORT  // admin: a comment was reported (for admin users)
+  NOTIFY_ME       // CTA release-ready follow-up (in-app)
+}
+
+enum CommentStatus {
+  PUBLISHED
+  HIDDEN
+  DELETED
+  FLAGGED
+}
+
+enum CommentReportReason {
+  SPAM
+  HARASSMENT
+  HATE_OR_ABUSE
+  SEXUAL_CONTENT
+  VIOLENCE_OR_THREATS
+  PERSONAL_INFORMATION
+  OTHER
+}
+
+enum CommentReportStatus {
+  OPEN
+  REVIEWED
+  DISMISSED
+  ACTIONED
 }
 
 enum AnalyticsEventType {
@@ -104,10 +132,42 @@ enum EmailType {
   NEW_RELEASE
   NEW_EPISODE
   ADMIN_ALERT
-  SECURITY_ALERT       // sent on suspicious events
+  CONTACT_FORM              // inbound contact form submission — forwarded to studio inbox
+  SECURITY_ALERT            // sent on suspicious events
   FUTURE_CAMPAIGN
-  ANNOUNCEMENT         // studio-wide broadcast
-  NOTIFY_ME_FOLLOWUP   // CTA release-ready follow-up
+  ANNOUNCEMENT              // studio-wide broadcast
+  NOTIFY_ME_FOLLOWUP        // CTA release-ready follow-up
+  CASTING_RECEIVED          // application received confirmation
+  CASTING_REQUIREMENTS_NOT_MET  // submission quality below threshold
+  CASTING_READY_FOR_REVIEW  // passed agent review — notifies admin
+  CASTING_SHORTLISTED       // admin shortlisted the applicant
+  CASTING_CONTACTED         // admin contacted the applicant
+  CASTING_SELECTED          // applicant selected for role
+  CASTING_NOT_SELECTED      // applicant not selected (polite)
+  CASTING_WITHDRAWN         // applicant withdrew their application
+}
+
+enum CastingApplicationStatus {
+  SUBMITTED
+  UNDER_AGENT_REVIEW
+  READY_FOR_ADMIN_REVIEW
+  REQUIREMENTS_NOT_MET
+  SHORTLISTED
+  CONTACTED
+  SELECTED
+  NOT_SELECTED
+  WITHDRAWN
+}
+
+enum CastingMediaType {
+  IMAGE
+  AUDIO
+}
+
+enum CastingAgentRecommendation {
+  PASS
+  FAIL
+  MANUAL_REVIEW
 }
 
 enum EmailProvider {
@@ -165,6 +225,44 @@ enum SecurityAlertStatus {
   DISMISSED
 }
 
+enum RowPlacement {
+  HOME
+  WORKS
+  BOTH
+}
+
+enum VideoJobStatus {
+  PENDING
+  PROCESSING
+  READY
+  FAILED
+  CANCELLED
+}
+
+enum ErrorLevel {
+  WARN
+  ERROR
+  FATAL
+}
+
+enum ErrorSource {
+  SERVER
+  CLIENT
+  API
+  ACTION
+  WORKER
+}
+
+// Triage workflow state for an error group (the source of truth; the legacy
+// `resolved` boolean it replaced has been dropped).
+enum ErrorStatus {
+  NEW
+  ACKNOWLEDGED
+  RESOLVED
+  IGNORED
+  MUTED
+}
+
 // ─────────────────────────────────────────────
 // USER
 // ─────────────────────────────────────────────
@@ -197,10 +295,21 @@ model User {
   progress      WatchProgress[]
   accounts      Account[]
   sessions      Session[]
+  refreshTokens RefreshToken[]
   savedWorks    SavedWork[]
   likes         WorkLike[]
   preferences   UserPreferences?
   notifications Notification[]
+  comments               Comment[]
+  commentLikes           CommentLike[]
+  commentReports         CommentReport[] @relation("CommentReporter")
+  commentReportsReviewed CommentReport[] @relation("CommentReportReviewer")
+  notifyMeSignups        NotifyMeSignup[]
+
+  // Casting back-relations
+  castingApplications  CastingApplication[]
+  castingNotes         CastingApplicationNote[]
+  castingDecisions     CastingApplication[] @relation("CastingDecisionBy")
 
   // Welcome onboarding — set once on first login/registration, never reset
   welcomeEmailSentAt        DateTime?
@@ -229,9 +338,15 @@ model Work {
   thumbnailUrl   String?   // landscape thumbnail for episode rows / compact previews
 
   // Video URLs — stored only, files live in R2/S3 later
-  trailerUrl  String?   // short film, full film, series
-  videoUrl    String?   // main video (film, episode, commercial, branding)
-  teaserUrl   String?   // optional second video for commercials
+  trailerUrl     String?   // short film, full film, series
+  previewClipUrl String?   // short preview/sample clip when no trailer exists
+  videoUrl       String?   // main video — public playback URL (HLS master.m3u8 or MP4)
+  teaserUrl      String?   // optional second video for commercials
+
+  // Autopilot video processing
+  masterVideoKey    String?  // private R2 key — source for videoUrl HLS
+  masterTrailerKey  String?  // private R2 key — source for trailerUrl HLS
+  masterPreviewKey  String?  // private R2 key — source for previewClipUrl HLS
 
   // Film/series metadata
   year        Int?
@@ -251,9 +366,22 @@ model Work {
   // Display controls
   requiresAuth               Boolean @default(false)
   requiresLoginToViewTrailer Boolean @default(false)
-  featured     Boolean  @default(false)
-  showOnHome   Boolean  @default(false)
-  order        Int      @default(0)
+  featured        Boolean  @default(false)
+  showOnHome      Boolean  @default(false)
+  featuredOnHome  Boolean  @default(false)
+  featuredOnWorks Boolean  @default(false)
+  commentsEnabled Boolean  @default(true)
+  order           Int      @default(0)
+
+  // Player intelligence — optional, admin-configurable per episode/film
+  introStart    Int?      // seconds: Skip Intro button appears
+  introEnd      Int?      // seconds: Skip Intro seeks here
+  creditsStart  Int?      // seconds: Skip Credits button appears
+  heroPreviewDuration Int? // seconds: desktop hero preview plays this long (null = 12 s default)
+
+  // Content advisory — admin-selected per work
+  contentRating      String?   // e.g. "G", "PG", "PG-13", "R", "TV-MA", "NR"
+  contentDescriptors String[]  @default([])   // e.g. ["VIOLENCE","LANGUAGE","NUDITY"]
 
   // Series → Episode relationship (self-referential)
   parentId      String?
@@ -265,14 +393,82 @@ model Work {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  progress        WatchProgress[]
-  savedBy         SavedWork[]
-  likes           WorkLike[]
-  notifications   Notification[]
-  analyticsEvents AnalyticsEvent[]
-  notifyMeCta     NotifyMeCta?
+  progress             WatchProgress[]
+  savedBy              SavedWork[]
+  likes                WorkLike[]
+  notifications        Notification[]
+  analyticsEvents      AnalyticsEvent[]
+  notifyMeCta          NotifyMeCta?
+  comments             Comment[]
+  cast                 WorkCast[]
+  rowItems             ContentRowItem[]
+  videoProcessingJobs  VideoProcessingJob[]
+  subtitles            Subtitle[]
+  videoDisplaySettings WorkVideoDisplaySetting[]
+  castingRoles         CastingRole[]            @relation("WorkCastingRoles")
 
   @@map("works")
+}
+
+// ─────────────────────────────────────────────
+// CAST
+// ─────────────────────────────────────────────
+
+model WorkCast {
+  id           String   @id @default(cuid())
+  workId       String
+  name         String
+  jobTitle     String
+  character    String?
+  bio          String?  @db.Text
+  photoUrl     String?
+  instagramUrl String?
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  work Work @relation(fields: [workId], references: [id], onDelete: Cascade)
+
+  @@index([workId])
+  @@index([sortOrder])
+  @@map("work_cast")
+}
+
+// ─────────────────────────────────────────────
+// CURATED ROWS & COLLECTIONS
+// ─────────────────────────────────────────────
+
+model ContentRow {
+  id          String       @id @default(cuid())
+  title       String
+  slug        String       @unique
+  description String?
+  placement   RowPlacement @default(HOME)
+  active      Boolean      @default(true)
+  sortOrder   Int          @default(0)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  items       ContentRowItem[]
+
+  @@index([placement, active, sortOrder])
+  @@map("content_rows")
+}
+
+model ContentRowItem {
+  id        String   @id @default(cuid())
+  rowId     String
+  workId    String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  row       ContentRow @relation(fields: [rowId], references: [id], onDelete: Cascade)
+  work      Work       @relation(fields: [workId], references: [id], onDelete: Cascade)
+
+  @@unique([rowId, workId])
+  @@index([rowId, sortOrder])
+  @@index([workId])
+  @@map("content_row_items")
 }
 
 // ─────────────────────────────────────────────
@@ -531,10 +727,13 @@ model EmailLog {
   type      EmailType
   provider  EmailProvider
   status    EmailStatus
-  error     String?       // error message on failure, null on success
-  metadata  Json?         // optional extra context
-  createdAt DateTime      @default(now())
-  sentAt    DateTime?     // set when status = SENT
+  error         String?   // error message on failure, null on success
+  metadata      Json?     // optional extra context
+  trackingToken String?   @unique
+  openedAt      DateTime?
+  clickedAt     DateTime?
+  createdAt     DateTime  @default(now())
+  sentAt        DateTime? // set when status = SENT
 
   @@index([to])
   @@index([type])
@@ -611,6 +810,9 @@ model AdminSettings {
   defaultRequireLoginToViewTrailer Boolean @default(false)
   allowPublicProjectDetails        Boolean @default(true)
   showLockedContentInCatalog       Boolean @default(true)
+
+  // ── Casting ────────────────────────────────
+  castingBackgroundUrl  String?
 
   // ── Feature Visibility ─────────────────────
   showCasting           Boolean @default(false)
@@ -729,6 +931,79 @@ model SecurityEvent {
   @@index([email])
   @@index([createdAt])
   @@map("security_events")
+}
+
+// ─────────────────────────────────────────────
+// ERROR LOG — in-house error monitoring.
+// Occurrences aggregate by `fingerprint` (one row per unique error group), so an
+// error storm increments a counter instead of inserting unbounded rows.
+// ─────────────────────────────────────────────
+
+model ErrorLog {
+  id          String      @id @default(cuid())
+  fingerprint String      @unique
+  level       ErrorLevel  @default(ERROR)
+  source      ErrorSource @default(SERVER)
+  status      ErrorStatus @default(NEW)
+  message     String
+  stack       String?
+  route       String?
+  method      String?
+  count       Int         @default(1)
+  resolvedAt  DateTime?
+  resolvedBy  String?
+  lastUserId  String?
+  metadata    Json?
+  // Release / deploy tracking — which ship first saw and last saw this error.
+  firstRelease String?
+  lastRelease  String?
+  environment  String?
+  // Regression — set when a RESOLVED/IGNORED group recurs.
+  regressed    Boolean   @default(false)
+  regressedAt  DateTime?
+  // Cross-instance alert dedupe (replaces leaky in-memory cooldown).
+  lastAlertedAt DateTime?
+  // Ownership + snooze.
+  assignedToId    String?
+  assignedToEmail String?
+  mutedUntil      DateTime?
+  firstSeenAt DateTime    @default(now())
+  lastSeenAt  DateTime    @default(now())
+
+  notes ErrorNote[]
+
+  @@index([level, lastSeenAt])
+  @@index([lastSeenAt])
+  @@index([status, lastSeenAt])
+  @@map("error_logs")
+}
+
+// Hourly occurrence rollup — one row per (fingerprint, hour) so the sparkline and
+// spike detection never store a row per event. Pruned by the retention cron.
+model ErrorEventBucket {
+  id          String   @id @default(cuid())
+  fingerprint String
+  bucketStart DateTime
+  count       Int      @default(1)
+
+  @@unique([fingerprint, bucketStart])
+  @@index([fingerprint, bucketStart])
+  @@index([bucketStart])
+  @@map("error_event_buckets")
+}
+
+// Triage notes / activity on an error group.
+model ErrorNote {
+  id          String   @id @default(cuid())
+  errorId     String
+  error       ErrorLog @relation(fields: [errorId], references: [id], onDelete: Cascade)
+  authorId    String
+  authorEmail String
+  body        String
+  createdAt   DateTime @default(now())
+
+  @@index([errorId, createdAt])
+  @@map("error_notes")
 }
 
 // ─────────────────────────────────────────────
@@ -867,11 +1142,14 @@ model Announcement {
   updatedAt   DateTime         @updatedAt
 
   // Delivery tracking — populated on publish
-  audienceType     String @default("all")  // "all" | "admins" | "notify_me" | "saved_work"
-  recipientCount   Int    @default(0)       // in-app notifications created
-  emailQueuedCount Int    @default(0)       // EmailQueue rows created
+  audienceType     String    @default("all")  // "all" | "admins" | "notify_me" | "saved_work" | "specific"
+  targetUserIds    String?                    // JSON array of user IDs for audienceType = "specific"
+  scheduledAt      DateTime?                  // null = publish immediately; set = cron publishes at this time
+  recipientCount   Int       @default(0)      // in-app notifications created
+  emailQueuedCount Int       @default(0)      // EmailQueue rows created
 
   @@index([publishedAt])
+  @@index([scheduledAt])
   @@map("announcements")
 }
 
@@ -904,6 +1182,27 @@ model NotifyMeCta {
 // workId + workTitle are plain String snapshots so data is always recoverable.
 // ─────────────────────────────────────────────
 
+// ─────────────────────────────────────────────
+// REFRESH TOKEN
+// One row per active session. Rotated on every 15-minute access-token
+// renewal. Deleted on logout, suspension, deactivation, or purge.
+// Raw token is never stored — only a SHA-256 hash.
+// ─────────────────────────────────────────────
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique  // SHA-256(raw token) — raw token never stored
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
 model NotifyMeSignup {
   id        String      @id @default(cuid())
   ctaId     String?                         // nullable FK — set to null if CTA deleted
@@ -911,14 +1210,443 @@ model NotifyMeSignup {
   workTitle String?                         // snapshot at time of signup
   email     String
   name      String?
+  userId    String?                         // set when signed up by a logged-in user
+
+  notifyEmailSentAt  DateTime?              // set after email is queued/sent
+  notifyInAppSentAt  DateTime?              // set after in-app notification created
+  lastNotifiedAt     DateTime?              // latest of the two above
+  notifyFailCount    Int        @default(0) // incremented on delivery failure
+
   createdAt DateTime    @default(now())
 
-  cta NotifyMeCta? @relation(fields: [ctaId], references: [id], onDelete: SetNull)
+  cta  NotifyMeCta? @relation(fields: [ctaId], references: [id], onDelete: SetNull)
+  user User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@unique([ctaId, email])   // one signup per person per CTA (NULL-safe in Postgres)
   @@index([ctaId])
   @@index([workId])
   @@index([email])
+  @@index([userId])
   @@index([createdAt])
   @@map("notify_me_signups")
+}
+
+// ─────────────────────────────────────────────
+// COMMENTS
+// ─────────────────────────────────────────────
+
+model Comment {
+  id         String        @id @default(cuid())
+  body       String        @db.VarChar(1000)
+  status     CommentStatus @default(PUBLISHED)
+  isPinned   Boolean       @default(false)
+  likeCount  Int           @default(0)
+  replyCount Int           @default(0)
+  editedAt   DateTime?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  workId String?
+  work   Work?   @relation(fields: [workId], references: [id], onDelete: Cascade)
+
+  parentId String?
+  parent   Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies  Comment[] @relation("CommentReplies")
+
+  likes   CommentLike[]
+  reports CommentReport[]
+
+  @@index([workId, status, createdAt])
+  @@index([parentId])
+  @@index([userId])
+  @@map("comments")
+}
+
+model CommentLike {
+  id        String   @id @default(cuid())
+  commentId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([commentId, userId])
+  @@index([userId])
+  @@map("comment_likes")
+}
+
+model CommentReport {
+  id           String              @id @default(cuid())
+  reason       CommentReportReason
+  details      String?             @db.VarChar(500)
+  status       CommentReportStatus @default(OPEN)
+  createdAt    DateTime            @default(now())
+  reviewedAt   DateTime?
+  reviewedById String?
+
+  commentId String
+  comment   Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation("CommentReporter", fields: [userId], references: [id], onDelete: Cascade)
+
+  reviewer User? @relation("CommentReportReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@unique([commentId, userId])
+  @@index([status])
+  @@index([commentId])
+  @@map("comment_reports")
+}
+
+// ─────────────────────────────────────────────
+// SUBSCRIBERS
+// ─────────────────────────────────────────────
+
+model Subscriber {
+  id              String    @id @default(cuid())
+  email           String    @unique
+  name            String?
+  source          String?   @default("organic")
+  active          Boolean   @default(true)
+
+  countryCode     String?
+  country         String?
+  language        String?
+  referrer        String?
+  sourcePath      String?
+
+  verifiedAt      DateTime?
+  subscribedAt    DateTime  @default(now())
+  lastSeenAt      DateTime?
+  convertedAt     DateTime?
+
+  failedSendCount Int       @default(0)
+  suppressedAt    DateTime?
+  suppressReason  String?
+
+  @@index([email])
+  @@index([active])
+  @@index([countryCode])
+  @@index([subscribedAt])
+  @@map("subscribers")
+}
+
+// ─────────────────────────────────────────────
+// VIDEO PROCESSING
+// ─────────────────────────────────────────────
+
+model VideoProcessingJob {
+  id           String         @id @default(cuid())
+  workId       String
+  sourceKey    String         // private R2 key: private/masters/{slug}/...
+  outputPrefix String         // public R2 prefix: works/{slug}/hls/{jobId}
+  targetField  String         @default("videoUrl") // Work field to update: videoUrl | trailerUrl | previewClipUrl
+  status       VideoJobStatus @default(PENDING)
+  progress     Int            @default(0)
+  errorMessage String?
+  hlsUrl       String?        // set when READY: full public master.m3u8 URL
+  attempts     Int            @default(0)
+
+  startedAt    DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  work         Work           @relation(fields: [workId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([workId])
+  @@map("video_processing_jobs")
+}
+
+// ─────────────────────────────────────────────
+// SUBTITLES
+// ─────────────────────────────────────────────
+
+model Subtitle {
+  id               String   @id @default(cuid())
+  workId           String
+  mediaType        String   @default("full")   // full | trailer | preview
+  sourceLanguage   String   @default("en")
+  label            String   @default("English")
+  status           String   @default("draft")  // draft | approved_source
+  segmentsJson     Json
+  translationsJson Json?    // Record<lang, Segment[]>
+  vttKeysJson      Json?    // Record<lang, r2Key>
+  isPublished      Boolean  @default(false)
+  isDefault        Boolean  @default(false)
+  sortOrder        Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  work      Work               @relation(fields: [workId], references: [id], onDelete: Cascade)
+  revisions SubtitleRevision[]
+  jobs      SubtitleJob[]
+
+  @@unique([workId, mediaType, sourceLanguage])
+  @@index([workId])
+  @@index([mediaType])
+  @@index([sourceLanguage])
+  @@map("subtitles")
+}
+
+model SubtitleRevision {
+  id           String   @id @default(cuid())
+  subtitleId   String
+  snapshotJson Json
+  reason       String?
+  createdAt    DateTime @default(now())
+
+  subtitle Subtitle @relation(fields: [subtitleId], references: [id], onDelete: Cascade)
+
+  @@index([subtitleId])
+  @@map("subtitle_revisions")
+}
+
+model SubtitleJob {
+  id            String   @id @default(cuid())
+  subtitleId    String
+  type          String   @default("translate")
+  status        String   @default("PENDING")   // PENDING | PROCESSING | READY | FAILED
+  languagesJson Json?    // string[] — target language codes
+  progress      Int      @default(0)
+  error         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  subtitle Subtitle @relation(fields: [subtitleId], references: [id], onDelete: Cascade)
+
+  @@index([subtitleId])
+  @@index([status])
+  @@map("subtitle_jobs")
+}
+
+// ─────────────────────────────────────────────
+// TRANSLATION API KEYS
+// Encrypted pool of Gemini API keys for subtitle translation.
+// Rotated via LRU; self-healing via cooldown timestamps.
+// encryptedKey is AES-256-GCM — raw key is never stored or exposed to clients.
+// ─────────────────────────────────────────────
+
+model TranslationApiKey {
+  id            String    @id @default(cuid())
+  provider      String    @default("gemini")
+  name          String
+  encryptedKey  String
+  keyPreview    String?   // last-8-chars mask shown in admin UI
+  isEnabled     Boolean   @default(true)
+  status        String    @default("HEALTHY")  // HEALTHY | COOLDOWN | DISABLED | INVALID
+  taskScopes    String[]  @default(["TRANSLATION"])  // "TRANSLATION" | "CASTING_AUDITION"
+  failureCount   Int       @default(0)
+  successCount   Int       @default(0)
+  lastUsedAt     DateTime?
+  lastSuccessAt  DateTime?
+  lastFailureAt  DateTime?
+  cooldownUntil  DateTime?
+  errorMessage   String?
+  windowMaxCalls Int       @default(50)  // quota window ceiling
+  usedInWindow   Int       @default(0)   // calls consumed in current window
+  windowResetAt  DateTime?               // when current window expires
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([provider, isEnabled, status])
+  @@map("translation_api_keys")
+}
+
+
+// ─────────────────────────────────────────────
+// VIDEO DISPLAY SETTINGS (per-video mask config)
+// ─────────────────────────────────────────────
+
+model WorkVideoDisplaySetting {
+  id       String @id @default(cuid())
+  workId   String
+  mediaType String // full | trailer | preview
+
+  filmstripMaskEnabled  Boolean @default(false)
+  filmstripMaskHeight   Int     @default(12) // percent: 5–25
+  filmstripMaskOpacity  Int     @default(96) // percent: 60–100
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  work Work @relation(fields: [workId], references: [id], onDelete: Cascade)
+
+  @@unique([workId, mediaType])
+  @@index([workId])
+  @@index([mediaType])
+  @@map("work_video_display_settings")
+}
+
+// ─────────────────────────────────────────────
+// CASTING
+// ─────────────────────────────────────────────
+
+model CastingRole {
+  id                 String   @id @default(cuid())
+  slug               String   @unique
+  title              String
+  description        String
+  isOpen             Boolean  @default(true)
+
+  workId             String?
+  work               Work?    @relation("WorkCastingRoles", fields: [workId], references: [id], onDelete: SetNull)
+
+  requireGender      Boolean  @default(false)
+  allowedGender      String?  // "MALE" | "FEMALE" | "ANY"
+
+  requireAgeRange    Boolean  @default(false)
+  minAge             Int?
+  maxAge             Int?
+
+  requireVoiceSample Boolean  @default(true)
+  minAgentScore      Int      @default(70)
+  sortOrder          Int      @default(0)
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  applications       CastingApplication[]
+
+  @@index([workId])
+  @@map("casting_roles")
+}
+
+model CastingApplication {
+  id            String                   @id @default(cuid())
+  userId        String
+  roleId        String
+  trackingToken String                   @unique @default(cuid())
+
+  // Applicant info
+  name          String
+  email         String
+  location      String
+  socialHandle  String
+  roleInterest  String
+  shortNote     String
+
+  // Role-specific applicant fields
+  gender        String?
+  ageRange      String?
+
+  // Consent / policy proof
+  consentAccepted         Boolean   @default(false)
+  policyAccepted          Boolean   @default(false)
+  isAdultConfirmed        Boolean   @default(false)
+  unpaidAccepted          Boolean   @default(false)
+  likenessReleaseAccepted Boolean   @default(false)
+  withdrawalTermsAccepted Boolean   @default(false)
+
+  policyVersion    String?
+  policyAcceptedAt DateTime?
+  releaseAcceptedAt DateTime?
+  consentAt        DateTime?
+  ipAddress        String?
+  userAgent        String?
+
+  // Status / lifecycle
+  status              CastingApplicationStatus @default(SUBMITTED)
+  reviewStartedAt     DateTime?
+  readyForReviewAt    DateTime?
+  decisionAt          DateTime?
+  decisionById        String?
+  decisionReason      String?
+  requirementsReason  String?
+
+  withdrawnAt          DateTime?
+  lastResubmittedAt    DateTime?
+  resubmissionCount    Int      @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role       CastingRole @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  decisionBy User?       @relation("CastingDecisionBy", fields: [decisionById], references: [id])
+
+  media       CastingApplicationMedia[]
+  agentReview CastingAgentReview?
+  notes       CastingApplicationNote[]
+
+  @@unique([userId, roleId])
+  @@index([status])
+  @@index([roleId])
+  @@index([trackingToken])
+  @@map("casting_applications")
+}
+
+model CastingApplicationMedia {
+  id              String           @id @default(cuid())
+  applicationId   String
+  type            CastingMediaType
+
+  r2Key           String
+  originalFilename String?
+  mimeType        String
+  fileSizeBytes   Int
+  durationSeconds Float?
+
+  sortOrder      Int      @default(0)
+  isValid        Boolean?
+  validationNote String?
+
+  createdAt DateTime @default(now())
+
+  application CastingApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId])
+  @@map("casting_application_media")
+}
+
+model CastingAgentReview {
+  id            String                     @id @default(cuid())
+  applicationId String                     @unique
+
+  overallScore Int
+  photoScore   Int
+  voiceScore   Int
+  socialScore  Int
+  formScore    Int
+
+  recommendation  CastingAgentRecommendation
+
+  summary         String
+  imageReview     String
+  audioReview     String
+  socialResult    String
+  roleMatchResult String
+  suggestedAction String
+
+  imageReviewJson Json?
+  audioReviewJson Json?
+  scoreBreakdown  Json?
+
+  missingItems String[] @default([])
+
+  completedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  application CastingApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@map("casting_agent_reviews")
+}
+
+model CastingApplicationNote {
+  id            String   @id @default(cuid())
+  applicationId String
+  adminId       String
+  body          String
+  createdAt     DateTime @default(now())
+
+  application CastingApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  admin       User               @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId])
+  @@map("casting_application_notes")
 }

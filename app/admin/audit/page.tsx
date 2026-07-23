@@ -1,9 +1,7 @@
-// Admin Audit Log — immutable record of all admin actions
-// Server-rendered. CSS-only. No client JS.
-
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import type { Metadata } from "next";
+import AuditFilterBar from "@/components/admin/audit-filter-bar";
 import "./audit.css";
 
 export const metadata: Metadata = { title: "Admin — Audit Log" };
@@ -11,12 +9,16 @@ export const metadata: Metadata = { title: "Admin — Audit Log" };
 const PAGE_SIZE = 50;
 
 const ACTION_META: Record<string, { label: string; cls: string }> = {
-  ROLE_CHANGE:          { label: "Role Changed",      cls: "alog-badge--accent"  },
-  SUSPEND:              { label: "Suspended",          cls: "alog-badge--red"     },
-  UNSUSPEND:            { label: "Unsuspended",        cls: "alog-badge--green"   },
-  BULK_SUSPEND:         { label: "Bulk Suspend",       cls: "alog-badge--red"     },
-  BULK_UNSUSPEND:       { label: "Bulk Unsuspend",     cls: "alog-badge--green"   },
-  PASSWORD_RESET_SENT:  { label: "Reset Email Sent",   cls: "alog-badge--muted"   },
+  ROLE_CHANGE:          { label: "Role Changed",     cls: "alog-badge--accent" },
+  SUSPEND:              { label: "Suspended",         cls: "alog-badge--red"    },
+  UNSUSPEND:            { label: "Unsuspended",       cls: "alog-badge--green"  },
+  BULK_SUSPEND:         { label: "Bulk Suspend",      cls: "alog-badge--red"    },
+  BULK_UNSUSPEND:       { label: "Bulk Unsuspend",    cls: "alog-badge--green"  },
+  PASSWORD_RESET_SENT:  { label: "Reset Email Sent",  cls: "alog-badge--muted"  },
+  PURGE:                { label: "Purge",             cls: "alog-badge--red"    },
+  BULK_PURGE:           { label: "Bulk Purge",        cls: "alog-badge--red"    },
+  DEACTIVATE:           { label: "Deactivated",       cls: "alog-badge--muted"  },
+  RESTORE:              { label: "Restored",          cls: "alog-badge--green"  },
 };
 
 function timeAgo(date: Date): string {
@@ -28,10 +30,10 @@ function timeAgo(date: Date): string {
 }
 
 function pageUrl(p: number, action: string): string {
-  const sp = new URLSearchParams();
-  if (action) sp.set("action", action);
-  if (p > 1)  sp.set("page", String(p));
-  const qs = sp.toString();
+  const params = new URLSearchParams();
+  if (action) params.set("action", action);
+  if (p > 1)  params.set("page", String(p));
+  const qs = params.toString();
   return `/admin/audit${qs ? `?${qs}` : ""}`;
 }
 
@@ -51,38 +53,33 @@ export default async function AuditLogPage({
     prisma.adminAuditLog.findMany({
       where,
       orderBy: { createdAt: "desc" },
-      skip:  (page - 1) * PAGE_SIZE,
-      take:  PAGE_SIZE,
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
     }),
   ]);
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
+  const actionOptions = Object.entries(ACTION_META).map(([value, { label }]) => ({ value, label }));
+
   return (
     <div className="admin-page">
 
-      {/* ── Header ── */}
       <div className="admin-page-header">
-        <h1 className="admin-page-title">Audit Log</h1>
-        <span className="alog-total">{total.toLocaleString()} entries</span>
+        <div>
+          <h1 className="admin-page-title">Audit Log</h1>
+          <p className="alog-subtitle">Track admin actions, security events, and account changes.</p>
+        </div>
       </div>
 
-      {/* ── Filter by action type ── */}
-      <form method="get" action="/admin/audit" className="alog-filters">
-        <select name="action" defaultValue={action} className="alog-select">
-          <option value="">All Actions</option>
-          {Object.entries(ACTION_META).map(([val, { label }]) => (
-            <option key={val} value={val}>{label}</option>
-          ))}
-        </select>
-        <button type="submit" className="alog-filter-btn">Filter</button>
-        {action && (
-          <Link href="/admin/audit" className="alog-clear">Clear filter</Link>
-        )}
-      </form>
+      {/* Premium filter bar — no native select */}
+      <AuditFilterBar
+        action={action}
+        total={total}
+        actionOptions={actionOptions}
+      />
 
-      {/* ── Table ── */}
-      <div className="admin-table-wrap" style={{ marginTop: "1rem" }}>
+      <div className="admin-table-wrap">
         <table className="admin-table">
           <thead>
             <tr>
@@ -126,7 +123,6 @@ export default async function AuditLogPage({
         </table>
       </div>
 
-      {/* ── Pagination ── */}
       {totalPages > 1 && (
         <div className="upagination">
           {page > 1 ? (

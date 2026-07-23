@@ -53,6 +53,26 @@ export function parseUserAgent(ua: string): {
 }
 
 // ─────────────────────────────────────────────
+// AUTOMATED / DATACENTER DETECTION
+// The UA parser above catches *declared* bots (curl, python, crawlers). This catches
+// the harder case: automated clients using a real browser UA. Conservative by design —
+// it prefers missing a bot over mislabelling a real person.
+//   • A browser request with NO Accept-Language header is almost always a script;
+//     every real browser sends one.
+//   • A handful of small towns are effectively cloud datacenter campuses (AWS/Google);
+//     browser-UA traffic geolocating there is egress, not an audience.
+// Flagged sessions get isBot=true, which the analytics views already exclude everywhere.
+// ─────────────────────────────────────────────
+
+const DATACENTER_CITIES = new Set(["boardman", "the dalles", "quincy", "moncks corner"]);
+
+export function looksAutomated(opts: { acceptLanguage: string | null; city?: string | null }): boolean {
+  if (!opts.acceptLanguage) return true;
+  if (opts.city && DATACENTER_CITIES.has(opts.city.trim().toLowerCase())) return true;
+  return false;
+}
+
+// ─────────────────────────────────────────────
 // VISITOR SESSION
 // A session is a continuous browsing window. Inactivity > 30 min = new session.
 // ─────────────────────────────────────────────
