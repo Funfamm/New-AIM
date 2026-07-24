@@ -104,6 +104,8 @@ A `work.count()` pool timeout (**still printing "connection limit: 5"**) crashed
 
 Production CLIENT error `TypeError: undefined is not an object (evaluating 'window.webkit.messageHandlers')` on `/watch/grandpas-diary`. Confirmed NOT ours (grep for `messageHandlers`/`sendDataToNative`/`sendPageHideMessage`/`window.webkit` → zero matches; stack points at the page URL inline, not `/_next/static/chunks/`). An iOS in-app browser (WKWebView) injected a page-lifecycle tracker that calls the native bridge, which isn't present → TypeError. Added `/window\.webkit\.messageHandlers/` to `lib/monitoring/ignore.ts` (same class as the pushState/[object Event] filters). Verified it drops both Safari and Chrome phrasings and keeps real errors; tsc clean.
 
+**Also (same PR): the #172 audit gate worked as designed** — CI blocked a brand-new advisory `GHSA-r28c-9q8g-f849` (a *third* PostCSS source-map advisory, `<=8.5.17`) not on the allowlist. It's the same build-time-only class. Rather than chase each new postcss GHSA, refactored `scripts/check-audit.mjs` to a **package-based** allowlist: `postcss` is allowlisted by name (it has NO runtime presence — build-time CSS tool only), so any postcss advisory auto-passes while every other package still blocks per-advisory (verified: a fake non-postcss critical → exit 1). Empty per-advisory allowlist kept for future specific cases.
+
 ## Dependency CVEs + audit-gate allowlist — 2026-07-23
 
 CI's `npm audit --audit-level=high` went red (newly-disclosed advisories; the #160 fix made the audit step actually block). NOT introduced by our code. Two classes:
