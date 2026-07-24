@@ -19,6 +19,7 @@ const IGNORED_CLIENT_ERROR_PATTERNS: RegExp[] = [
   /Non-Error promise rejection captured/i,
   /cannot assign to read only property '(pushState|replaceState)'/i, // a browser extension / in-app browser (IG/FB/TikTok webview) patched window.history — not our code
   /^\[object \w+\]$/,                                       // non-Error rejection reason (a bare DOM Event/object) — stringifies to "[object Event]" etc. with no message or stack
+  /window\.webkit\.messageHandlers/,                       // iOS in-app browser (WKWebView) injected a native-bridge tracker (sendDataToNative/pageHide) — not our code
 ];
 
 /** True when a reported browser error message is known-benign navigation/teardown noise. */

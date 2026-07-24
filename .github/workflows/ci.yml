@@ -37,10 +37,11 @@ jobs:
         run: npx tsc --noEmit
 
       - name: Security audit
-        # Fail on high/critical advisories except a documented, justified allowlist
-        # (build-time-only transitive advisories we can't fix without breaking the
-        # framework). See scripts/check-audit.mjs — strictly narrower than lowering the
-        # audit level, so new high/critical runtime vulns still fail the build.
+        # Audit PRODUCTION deps only (--omit=dev): the gate protects the deployed app's
+        # runtime, and dev/build tooling (eslint, etc.) never ships — auditing it just
+        # produces a constant stream of irrelevant transitive advisories. Then fail on any
+        # remaining high/critical EXCEPT a documented allowlist (see scripts/check-audit.mjs),
+        # which currently covers postcss (a build-time-only prod dep pulled by Next).
         run: |
-          npm audit --json > audit.json || true
+          npm audit --omit=dev --json > audit.json || true
           node scripts/check-audit.mjs

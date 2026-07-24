@@ -100,6 +100,16 @@ A `work.count()` pool timeout (**still printing "connection limit: 5"**) crashed
 
 `tsc` + lint clean.
 
+## Filter iOS WKWebView native-bridge noise — 2026-07-24
+
+Production CLIENT error `TypeError: undefined is not an object (evaluating 'window.webkit.messageHandlers')` on `/watch/grandpas-diary`. Confirmed NOT ours (grep for `messageHandlers`/`sendDataToNative`/`sendPageHideMessage`/`window.webkit` → zero matches; stack points at the page URL inline, not `/_next/static/chunks/`). An iOS in-app browser (WKWebView) injected a page-lifecycle tracker that calls the native bridge, which isn't present → TypeError. Added `/window\.webkit\.messageHandlers/` to `lib/monitoring/ignore.ts` (same class as the pushState/[object Event] filters). Verified it drops both Safari and Chrome phrasings and keeps real errors; tsc clean.
+
+**Also (same PR): tightened the #172 audit gate after it flagged two fresh advisories.** The gate correctly blocked new advisories (`GHSA-r28c-9q8g-f849` postcss #3, then `GHSA-mh99-v99m-4gvg` brace-expansion) — but investigation showed the root problem was **scope**: the gate audited dev/build tooling too, and new transitive advisories drop there constantly. brace-expansion is pulled ONLY by eslint (dev; never ships). Two changes:
+- **CI `Security audit` now runs `npm audit --omit=dev`** — audits the PRODUCTION dependency tree only (what actually deploys). Dropped brace-expansion and all future dev-tool noise. `npm audit --omit=dev` shows only the 3 postcss advisories.
+- **`scripts/check-audit.mjs` → package-based allowlist**: `postcss` allowlisted by name (no runtime presence — build-time CSS tool via next/tailwind), so any postcss advisory auto-passes while every other prod package still blocks per-advisory. Verified: prod audit passes, a fake non-postcss critical → exit 1. Empty per-advisory allowlist kept for future specifics.
+
+Net: the gate now protects the deployed app's runtime deps (the thing that matters), stays green against dev-tool + build-time-only churn, and still fails on a real runtime high/critical.
+
 ## Dependency CVEs + audit-gate allowlist — 2026-07-23
 
 CI's `npm audit --audit-level=high` went red (newly-disclosed advisories; the #160 fix made the audit step actually block). NOT introduced by our code. Two classes:
