@@ -100,6 +100,10 @@ A `work.count()` pool timeout (**still printing "connection limit: 5"**) crashed
 
 `tsc` + lint clean.
 
+## Filter iOS WKWebView native-bridge noise — 2026-07-24
+
+Production CLIENT error `TypeError: undefined is not an object (evaluating 'window.webkit.messageHandlers')` on `/watch/grandpas-diary`. Confirmed NOT ours (grep for `messageHandlers`/`sendDataToNative`/`sendPageHideMessage`/`window.webkit` → zero matches; stack points at the page URL inline, not `/_next/static/chunks/`). An iOS in-app browser (WKWebView) injected a page-lifecycle tracker that calls the native bridge, which isn't present → TypeError. Added `/window\.webkit\.messageHandlers/` to `lib/monitoring/ignore.ts` (same class as the pushState/[object Event] filters). Verified it drops both Safari and Chrome phrasings and keeps real errors; tsc clean.
+
 ## Dependency CVEs + audit-gate allowlist — 2026-07-23
 
 CI's `npm audit --audit-level=high` went red (newly-disclosed advisories; the #160 fix made the audit step actually block). NOT introduced by our code. Two classes:
