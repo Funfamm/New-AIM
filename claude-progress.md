@@ -100,6 +100,14 @@ A `work.count()` pool timeout (**still printing "connection limit: 5"**) crashed
 
 `tsc` + lint clean.
 
+## Visitors analytics: batch the 13-query fan-out (> pool) — 2026-07-28
+
+`/admin/analytics/visitors` crashed (React #419 + Server-Components digest) because `visitorSession.groupBy()` at `Promise.all (index 11)` timed out. **Confirms the env params are LIVE** — the error now reads "connection limit: 10, timeout: 15" (was 5/10). Root cause: this page fires **13 queries in a single `Promise.all`** against `connection_limit=10`, so a single render needs more connections than the pool has; any concurrent traffic (analytics beacons, another admin) exhausts it → one query times out → the whole render throws.
+
+- `app/admin/analytics/visitors/page.tsx`: split the one 13-wide `Promise.all` into **3 concurrency-capped batches** (6 fast counts / 4 groupBy breakdowns / 3 heavy findMany+groupBy), each wrapped in `withDbRetry`. Peak in-flight ≤ 6, well under the pool, heavy queries isolated from fast counts, and transient blips retried. User-enrichment query also `withDbRetry`-wrapped.
+
+**Flagged (systemic, not yet fixed):** `/admin/page.tsx` (dashboard) runs 4 loaders in parallel and `getSystemHealth` alone fires **17 queries in one `Promise.all`** — same "fan-out > pool" pattern, worse. It's already guarded by `safe(withDbRetry(...))` (PR #170) so it *degrades* (shows zeros) rather than crashing, but it should get the same batching. Other analytics tabs (Overview/Traffic/Content) likely too. Follow-up candidate.
+
 ## Filter iOS WKWebView native-bridge noise — 2026-07-24
 
 Production CLIENT error `TypeError: undefined is not an object (evaluating 'window.webkit.messageHandlers')` on `/watch/grandpas-diary`. Confirmed NOT ours (grep for `messageHandlers`/`sendDataToNative`/`sendPageHideMessage`/`window.webkit` → zero matches; stack points at the page URL inline, not `/_next/static/chunks/`). An iOS in-app browser (WKWebView) injected a page-lifecycle tracker that calls the native bridge, which isn't present → TypeError. Added `/window\.webkit\.messageHandlers/` to `lib/monitoring/ignore.ts` (same class as the pushState/[object Event] filters). Verified it drops both Safari and Chrome phrasings and keeps real errors; tsc clean.
