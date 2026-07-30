@@ -100,6 +100,15 @@ A `work.count()` pool timeout (**still printing "connection limit: 5"**) crashed
 
 `tsc` + lint clean.
 
+## Error monitor: severity tier for non-critical client errors — 2026-07-29
+
+Every client error that survived the ignore filter was stored as `ERROR` — so a transient "Load failed" (a viewer's flaky fetch; media verified 100% healthy) looked identical to a real crash and fired the same email/webhook/bell. The monitor already has a full **three-value `ErrorLevel` (WARN/ERROR/FATAL)**: `WARN` is already styled (gold badge, filter tab, item class) AND already excluded from alerting (`alertable = ERROR||FATAL` in capture-error.ts) — it was simply never assigned by any capture path. So this is a tiny wiring change, no schema/UI/alerting change.
+
+- **New `lib/monitoring/classify.ts`** — `clientErrorLevel(message)` returns `WARN` for real-but-**transient** client failures (Safari "Load failed", "Failed to fetch", Firefox NetworkError, Next.js chunk/CSS-chunk load failures, dynamic-import flakiness, network timeouts), else `ERROR`. **Disjoint** from ignore.ts: ignore = *drop* pure junk; classify = *downgrade* real-but-transient (kept, counted, trended, visible — just silent).
+- **`app/api/monitoring/client-error/route.ts`** — passes `level: clientErrorLevel(body.message)` into `captureError`, after the ignore drop. This is the single choke point every client beacon funnels through (window.onerror, unhandledrejection, the render-boundary beacon), so it levels all CLIENT sources at once.
+
+Net: a transient client blip now shows a **gold WARN badge**, reachable via the existing WARN filter, and does NOT page — visibly "not critical." Verified: Load failed/Failed to fetch/chunk-load → WARN; React #418/prisma/undefined-reads → ERROR. Follow-up option (server, out of scope): degraded-fallback loaders (`degraded:true`) could also pass `level:"WARN"`.
+
 ## Visitors analytics: batch the 13-query fan-out (> pool) — 2026-07-28
 
 `/admin/analytics/visitors` crashed (React #419 + Server-Components digest) because `visitorSession.groupBy()` at `Promise.all (index 11)` timed out. **Confirms the env params are LIVE** — the error now reads "connection limit: 10, timeout: 15" (was 5/10). Root cause: this page fires **13 queries in a single `Promise.all`** against `connection_limit=10`, so a single render needs more connections than the pool has; any concurrent traffic (analytics beacons, another admin) exhausts it → one query times out → the whole render throws.
