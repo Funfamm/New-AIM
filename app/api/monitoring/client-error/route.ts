@@ -6,6 +6,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { captureError } from "@/lib/monitoring/capture-error";
 import { isIgnorableClientError } from "@/lib/monitoring/ignore";
+import { clientErrorLevel } from "@/lib/monitoring/classify";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -45,6 +46,10 @@ export async function POST(req: Request) {
   const session = await auth().catch(() => null);
 
   captureError(new Error(body.message.slice(0, 1000)), {
+    // Downgrade real-but-transient client failures (flaky fetch, stale chunk after a
+    // deploy) to WARN so they're counted + visible but don't page like a crash. Anything
+    // not on the transient list stays ERROR. (Pure junk was already dropped above.)
+    level:  clientErrorLevel(body.message),
     source: "CLIENT",
     route:  typeof body.route === "string" ? body.route.slice(0, 300) : undefined,
     stack:  typeof body.stack === "string" ? body.stack.slice(0, 8000) : undefined,
