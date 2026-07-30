@@ -130,7 +130,9 @@ async function safe<T>(p: Promise<T>, fallback: T, loader: string): Promise<T> {
   try {
     return await p;
   } catch (err) {
-    captureError(err, { source: "SERVER", route: "/", metadata: { loader, degraded: true } });
+    // Graceful degradation — handled, non-fatal (the page still rendered). WARN so it's
+    // counted + visible (a spike still surfaces) but doesn't page like a hard crash.
+    captureError(err, { level: "WARN", source: "SERVER", route: "/", metadata: { loader, degraded: true } });
     return fallback;
   }
 }

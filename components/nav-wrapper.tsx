@@ -46,7 +46,8 @@ async function safeNav<T>(op: () => Promise<T>, fallback: T, loader: string): Pr
   try {
     return await withDbRetry(op);
   } catch (err) {
-    captureError(err, { source: "SERVER", metadata: { loader, degraded: true } });
+    // Graceful degradation — handled, non-fatal. WARN: counted + visible, doesn't page.
+    captureError(err, { level: "WARN", source: "SERVER", metadata: { loader, degraded: true } });
     return fallback;
   }
 }

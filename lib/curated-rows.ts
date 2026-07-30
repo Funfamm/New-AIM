@@ -101,7 +101,8 @@ export async function getPublicContentRows(
   try {
     return await withDbRetry(() => loadPublicContentRows(placement));
   } catch (err) {
-    captureError(err, { source: "SERVER", metadata: { loader: "getPublicContentRows", placement, degraded: true } });
+    // Graceful degradation — handled, non-fatal. WARN: counted + visible, doesn't page.
+    captureError(err, { level: "WARN", source: "SERVER", metadata: { loader: "getPublicContentRows", placement, degraded: true } });
     return [];
   }
 }
