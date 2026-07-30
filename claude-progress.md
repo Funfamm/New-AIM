@@ -107,7 +107,9 @@ Every client error that survived the ignore filter was stored as `ERROR` — so 
 - **New `lib/monitoring/classify.ts`** — `clientErrorLevel(message)` returns `WARN` for real-but-**transient** client failures (Safari "Load failed", "Failed to fetch", Firefox NetworkError, Next.js chunk/CSS-chunk load failures, dynamic-import flakiness, network timeouts), else `ERROR`. **Disjoint** from ignore.ts: ignore = *drop* pure junk; classify = *downgrade* real-but-transient (kept, counted, trended, visible — just silent).
 - **`app/api/monitoring/client-error/route.ts`** — passes `level: clientErrorLevel(body.message)` into `captureError`, after the ignore drop. This is the single choke point every client beacon funnels through (window.onerror, unhandledrejection, the render-boundary beacon), so it levels all CLIENT sources at once.
 
-Net: a transient client blip now shows a **gold WARN badge**, reachable via the existing WARN filter, and does NOT page — visibly "not critical." Verified: Load failed/Failed to fetch/chunk-load → WARN; React #418/prisma/undefined-reads → ERROR. Follow-up option (server, out of scope): degraded-fallback loaders (`degraded:true`) could also pass `level:"WARN"`.
+Net: a transient client blip now shows a **gold WARN badge**, reachable via the existing WARN filter, and does NOT page — visibly "not critical." Verified: Load failed/Failed to fetch/chunk-load → WARN; React #418/prisma/undefined-reads → ERROR.
+
+**Server-side degraded loaders → WARN (same PR-follow-up, shipped):** the four `safe()` graceful-degradation sites that already tag `degraded:true` — `app/(public)/page.tsx`, `lib/curated-rows.ts`, `components/nav-wrapper.tsx`, `app/admin/page.tsx` — now pass `level:"WARN"`. A handled degradation (page still rendered) is counted + visible but no longer pages like a hard crash; a spike of degradations still surfaces via the WARN count/trend. Left as ERROR: `instrumentation.ts` (real unhandled server errors) and the media-link-check cron (a broken film is a genuine content problem).
 
 ## Visitors analytics: batch the 13-query fan-out (> pool) — 2026-07-28
 
