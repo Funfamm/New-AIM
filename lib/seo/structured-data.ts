@@ -36,6 +36,33 @@ export function websiteSchema() {
   };
 }
 
+/** Service lines offered to brands — helps Google understand this isn't only a streaming site. */
+export function servicesSchema() {
+  const offers = [
+    ["Commercials", "Short-form brand films built story-first, delivered in every format and aspect ratio required."],
+    ["Brand Identity Films", "Founder stories, manifestos, and culture films for moments a brand must be felt rather than explained."],
+    ["Campaigns", "Multi-asset campaigns built from a single creative spine — launch film, cutdowns, and social variants."],
+    ["Case Study Films", "Documentary-style films showing real outcomes, built for sales, investor, and partner conversations."],
+  ] as const;
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "Service",
+    serviceType: "Film and video production",
+    provider: { "@type": "Organization", name: "AIM Studio", url: APP_URL },
+    areaServed: "Worldwide",
+    url: `${APP_URL}/services`,
+    hasOfferCatalog: {
+      "@type": "OfferCatalog",
+      name: "Production Services",
+      itemListElement: offers.map(([name, description]) => ({
+        "@type": "Offer",
+        itemOffered: { "@type": "Service", name, description },
+      })),
+    },
+  };
+}
+
 type WorkForSchema = {
   slug: string;
   title: string;

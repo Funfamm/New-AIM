@@ -1,0 +1,160 @@
+/* Services — brand/commercial work. Mirrors the About page's editorial rhythm
+   (shared eyebrow/h2/body scale) so the two read as one site. Brand tokens only. */
+
+.sv { padding-bottom: 0; }
+
+.sv-eyebrow {
+  display: block;
+  font-family: var(--font-body); font-size: 0.6875rem; font-weight: 600;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--color-brand-muted); margin-bottom: 1.5rem;
+}
+.sv-h2 {
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 700; letter-spacing: -0.025em; line-height: 1.12;
+  color: var(--color-brand-white); margin: 0 0 1.5rem;
+}
+.sv-body-p {
+  font-family: var(--font-body); font-size: 1rem;
+  color: var(--color-brand-light); line-height: 1.8; opacity: 0.85; margin: 0;
+}
+
+/* ── Hero ────────────────────────────────────────────── */
+.sv-hero {
+  position: relative; overflow: hidden;
+  padding: 5rem 0 4.5rem;
+  border-bottom: 1px solid rgba(42,42,42,0.5);
+}
+@media (min-width: 768px) { .sv-hero { padding: 7rem 0 6rem; } }
+.sv-hero::before {
+  content: ""; position: absolute; top: -15%; right: -8%;
+  width: 65vw; max-width: 680px; height: 65vw; max-height: 680px;
+  background: radial-gradient(circle, rgba(232,201,126,0.07) 0%, rgba(232,201,126,0.02) 40%, transparent 68%);
+  pointer-events: none; z-index: 0;
+}
+.sv-hero-inner { position: relative; z-index: 1; max-width: 880px; }
+.sv-hero-title {
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  font-weight: 700; letter-spacing: -0.03em; line-height: 1.1;
+  color: var(--color-brand-white); margin: 0 0 1.75rem;
+}
+.sv-hero-accent { font-style: italic; color: var(--color-brand-accent); }
+.sv-hero-desc {
+  font-family: var(--font-body); font-size: 1rem;
+  color: var(--color-brand-light); line-height: 1.75; opacity: 0.82;
+  max-width: 620px; margin: 0 0 1.25rem;
+}
+.sv-hero-secondary {
+  font-family: var(--font-body); font-size: 0.8125rem; font-weight: 500;
+  letter-spacing: 0.04em; color: var(--color-brand-muted); margin: 0;
+}
+
+/* ── Service lines (numbered editorial list) ─────────── */
+.sv-list-sect { padding: 4rem 0; }
+@media (min-width: 768px) { .sv-list-sect { padding: 5.5rem 0; } }
+.sv-list { list-style: none; margin: 0; padding: 0; }
+.sv-item {
+  display: flex; gap: 1.5rem;
+  padding: 2rem 0;
+  border-top: 1px solid rgba(42,42,42,0.5);
+}
+.sv-item:first-child { border-top: none; padding-top: 0; }
+@media (min-width: 768px) { .sv-item { gap: 3rem; padding: 2.5rem 0; } }
+.sv-item-num {
+  font-family: var(--font-display); font-size: 1.125rem; font-weight: 600;
+  color: var(--color-brand-accent); opacity: 0.7;
+  flex-shrink: 0; line-height: 1.6; min-width: 2rem;
+}
+.sv-item-content { flex: 1; min-width: 0; }
+.sv-item-title {
+  font-family: var(--font-display); font-size: clamp(1.375rem, 2.5vw, 1.75rem);
+  font-weight: 700; letter-spacing: -0.02em;
+  color: var(--color-brand-white); margin: 0 0 0.5rem;
+}
+.sv-item-lede {
+  font-family: var(--font-body); font-size: 0.9375rem; font-weight: 500;
+  color: var(--color-brand-accent); opacity: 0.9; margin: 0 0 0.875rem;
+}
+.sv-item-body {
+  font-family: var(--font-body); font-size: 0.9375rem;
+  color: var(--color-brand-light); line-height: 1.8; opacity: 0.8;
+  margin: 0; max-width: 62ch;
+}
+
+/* ── Why / standard (two columns) ────────────────────── */
+.sv-why-sect {
+  padding: 4rem 0;
+  border-top: 1px solid rgba(42,42,42,0.5);
+}
+@media (min-width: 768px) { .sv-why-sect { padding: 5.5rem 0; } }
+.sv-why-grid { display: grid; grid-template-columns: 1fr; gap: 3rem; }
+@media (min-width: 900px) {
+  .sv-why-grid { grid-template-columns: 1fr auto 1fr; gap: 3.5rem; align-items: start; }
+}
+.sv-why-col { min-width: 0; }
+.sv-why-divider { display: none; }
+@media (min-width: 900px) {
+  .sv-why-divider { display: block; width: 1px; align-self: stretch; background: rgba(42,42,42,0.6); }
+}
+
+/* ── Process (manifesto rows) ────────────────────────── */
+.sv-process-sect {
+  padding: 4rem 0;
+  border-top: 1px solid rgba(42,42,42,0.5);
+}
+@media (min-width: 768px) { .sv-process-sect { padding: 5.5rem 0; } }
+.sv-process-row {
+  display: grid; grid-template-columns: 1fr; gap: 0.625rem;
+  padding: 1.75rem 0;
+  border-top: 1px solid rgba(42,42,42,0.4);
+}
+.sv-process-row--first { border-top: none; padding-top: 0; }
+@media (min-width: 768px) {
+  .sv-process-row { grid-template-columns: 200px 1fr; gap: 2.5rem; padding: 2rem 0; }
+}
+.sv-process-label {
+  font-family: var(--font-display); font-size: 1.125rem; font-weight: 700;
+  letter-spacing: -0.015em; color: var(--color-brand-white); margin: 0;
+}
+.sv-process-desc {
+  font-family: var(--font-body); font-size: 0.9375rem;
+  color: var(--color-brand-light); line-height: 1.8; opacity: 0.8;
+  margin: 0; max-width: 62ch;
+}
+
+/* ── CTA ─────────────────────────────────────────────── */
+.sv-cta-sect {
+  padding: 4.5rem 0 6rem;
+  border-top: 1px solid rgba(42,42,42,0.5);
+}
+@media (min-width: 768px) { .sv-cta-sect { padding: 6rem 0 7.5rem; } }
+.sv-cta-inner { max-width: 640px; }
+.sv-cta-title {
+  font-family: var(--font-display); font-size: clamp(1.875rem, 4vw, 2.75rem);
+  font-weight: 700; letter-spacing: -0.025em; line-height: 1.15;
+  color: var(--color-brand-white); margin: 0 0 1.25rem;
+}
+.sv-cta-desc {
+  font-family: var(--font-body); font-size: 1rem;
+  color: var(--color-brand-light); line-height: 1.8; opacity: 0.85; margin: 0 0 2rem;
+}
+.sv-cta-row { display: flex; flex-wrap: wrap; gap: 0.875rem; }
+.sv-btn-primary,
+.sv-btn-ghost {
+  display: inline-flex; align-items: center; justify-content: center;
+  font-family: var(--font-body); font-size: 0.875rem; font-weight: 600;
+  letter-spacing: 0.02em; padding: 0.875rem 1.75rem; border-radius: 2px;
+  text-decoration: none; transition: opacity 0.2s ease, background-color 0.2s ease;
+}
+.sv-btn-primary {
+  background: var(--color-brand-accent); color: var(--color-brand-black);
+  border: 1px solid var(--color-brand-accent);
+}
+.sv-btn-primary:hover { opacity: 0.88; }
+.sv-btn-ghost {
+  background: transparent; color: var(--color-brand-light);
+  border: 1px solid var(--color-brand-border);
+}
+.sv-btn-ghost:hover { border-color: var(--color-brand-muted); color: var(--color-brand-white); }
