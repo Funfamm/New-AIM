@@ -50,7 +50,10 @@ const securityHeaders = [
       // Tailwind uses inline styles. Fonts are self-hosted via next/font, so no
       // external Google Fonts origins are required.
       "style-src 'self' 'unsafe-inline'",
-      "font-src 'self'",
+      // data: is required by /process.html, a self-contained static page whose webfonts
+      // are embedded as base64 data: URIs. Without it the CSP silently blocks the fonts
+      // and the page renders in a fallback system font. Still no remote font origins.
+      "font-src 'self' data:",
       // Images from R2 CDN + data URIs + blob for video thumbnails
       "img-src 'self' data: blob: https:",
       // HLS video segments from R2 CDN
@@ -95,6 +98,13 @@ const nextConfig: NextConfig = {
   //
   // Safe because no real route is exactly two lowercase letters — the shortest
   // are /works, /about, /admin. Keep it that way, or this rule would swallow it.
+  // Serve the self-contained production-breakdown page at a clean /process URL.
+  // It's raw static HTML in public/, so a rewrite is used rather than a route —
+  // this guarantees the exact path resolves instead of relying on directory-index
+  // or clean-URL behaviour.
+  async rewrites() {
+    return [{ source: "/process", destination: "/process.html" }];
+  },
   async redirects() {
     return [
       // /xx/anything → /anything   (e.g. /ar/works/foo → /works/foo)
