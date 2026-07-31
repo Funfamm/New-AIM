@@ -44,6 +44,7 @@ function parseFormData(formData: FormData) {
     deliverables:(formData.get("deliverables") as string)|| null,
     caseStudy:   (formData.get("caseStudy") as string)   || null,
     galleryUrls,
+    processUrl:  ((formData.get("processUrl") as string) ?? "").trim() || null,
     requiresAuth:               formData.getAll("requiresAuth").includes("true"),
     requiresLoginToViewTrailer: formData.getAll("requiresLoginToViewTrailer").includes("true"),
     featured:         formData.getAll("featured").includes("true"),

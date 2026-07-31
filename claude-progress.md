@@ -26,6 +26,7 @@ Read this at the start of every session. Update it after every task.
 
 ### Video & Works
 - Works with type: FULL_FILM, SHORT_FILM, SERIES, EPISODE, TRAILER, COMMERCIAL, etc.
+- Per-work "How We Made It" link (`Work.processUrl`, nullable): admin sets internal path (e.g. /process) or external URL in Video Assets section; button renders on `/works/[slug]` CTA row + `/watch/[slug]` engagement row (all modes incl. trailer); episodes/TRAILER types inherit parent's via fallback; shared `components/how-we-made-it-button.tsx`
 - HLS video playback (`lib/use-hls-video.ts`, R2 paths, CDN)
 - Video player: skip intro, skip credits, playback speed, subtitles
 - Episode player: up-next countdown, episode sidebar, season grouping

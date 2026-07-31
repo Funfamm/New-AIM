@@ -20,6 +20,7 @@ import { isWorkSaved } from "@/lib/actions/watchlist";
 import { getWorkLikeState } from "@/lib/actions/likes";
 import { getOrCreateSession, trackEvent } from "@/lib/analytics";
 import SeriesTrailerPlayer from "@/components/series-trailer-player";
+import HowWeMadeItButton from "@/components/how-we-made-it-button";
 import { getWorkCtaState } from "@/lib/work-cta";
 import { getResumeEpisodeSlug } from "@/lib/actions/progress";
 import JsonLd from "@/components/json-ld";
@@ -55,7 +56,7 @@ const getWork = unstable_cache(
         id: true, slug: true, title: true, type: true, status: true, commentsEnabled: true,
         createdAt: true, // uploadDate for JSON-LD video schema
         description: true, posterUrl: true, thumbnailUrl: true, heroMobileUrl: true, heroDesktopUrl: true,
-        trailerUrl: true, videoUrl: true, previewClipUrl: true,
+        trailerUrl: true, videoUrl: true, previewClipUrl: true, processUrl: true,
         year: true, duration: true, genre: true, genres: true, director: true,
         requiresAuth: true, requiresLoginToViewTrailer: true,
         cast: {
@@ -353,6 +354,11 @@ export default async function WorkDetailPage({ params }: Props) {
                     </>
                   );
                 })()}
+
+                {/* Production breakdown — independent of watch/trailer CTA state */}
+                {work.processUrl && (
+                  <HowWeMadeItButton processUrl={work.processUrl} />
+                )}
               </div>
 
               {/* Engagement row — Save (members) + Like + Share + Cast preview */}
