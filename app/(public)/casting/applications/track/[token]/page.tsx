@@ -8,7 +8,13 @@ import "../../../casting.css";
 
 type Props = { params: Promise<{ token: string }> };
 
-export const metadata: Metadata = { title: "Application Status — AIM Studio" };
+// PRIVACY: this page shows an individual applicant's status (Shortlisted, Not Selected,
+// Contacted…) at a secret-token URL. It must never be indexed — a token leaked via a
+// shared link or referrer header could otherwise surface someone's application in search.
+export const metadata: Metadata = {
+  title: "Application Status — AIM Studio",
+  robots: { index: false, follow: false, nocache: true },
+};
 
 const STATUS_LABELS: Record<string, string> = {
   SUBMITTED:              "Received",

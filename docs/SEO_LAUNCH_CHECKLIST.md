@@ -21,18 +21,24 @@ studio / streaming site** (not a local service business).
 
 ---
 
-## 🔑 Needs your accounts (paste codes → done)
+## 🔑 Search engine setup
 
-Set these in **Vercel → Settings → Environment Variables → Production**, then redeploy.
-The tags render only when the var exists, so nothing breaks before then.
+**Google — already verified.** The property is `sc-domain:impactaistudio.com`, a **Domain
+property verified by DNS TXT**, which is the strongest method (covers www + non-www + all
+subdomains). The `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` env var is therefore **not needed**
+— the plumbing exists but can stay unset.
 
-| Var | Where to get it |
-|---|---|
-| `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` | [Search Console](https://search.google.com/search-console) → Add property → **HTML tag** method → copy the `content="…"` value |
-| `NEXT_PUBLIC_BING_SITE_VERIFICATION` | [Bing Webmaster Tools](https://www.bing.com/webmasters) → Add site → **Meta tag** → copy the `content="…"` value. (Bing also feeds ChatGPT search — worth doing.) |
+**Bing — not set up.** Set `NEXT_PUBLIC_BING_SITE_VERIFICATION` in **Vercel → Settings →
+Environment Variables → Production** ([Bing Webmaster Tools](https://www.bing.com/webmasters)
+→ Add site → **Meta tag** → copy the `content="…"` value), then redeploy. Bing also feeds
+ChatGPT search, so it's worth the five minutes.
 
-After verifying, in **Search Console**: submit `https://impactaistudio.com/sitemap.xml`,
-then use **URL Inspection → Request indexing** on the homepage, `/works`, and your top films.
+### ⬅️ Do this first: submit the sitemap
+As of the last check, **Search Console → Sitemaps showed "0 of 0" — the sitemap has never
+been submitted.** Google found ~123 URLs by crawling but was never given the authoritative
+list. Fix: **Sitemaps → enter `sitemap.xml` → Submit.** Single highest-value action.
+
+Then use **URL Inspection → Request indexing** on the homepage, `/works`, and your top films.
 Indexing takes days to weeks — that's normal, not a bug.
 
 ---
