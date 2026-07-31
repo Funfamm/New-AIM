@@ -100,6 +100,18 @@ A `work.count()` pool timeout (**still printing "connection limit: 5"**) crashed
 
 `tsc` + lint clean.
 
+## SEO foundation: structured data + canonicals + verification plumbing — 2026-07-30
+
+Worked through a standard post-launch SEO checklist, adapted for a film/streaming site. Audit of the LIVE site found: titles/descriptions/OG ✅, sitemap ✅, robots ✅, per-film canonicals ✅ — but **zero JSON-LD structured data**, no site-wide canonical, and a wrong `metadataBase` fallback (`aimstudio.app`, though prod env overrides it correctly).
+
+- **New `lib/seo/structured-data.ts` + `components/json-ld.tsx`** — schema.org builders. `organizationSchema()` (studio identity/knowledge panel) + `websiteSchema()` (with SearchAction → sitelinks search box) in the root layout; `workSchema()` on `/works/[slug]` mapping **FULL_FILM/SHORT_FILM → `Movie`, SERIES → `TVSeries`, COMMERCIAL/BRANDING/CAMPAIGN/CASE_STUDY/TRAILER → `VideoObject`**. This is the biggest SEO lever for a film site (video rich results) and was entirely missing. Omits empty fields; `duration` → ISO-8601 `PT##M`; added `createdAt` to the work select for `uploadDate`.
+- **`app/layout.tsx`** — site-wide self-referencing `alternates.canonical` (kills `?utm_…`/www duplicate dilution; child pages still override), corrected `metadataBase` fallback, and **env-driven `verification`** for `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` + `NEXT_PUBLIC_BING_SITE_VERIFICATION` (tags render only when the vars exist → user pastes codes, no code change).
+- **`docs/SEO_LAUNCH_CHECKLIST.md`** — durable reference: what's done, what needs their accounts, and two flagged blockers.
+
+**Flagged, deliberately NOT done:** (1) GA4/GTM/Clarity would be **silently blocked by the CSP** (`script-src`/`connect-src`, Clarity also `img-src`) — the CSP edit must ship with the tag; (2) they're third-party trackers (Clarity records **session replays**) vs the current first-party hashed-IP analytics → GDPR consent banner needed for EU visitors. Recommended skipping GTM (container overhead for 1–2 tags). **Rejected as inapplicable:** "separate page per location" — local-business tactic; thin duplicate content for a global streaming site.
+
+Verified: JSON-LD output validated across Movie/TVSeries/VideoObject incl. sparse data (no undefined/null leakage); tsc + lint clean.
+
 ## Error monitor: severity tier for non-critical client errors — 2026-07-29
 
 Every client error that survived the ignore filter was stored as `ERROR` — so a transient "Load failed" (a viewer's flaky fetch; media verified 100% healthy) looked identical to a real crash and fired the same email/webhook/bell. The monitor already has a full **three-value `ErrorLevel` (WARN/ERROR/FATAL)**: `WARN` is already styled (gold badge, filter tab, item class) AND already excluded from alerting (`alertable = ERROR||FATAL` in capture-error.ts) — it was simply never assigned by any capture path. So this is a tiny wiring change, no schema/UI/alerting change.

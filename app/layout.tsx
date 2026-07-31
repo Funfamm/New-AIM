@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Cormorant_Garamond, Manrope } from "next/font/google";
 import AnalyticsBeacon from "@/components/analytics-beacon";
 import ClientErrorReporter from "@/components/client-error-reporter";
+import JsonLd from "@/components/json-ld";
+import { organizationSchema, websiteSchema } from "@/lib/seo/structured-data";
 import "./globals.css";
 
 const cormorant = Cormorant_Garamond({
@@ -32,8 +34,23 @@ export const metadata: Metadata = {
   description:
     "A cinematic streaming platform for original AI-powered films, series, shorts, and stories that refuse to look away.",
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_APP_URL ?? "https://aimstudio.app"
+    process.env.NEXT_PUBLIC_APP_URL ?? "https://impactaistudio.com"
   ),
+  // Self-referencing canonical: tells Google which URL is authoritative when the same page
+  // is reachable via www/non-www, trailing slash, or tracking params (?utm_…, ?fbclid=…).
+  // Child pages that set their own `alternates.canonical` override this.
+  alternates: { canonical: "/" },
+  // Search-engine ownership verification. Paste the codes from Google Search Console and
+  // Bing Webmaster Tools into these env vars — no code change needed, and the tags simply
+  // don't render until the vars exist.
+  verification: {
+    ...(process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
+      ? { google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION }
+      : {}),
+    ...(process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION
+      ? { other: { "msvalidate.01": process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION } }
+      : {}),
+  },
   openGraph: {
     type: "website",
     siteName: "AIM Studio",
@@ -72,6 +89,9 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body>
+        {/* Site-wide structured data — studio identity + sitelinks search box */}
+        <JsonLd data={organizationSchema()} />
+        <JsonLd data={websiteSchema()} />
         {children}
         <AnalyticsBeacon />
         <ClientErrorReporter />
