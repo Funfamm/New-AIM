@@ -210,6 +210,9 @@ export default function Nav({
             </>
           ) : (
             <>
+              <Link href="/services" className="nav-sb-link" onClick={() => setOpen(false)}>
+                Services
+              </Link>
               <Link href="/about" className="nav-sb-link" onClick={() => setOpen(false)}>
                 About
               </Link>

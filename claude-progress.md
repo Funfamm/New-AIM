@@ -100,6 +100,18 @@ A `work.count()` pool timeout (**still printing "connection limit: 5"**) crashed
 
 `tsc` + lint clean.
 
+## Services page — client-work landing page + Service schema — 2026-07-31
+
+Gap found while working the SEO checklist: the WorkType enum has COMMERCIAL, BRANDING, CAMPAIGN, CASE_STUDY (they DO offer client services) but there was **no /services page** — a brand searching for AI video production had nowhere to land, and no page targeted those terms.
+
+- **New `app/(public)/services/`** (page.tsx + services.css) — hero, four service lines (Commercials / Brand Identity Films / Campaigns / Case Study Films), a why-it-works + standard section, a 3-step process, and a CTA to /contact. Voice and editorial rhythm mirror the About page (shared eyebrow/h2/body scale, brand tokens only, mobile-first, no inline styles).
+- **`servicesSchema()`** in lib/seo/structured-data.ts — `Service` + `OfferCatalog` of the four lines, so Google understands the site is not only a streaming catalogue.
+- Added `/services` to the sitemap (priority 0.8) and a **Services** link to the nav sidebar (internal linking = discoverability).
+
+**Deliberate design call: ONE page, not four.** Their published works are all films/series with no commercial/branding portfolio yet, so four per-service pages would be thin content — the exact pattern just removed from the sitemap (episodes/trailers). Split into /services/[slug] once each line has real work to show.
+
+tsc + lint clean.
+
 ## Indexing hygiene: noindex non-content pages + tighten sitemap — 2026-07-30
 
 Driven by real Search Console data: **99 not indexed vs 24 indexed** (123 discovered URLs vs only 15 in the sitemap). Breakdown: 404 ×37, crawled-not-indexed ×56, redirect ×3, duplicate-no-canonical ×2, noindex ×1. Verified live that `/login`, `/register`, `/forgot-password`, `/reset-password`, `/watch/*`, `/casting`, `/works/*/cast` were **all fully indexable** (robots.txt only blocked `/admin`, `/dashboard`, `/api`).
