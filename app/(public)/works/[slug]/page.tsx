@@ -22,6 +22,8 @@ import { getOrCreateSession, trackEvent } from "@/lib/analytics";
 import SeriesTrailerPlayer from "@/components/series-trailer-player";
 import { getWorkCtaState } from "@/lib/work-cta";
 import { getResumeEpisodeSlug } from "@/lib/actions/progress";
+import JsonLd from "@/components/json-ld";
+import { workSchema } from "@/lib/seo/structured-data";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -51,6 +53,7 @@ const getWork = unstable_cache(
       where: { slug },
       select: {
         id: true, slug: true, title: true, type: true, status: true, commentsEnabled: true,
+        createdAt: true, // uploadDate for JSON-LD video schema
         description: true, posterUrl: true, thumbnailUrl: true, heroMobileUrl: true, heroDesktopUrl: true,
         trailerUrl: true, videoUrl: true, previewClipUrl: true,
         year: true, duration: true, genre: true, genres: true, director: true,
@@ -180,6 +183,9 @@ export default async function WorkDetailPage({ params }: Props) {
 
   return (
     <main className="detail-page">
+
+      {/* Film/series structured data — drives video rich results in search */}
+      <JsonLd data={workSchema(work)} />
 
       {/* ── Mobile sticky 16:9 player (series only) ──────────────
           Hidden on desktop via CSS. Shows poster; plays trailer inline on tap.
