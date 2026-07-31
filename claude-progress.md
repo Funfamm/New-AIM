@@ -104,8 +104,8 @@ A `work.count()` pool timeout (**still printing "connection limit: 5"**) crashed
 
 Search Console reported **37 "Not found (404)"** URLs. Pulled the list: they are all **locale-prefixed routes from the previous platform** — /ar/about, /zh, /de/about, /ar, /fr, /ru, /ar/works/year-of-completeness, /de/contact, /pt/about … The site no longer has i18n, so Google kept re-crawling dead translated routes. Not a bug in the current site.
 
-- ** ** — permanent (308) redirects:  →  and  → . Old inbound links/bookmarks now land on real content instead of an error, accumulated ranking signal transfers to the live pages, and the 404 report clears on re-crawl.
-- **Safety verified**: no real route is exactly two lowercase letters (shortest are /api, /works, /about, /admin) — audited every route directory before shipping. Documented the constraint in-file so a future 2-letter route isn'''t silently swallowed.
+- **`next.config.ts` → `redirects()`** — permanent (308): `/:locale([a-z]{2})/:path+` → `/:path+` (e.g. `/ar/works/foo` → `/works/foo`) and `/:locale([a-z]{2})` → `/` (bare locale home). Old inbound links/bookmarks now land on real content instead of an error, accumulated ranking signal transfers to the live pages, and the 404 report clears on re-crawl.
+- **Safety verified**: no real route is exactly two lowercase letters (shortest are `/api`, `/works`, `/about`, `/admin`) — audited every route directory before shipping. Documented the constraint in-file so a future 2-letter route isn't silently swallowed.
 
 Chose 301/permanent over leaving 404s (or serving 410) because these old URLs may still hold inbound links; redirecting preserves that value and gives a working page to anyone who clicks an old link.
 
