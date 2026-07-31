@@ -57,7 +57,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: `Watch: ${work.title}`,
     description: work.description ?? undefined,
-    alternates: { canonical: `${appUrl}/watch/${slug}` },
+    // The PLAYER page is not the content page — /works/[slug] is. Many /watch URLs also
+    // redirect (auth-gated, or SERIES → episode 1), which is why Google reported these as
+    // "crawled – currently not indexed" / "page with redirect". Point the canonical at the
+    // work detail page and noindex the player so the two stop competing.
+    alternates: { canonical: `${appUrl}/works/${slug}` },
+    robots: { index: false, follow: true },
     openGraph: {
       title: work.title,
       description: work.description ?? undefined,

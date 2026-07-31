@@ -10,7 +10,12 @@ import { withDbRetry } from "@/lib/db-retry";
 const getSitemapWorks = unstable_cache(
   async () => {
     return prisma.work.findMany({
-      where: { status: "PUBLISHED" },
+      // Only submit primary content. EPISODE and TRAILER pages duplicate their parent
+      // series/film (a trailer page competes with the film it advertises), which is
+      // exactly the thin-content pattern that lands in "crawled – currently not indexed"
+      // and dilutes the pages that should rank. They stay fully reachable and watchable —
+      // just not submitted to search as standalone content.
+      where: { status: "PUBLISHED", type: { notIn: ["EPISODE", "TRAILER"] } },
       select: { slug: true, updatedAt: true },
       orderBy: { updatedAt: "desc" },
     });

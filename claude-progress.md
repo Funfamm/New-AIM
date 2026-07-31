@@ -100,6 +100,19 @@ A `work.count()` pool timeout (**still printing "connection limit: 5"**) crashed
 
 `tsc` + lint clean.
 
+## Indexing hygiene: noindex non-content pages + tighten sitemap — 2026-07-30
+
+Driven by real Search Console data: **99 not indexed vs 24 indexed** (123 discovered URLs vs only 15 in the sitemap). Breakdown: 404 ×37, crawled-not-indexed ×56, redirect ×3, duplicate-no-canonical ×2, noindex ×1. Verified live that `/login`, `/register`, `/forgot-password`, `/reset-password`, `/watch/*`, `/casting`, `/works/*/cast` were **all fully indexable** (robots.txt only blocked `/admin`, `/dashboard`, `/api`).
+
+- **`app/(auth)/layout.tsx`** — `robots: { index: false, follow: true }` on the layout, covering all 5 auth pages at once. Auth screens have no content value and shouldn't appear in SERPs.
+- **`app/(public)/casting/applications/track/[token]/page.tsx`** — **PRIVACY**: this page renders an applicant's private status (Shortlisted / Not Selected / Contacted) at a secret-token URL and was indexable. Added `index: false, follow: false, nocache: true` — a token leaked via a shared link or referrer could otherwise surface someone's application in search.
+- **`app/(public)/watch/[slug]/page.tsx`** — noindex + **canonical repointed to `/works/[slug]`**. The player page isn't the content page, and many `/watch` URLs redirect (auth-gated, or SERIES→ep1) — precisely the reported "page with redirect" / "crawled – not indexed" buckets. Stops player and detail pages competing.
+- **`app/sitemap.ts`** — excludes `EPISODE` + `TRAILER` types (`type: { notIn: [...] }`). 4 of 15 sitemap URLs were a trailer competing with its own film and 3 episodes competing with their series — classic thin-content dilution. Still fully watchable, just not submitted as standalone content.
+
+**User action outstanding (biggest single win):** GSC → Sitemaps showed **"0 of 0" — the sitemap was never submitted.** Google discovered ~123 URLs by crawling without ever receiving the authoritative 15-URL list. Also corrected in docs: Google is already verified via a **DNS domain property**, so `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` is unnecessary (Bing's still applies). Remaining unknown: the 37 404s — needs the URL list from the GSC report to diagnose.
+
+`tsc` + lint clean.
+
 ## SEO foundation: structured data + canonicals + verification plumbing — 2026-07-30
 
 Worked through a standard post-launch SEO checklist, adapted for a film/streaming site. Audit of the LIVE site found: titles/descriptions/OG ✅, sitemap ✅, robots ✅, per-film canonicals ✅ — but **zero JSON-LD structured data**, no site-wide canonical, and a wrong `metadataBase` fallback (`aimstudio.app`, though prod env overrides it correctly).
