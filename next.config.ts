@@ -85,6 +85,32 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  // ── Legacy locale-prefix redirects ────────────────────────────────────
+  // The previous platform served translated routes under a 2-letter locale
+  // prefix (/ar/about, /de/contact, /fr, /zh, /ru/…). That i18n no longer
+  // exists, so Google kept re-crawling them into 404s (37 of them in Search
+  // Console). Permanently redirect to the equivalent current page instead:
+  // old inbound links and bookmarks land on real content, accumulated ranking
+  // signal transfers, and the 404 report clears.
+  //
+  // Safe because no real route is exactly two lowercase letters — the shortest
+  // are /works, /about, /admin. Keep it that way, or this rule would swallow it.
+  async redirects() {
+    return [
+      // /xx/anything → /anything   (e.g. /ar/works/foo → /works/foo)
+      {
+        source: "/:locale([a-z]{2})/:path+",
+        destination: "/:path+",
+        permanent: true,
+      },
+      // /xx → /                    (bare locale home, e.g. /zh)
+      {
+        source: "/:locale([a-z]{2})",
+        destination: "/",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;
