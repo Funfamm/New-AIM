@@ -450,10 +450,15 @@ export default async function WatchPage({ params, searchParams }: Props) {
                 />
               </div>
 
-              {/* Production breakdown — accent link, own line under the engagement row */}
+              {/* Production breakdown — accent link, own line under the engagement row.
+                  Clicks attribute to the parent for episodes, same as ShareButton. */}
               {processUrl && (
                 <div className="watch-hwmi-row">
-                  <HowWeMadeItButton processUrl={processUrl} className="watch-hwmi" />
+                  <HowWeMadeItButton
+                    processUrl={processUrl}
+                    workId={isEpisode && work.parent ? work.parent.id : work.id}
+                    className="watch-hwmi"
+                  />
                 </div>
               )}
 

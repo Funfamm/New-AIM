@@ -38,7 +38,7 @@ export default async function AdminEngagementPage({ searchParams }: Props) {
     ];
   }
 
-  const [likes, totalLikes, totalComments, totalSaves, topWorks] = await Promise.all([
+  const [likes, totalLikes, totalComments, totalSaves, topWorks, processClicks, guideDownloads, processByWork] = await Promise.all([
     prisma.workLike.findMany({
       where: likeWhere,
       orderBy: { createdAt: "desc" },
@@ -66,7 +66,27 @@ export default async function AdminEngagementPage({ searchParams }: Props) {
         _count: { select: { likes: true } },
       },
     }),
+    prisma.analyticsEvent.count({ where: { type: "PROCESS_CLICK" } }),
+    prisma.analyticsEvent.count({ where: { type: "GUIDE_DOWNLOAD" } }),
+    prisma.analyticsEvent.groupBy({
+      by: ["workId"],
+      where: { type: "PROCESS_CLICK", workId: { not: null } },
+      _count: { _all: true },
+      orderBy: { _count: { workId: "desc" } },
+      take: 8,
+    }),
   ]);
+
+  // Titles for the per-work "How We Made It" click ranking
+  const processWorkIds = processByWork.map((r) => r.workId).filter((id): id is string => !!id);
+  const processWorks = processWorkIds.length > 0
+    ? await prisma.work.findMany({
+        where: { id: { in: processWorkIds } },
+        select: { id: true, slug: true, title: true, type: true },
+        take: 8,
+      })
+    : [];
+  const processWorkById = new Map(processWorks.map((w) => [w.id, w]));
 
   const hasMore = likes.length > PAGE;
   if (hasMore) likes.pop();
@@ -80,7 +100,7 @@ export default async function AdminEngagementPage({ searchParams }: Props) {
       <div className="admin-page-header">
         <div>
           <h1 className="admin-page-title">Engagement</h1>
-          <p className="eng-subtitle">Likes, saves, and comments across all works.</p>
+          <p className="eng-subtitle">Likes, saves, comments, and production-guide interest across all works.</p>
         </div>
       </div>
 
@@ -102,6 +122,14 @@ export default async function AdminEngagementPage({ searchParams }: Props) {
           <span className="admin-stat-value">{topWorks.length}</span>
           <span className="admin-stat-label">Works w/ Likes</span>
         </div>
+        <div className="admin-stat-card admin-stat-card--gold">
+          <span className="admin-stat-value">{processClicks.toLocaleString()}</span>
+          <span className="admin-stat-label">How We Made It Clicks</span>
+        </div>
+        <div className="admin-stat-card admin-stat-card--blue">
+          <span className="admin-stat-value">{guideDownloads.toLocaleString()}</span>
+          <span className="admin-stat-label">Guide Downloads</span>
+        </div>
       </div>
 
       {/* Top works */}
@@ -120,6 +148,29 @@ export default async function AdminEngagementPage({ searchParams }: Props) {
               <span className="eng-top-count">♥ {w._count.likes}</span>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* How We Made It clicks by work */}
+      {processByWork.length > 0 && (
+        <div className="admin-table-wrap eng-top-wrap">
+          <div className="eng-top-header">
+            <span className="eng-top-title">How We Made It — Clicks by Work</span>
+          </div>
+          {processByWork.map((r, i) => {
+            const w = r.workId ? processWorkById.get(r.workId) : undefined;
+            if (!w) return null;
+            return (
+              <div key={r.workId} className="eng-top-row">
+                <span className="eng-top-rank">{i + 1}</span>
+                <Link href={`/works/${w.slug}`} className="eng-top-link" target="_blank" rel="noopener">
+                  {w.title}
+                </Link>
+                <span className="eng-top-type">{WORK_TYPE_LABELS[w.type] ?? w.type}</span>
+                <span className="eng-top-count">🎬 {r._count._all}</span>
+              </div>
+            );
+          })}
         </div>
       )}
 

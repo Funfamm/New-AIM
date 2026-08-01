@@ -30,6 +30,7 @@ const VALID_TYPES = new Set<string>([
   "PAGE_LEAVE",                                        // page dwell duration
   "LIKE_WORK", "UNLIKE_WORK",                         // likes
   "SHARE_WORK",                                        // share
+  "PROCESS_CLICK", "GUIDE_DOWNLOAD",                  // production-breakdown funnel
 ]);
 
 export async function POST(request: NextRequest) {

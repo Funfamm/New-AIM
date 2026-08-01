@@ -100,6 +100,8 @@ enum AnalyticsEventType {
   LIKE_WORK
   UNLIKE_WORK
   SHARE_WORK
+  PROCESS_CLICK  // "How We Made It" button click (workId = the work)
+  GUIDE_DOWNLOAD // production-guide PDF download on /process
 }
 
 enum CtaType {
