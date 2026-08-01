@@ -48,6 +48,12 @@ export async function POST(request: NextRequest) {
     // Validate event type against the allowlist
     if (!type || !VALID_TYPES.has(String(type))) return new NextResponse(null, { status: 204 });
 
+    // Admin pages are never tracked — drop server-side too (stale cached clients,
+    // crafted payloads) so admin browsing can't inflate public view counts.
+    if (typeof path === "string" && path.startsWith("/admin")) {
+      return new NextResponse(null, { status: 204 });
+    }
+
     // visitorId is read server-side from the HttpOnly cookie — never trusted from the payload
     const visitorId = request.cookies.get("aim-vid")?.value;
     if (!visitorId) return new NextResponse(null, { status: 204 });
