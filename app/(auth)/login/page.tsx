@@ -1,7 +1,9 @@
 import { loginUser, signInWithGoogle } from "@/lib/actions/auth";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { PasswordInput } from "../password-input";
+import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
+import { PasswordInput } from "@/components/password-input";
 import "./login.css";
 
 export const metadata: Metadata = { title: "Sign In — AIM Studio" };
@@ -20,8 +22,13 @@ function GoogleIcon() {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string; error?: string }>;
+  searchParams: Promise<{ from?: string; error?: string; success?: string }>;
 }) {
+  // Node.js runtime — full DB check via jwt() callback.
+  // Purged/suspended users return null here; stale cookie is cleared by Auth.js.
+  const session = await auth();
+  if (session?.user) redirect("/");
+
   const params = await searchParams;
   return (
     <main className="auth-page">
@@ -32,6 +39,9 @@ export default async function LoginPage({
           <p className="auth-sub">Sign in to continue.</p>
         </div>
 
+        {params?.success && (
+          <div className="auth-success">{params.success}</div>
+        )}
         {params?.error && (
           <div className="auth-error">{params.error}</div>
         )}

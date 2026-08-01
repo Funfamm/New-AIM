@@ -126,38 +126,51 @@ export async function updateUserPreferences(formData: FormData) {
   revalidatePath("/dashboard/settings");
 }
 
+export type PrefSaveState = { ok: boolean; error?: string } | null;
+
 /** Save notification preferences only. */
-export async function updateNotificationPreferences(formData: FormData) {
-  const userId = await requireUser();
-  const data = {
-    inAppNotifications:         bool(formData, "inAppNotifications"),
-    emailNotifications:         bool(formData, "emailNotifications"),
-    newReleaseNotifications:    bool(formData, "newReleaseNotifications"),
-    newEpisodeNotifications:    bool(formData, "newEpisodeNotifications"),
-    announcementNotifications:  bool(formData, "announcementNotifications"),
-    studioUpdates:              bool(formData, "studioUpdates"),
-    notifyMeFollowupEmails:     bool(formData, "notifyMeFollowupEmails"),
-    savedWorkNotifications:     bool(formData, "savedWorkNotifications"),
-    watchReminderNotifications: bool(formData, "watchReminderNotifications"),
-    // securityEmails: always true — not editable
-  };
+export async function updateNotificationPreferences(
+  _prev: PrefSaveState,
+  formData: FormData,
+): Promise<PrefSaveState> {
   try {
+    const userId = await requireUser();
+    const data = {
+      inAppNotifications:         bool(formData, "inAppNotifications"),
+      emailNotifications:         bool(formData, "emailNotifications"),
+      newReleaseNotifications:    bool(formData, "newReleaseNotifications"),
+      newEpisodeNotifications:    bool(formData, "newEpisodeNotifications"),
+      announcementNotifications:  bool(formData, "announcementNotifications"),
+      studioUpdates:              bool(formData, "studioUpdates"),
+      notifyMeFollowupEmails:     bool(formData, "notifyMeFollowupEmails"),
+      savedWorkNotifications:     bool(formData, "savedWorkNotifications"),
+      watchReminderNotifications: bool(formData, "watchReminderNotifications"),
+      // securityEmails: always true — not editable
+    };
     await prisma.userPreferences.upsert({ where: { userId }, create: { userId, ...data }, update: data });
-  } catch { /* columns not in DB yet */ }
-  revalidatePath("/dashboard/settings");
+    revalidatePath("/dashboard/settings");
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Failed to save preferences. Please try again." };
+  }
 }
 
 /** Save playback preferences only. */
-export async function updatePlaybackPreferences(formData: FormData) {
-  const userId = await requireUser();
-  const data = {
-    autoplayNextEpisode: bool(formData, "autoplayNextEpisode"),
-    resumePlayback:      bool(formData, "resumePlayback"),
-    reducedMotion:       bool(formData, "reducedMotion"),
-  };
+export async function updatePlaybackPreferences(
+  _prev: PrefSaveState,
+  formData: FormData,
+): Promise<PrefSaveState> {
   try {
+    const userId = await requireUser();
+    const data = {
+      autoplayNextEpisode: bool(formData, "autoplayNextEpisode"),
+      resumePlayback:      bool(formData, "resumePlayback"),
+      reducedMotion:       bool(formData, "reducedMotion"),
+    };
     await prisma.userPreferences.upsert({ where: { userId }, create: { userId, ...data }, update: data });
-  } catch { /* columns not in DB yet */ }
-  // revalidatePath only — no redirect so the page stays in place (no black screen)
-  revalidatePath("/dashboard/settings");
+    revalidatePath("/dashboard/settings");
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Failed to save preferences. Please try again." };
+  }
 }

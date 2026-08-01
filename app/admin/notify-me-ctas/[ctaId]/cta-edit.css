@@ -193,6 +193,12 @@
   padding: 0.75rem 1rem; margin: 0;
   border-top: 1px solid var(--color-brand-border);
 }
+.cta-table-more-link {
+  color: var(--color-brand-accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+.cta-table-more-link:hover { text-decoration: underline; }
 
 /* ── Work selector (shown when "+ New CTA" clicked without workId) ── */
 .cta-work-selector {

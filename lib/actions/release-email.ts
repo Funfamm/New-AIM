@@ -59,7 +59,11 @@ export async function sendNewReleaseEmail(
 
   const work = await prisma.work.findUnique({
     where:  { id: workId },
-    select: { id: true, slug: true, title: true, type: true, status: true, description: true, genres: true },
+    select: {
+      id: true, slug: true, title: true, type: true, status: true,
+      description: true, genres: true,
+      posterUrl: true, trailerUrl: true, previewClipUrl: true, videoUrl: true,
+    },
   });
   if (!work)                    return { queued: 0, suppressed: 0, skipped: 0, error: "Work not found." };
   if (work.status !== "PUBLISHED") return { queued: 0, suppressed: 0, skipped: 0, error: "Only published works can trigger release emails." };
@@ -109,6 +113,10 @@ export async function sendNewReleaseEmail(
       workType:       work.type,
       genres:         work.genres,
       description:    work.description,
+      imageUrl:       work.posterUrl,
+      hasTrailer:     !!work.trailerUrl,
+      hasPreview:     !!work.previewClipUrl,
+      hasVideo:       !!work.videoUrl,
     }),
   });
 

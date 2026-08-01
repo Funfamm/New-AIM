@@ -1,15 +1,13 @@
 import { auth } from "@/lib/auth";
-import {
-  getUserPreferences,
-  updateNotificationPreferences,
-  updatePlaybackPreferences,
-} from "@/lib/actions/preferences";
-import { updateUserProfile, getUserProfile } from "@/lib/actions/user";
+import { getUserPreferences } from "@/lib/actions/preferences";
+import { updateUserProfile, getUserProfile, getUserPasswordState } from "@/lib/actions/user";
 import { logoutUser } from "@/lib/actions/auth";
 import Link from "next/link";
 import { ChevronLeft, ChevronDown, LogOut } from "lucide-react";
 import NavWrapper from "@/components/nav-wrapper";
 import Footer from "@/components/footer";
+import PasswordSection from "./password-section";
+import { NotifPrefsForm, PlaybackPrefsForm, SettingsSubmitBtn } from "./settings-forms";
 import type { Metadata } from "next";
 import "./settings.css";
 
@@ -20,15 +18,15 @@ type Props = {
 };
 
 export default async function SettingsPage({ searchParams }: Props) {
-  // Fetch session (auth check), live DB profile, and preferences in parallel
-  const [, profile, prefs, params] = await Promise.all([
+  const [, profile, prefs, { hasPassword }, params] = await Promise.all([
     auth(),
-    getUserProfile(),      // always reads from DB — never the stale JWT session
+    getUserProfile(),
     getUserPreferences(),
+    getUserPasswordState(),
     searchParams,
   ]);
 
-  const savedSection = params.saved;   // "profile" → shows Saved chip on Profile section
+  const savedSection = params.saved;
   const errorMsg = params.error;
 
   return (
@@ -80,12 +78,7 @@ export default async function SettingsPage({ searchParams }: Props) {
                     <span className="settings-field-readonly">{profile.email ?? "—"}</span>
                   </div>
                   <div className="settings-form-footer">
-                    <button type="submit" className="settings-save-btn">
-                      Save Profile
-                    </button>
-                    <Link href="/forgot-password" className="settings-text-link">
-                      Change password
-                    </Link>
+                    <SettingsSubmitBtn label="Save Profile" />
                   </div>
                 </form>
               </div>
@@ -98,94 +91,17 @@ export default async function SettingsPage({ searchParams }: Props) {
                 <ChevronDown size={16} className="settings-accordion-chevron" aria-hidden="true" />
               </summary>
               <div className="settings-accordion-body">
-                <form action={updateNotificationPreferences}>
-                  <label className="settings-toggle-row">
-                    <div>
-                      <p className="settings-toggle-label">In-app notifications</p>
-                      <p className="settings-toggle-desc">Show notifications inside your dashboard</p>
-                    </div>
-                    <input type="checkbox" name="inAppNotifications"
-                      defaultChecked={prefs.inAppNotifications} className="settings-checkbox" />
-                  </label>
-                  <label className="settings-toggle-row">
-                    <div>
-                      <p className="settings-toggle-label">Email notifications</p>
-                      <p className="settings-toggle-desc">Receive notifications by email</p>
-                    </div>
-                    <input type="checkbox" name="emailNotifications"
-                      defaultChecked={prefs.emailNotifications} className="settings-checkbox" />
-                  </label>
-                  <div className="settings-divider" />
-                  <label className="settings-toggle-row">
-                    <div>
-                      <p className="settings-toggle-label">New releases</p>
-                      <p className="settings-toggle-desc">When a new film or series drops</p>
-                    </div>
-                    <input type="checkbox" name="newReleaseNotifications"
-                      defaultChecked={prefs.newReleaseNotifications} className="settings-checkbox" />
-                  </label>
-                  <label className="settings-toggle-row">
-                    <div>
-                      <p className="settings-toggle-label">New episodes</p>
-                      <p className="settings-toggle-desc">When a new episode is added to a series</p>
-                    </div>
-                    <input type="checkbox" name="newEpisodeNotifications"
-                      defaultChecked={prefs.newEpisodeNotifications} className="settings-checkbox" />
-                  </label>
-                  <label className="settings-toggle-row">
-                    <div>
-                      <p className="settings-toggle-label">Announcements</p>
-                      <p className="settings-toggle-desc">Studio news and major updates</p>
-                    </div>
-                    <input type="checkbox" name="announcementNotifications"
-                      defaultChecked={prefs.announcementNotifications} className="settings-checkbox" />
-                  </label>
-                  <label className="settings-toggle-row">
-                    <div>
-                      <p className="settings-toggle-label">Studio updates</p>
-                      <p className="settings-toggle-desc">Behind-the-scenes and production updates</p>
-                    </div>
-                    <input type="checkbox" name="studioUpdates"
-                      defaultChecked={prefs.studioUpdates} className="settings-checkbox" />
-                  </label>
-                  <div className="settings-divider" />
-                  <label className="settings-toggle-row">
-                    <div>
-                      <p className="settings-toggle-label">Notify Me follow-up emails</p>
-                      <p className="settings-toggle-desc">Email when a work you signed up for is released</p>
-                    </div>
-                    <input type="checkbox" name="notifyMeFollowupEmails"
-                      defaultChecked={prefs.notifyMeFollowupEmails} className="settings-checkbox" />
-                  </label>
-                  <label className="settings-toggle-row">
-                    <div>
-                      <p className="settings-toggle-label">Saved work updates</p>
-                      <p className="settings-toggle-desc">Notify me when a saved series gets new content</p>
-                    </div>
-                    <input type="checkbox" name="savedWorkNotifications"
-                      defaultChecked={prefs.savedWorkNotifications} className="settings-checkbox" />
-                  </label>
-                  <label className="settings-toggle-row">
-                    <div>
-                      <p className="settings-toggle-label">Watch reminders</p>
-                      <p className="settings-toggle-desc">Occasional prompts to resume something you started</p>
-                    </div>
-                    <input type="checkbox" name="watchReminderNotifications"
-                      defaultChecked={prefs.watchReminderNotifications} className="settings-checkbox" />
-                  </label>
-                  <div className="settings-toggle-row settings-toggle-row--plain">
-                    <div>
-                      <p className="settings-toggle-label">Security emails</p>
-                      <p className="settings-toggle-desc">
-                        Login alerts, password resets, and account security — always on
-                      </p>
-                    </div>
-                    <span className="settings-field-readonly" style={{ fontSize: "0.78rem" }}>Always on</span>
-                  </div>
-                  <div className="settings-form-footer">
-                    <button type="submit" className="settings-save-btn">Save</button>
-                  </div>
-                </form>
+                <NotifPrefsForm
+                  inAppNotifications={prefs.inAppNotifications}
+                  emailNotifications={prefs.emailNotifications}
+                  newReleaseNotifications={prefs.newReleaseNotifications}
+                  newEpisodeNotifications={prefs.newEpisodeNotifications}
+                  announcementNotifications={prefs.announcementNotifications}
+                  studioUpdates={prefs.studioUpdates}
+                  notifyMeFollowupEmails={prefs.notifyMeFollowupEmails}
+                  savedWorkNotifications={prefs.savedWorkNotifications}
+                  watchReminderNotifications={prefs.watchReminderNotifications}
+                />
               </div>
             </details>
 
@@ -196,35 +112,11 @@ export default async function SettingsPage({ searchParams }: Props) {
                 <ChevronDown size={16} className="settings-accordion-chevron" aria-hidden="true" />
               </summary>
               <div className="settings-accordion-body">
-                <form action={updatePlaybackPreferences}>
-                  <label className="settings-toggle-row">
-                    <div>
-                      <p className="settings-toggle-label">Autoplay next episode</p>
-                      <p className="settings-toggle-desc">Automatically play the next episode when one ends</p>
-                    </div>
-                    <input type="checkbox" name="autoplayNextEpisode"
-                      defaultChecked={prefs.autoplayNextEpisode} className="settings-checkbox" />
-                  </label>
-                  <label className="settings-toggle-row">
-                    <div>
-                      <p className="settings-toggle-label">Resume playback</p>
-                      <p className="settings-toggle-desc">Continue from where you left off</p>
-                    </div>
-                    <input type="checkbox" name="resumePlayback"
-                      defaultChecked={prefs.resumePlayback} className="settings-checkbox" />
-                  </label>
-                  <label className="settings-toggle-row">
-                    <div>
-                      <p className="settings-toggle-label">Reduce motion</p>
-                      <p className="settings-toggle-desc">Minimize animations across the site</p>
-                    </div>
-                    <input type="checkbox" name="reducedMotion"
-                      defaultChecked={prefs.reducedMotion} className="settings-checkbox" />
-                  </label>
-                  <div className="settings-form-footer">
-                    <button type="submit" className="settings-save-btn">Save</button>
-                  </div>
-                </form>
+                <PlaybackPrefsForm
+                  autoplayNextEpisode={prefs.autoplayNextEpisode}
+                  resumePlayback={prefs.resumePlayback}
+                  reducedMotion={prefs.reducedMotion}
+                />
               </div>
             </details>
 
@@ -235,13 +127,7 @@ export default async function SettingsPage({ searchParams }: Props) {
                 <ChevronDown size={16} className="settings-accordion-chevron" aria-hidden="true" />
               </summary>
               <div className="settings-accordion-body">
-                <div className="settings-toggle-row settings-toggle-row--plain">
-                  <div>
-                    <p className="settings-toggle-label">Password</p>
-                    <p className="settings-toggle-desc">Reset via email link</p>
-                  </div>
-                  <Link href="/forgot-password" className="settings-text-link">Change</Link>
-                </div>
+                <PasswordSection hasPassword={hasPassword} />
                 <div className="settings-toggle-row settings-toggle-row--plain settings-toggle-row--last">
                   <div>
                     <p className="settings-toggle-label">Sign out</p>

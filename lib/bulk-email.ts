@@ -20,17 +20,15 @@
 
 import { prisma } from "@/lib/prisma";
 import { buildUnsubscribeUrl, buildPreferencesUrl } from "@/lib/unsubscribe";
+import { generateTrackingToken, injectTrackingPixel, wrapLinksWithTracking } from "@/lib/email-tracking";
 import type { EmailType, EmailProvider, Prisma } from "@prisma/client";
-
-// ── Release stage ─────────────────────────────────────────────
-// Describes the availability state of a work at time of email send.
-// coming_soon  — no trailer, no video (in production / announced only)
-// trailer_out  — trailer URL present but no full video yet
-// now_streaming — full video available
-export type ReleaseStage = "coming_soon" | "trailer_out" | "now_streaming";
 
 const APP_URL   = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 const FROM_NAME = "AIM Studio";
+
+// Kept for backward compatibility — callers in outreach.ts and compose-form.tsx import this type.
+// The new release builder uses hasTrailer/hasPreview/hasVideo flags instead.
+export type ReleaseStage = "coming_soon" | "trailer_out" | "now_streaming";
 
 // ── Provider configuration checks ────────────────────────────
 
@@ -95,76 +93,106 @@ export async function checkSelectedBulkProvider(): Promise<{
   return { ok: true, provider };
 }
 
-// ── Base email template (dark cinematic — matches lib/email.ts) ──
-// Includes unsubscribe footer on every bulk email.
-
-function bulkBaseTemplate(opts: {
-  title:          string;
-  bodyHtml:       string;
-  recipientEmail: string;
-  preheader?:     string;
-}): string {
-  const unsubUrl   = buildUnsubscribeUrl(opts.recipientEmail);
-  const prefsUrl   = buildPreferencesUrl();
-
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>${opts.title}</title>
-</head>
-<body style="margin:0;padding:0;background:#0a0a0a;font-family:system-ui,sans-serif;">
-  ${opts.preheader ? `<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">${opts.preheader}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;</div>` : ""}
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0a;padding:40px 16px;">
-    <tr><td align="center">
-      <table width="100%" style="max-width:480px;background:#111111;border:1px solid #2a2a2a;border-radius:12px;padding:40px 32px;">
-        <tr><td>
-          <!-- Logo -->
-          <p style="margin:0 0 24px;font-size:22px;font-weight:700;color:#f9fafb;letter-spacing:-0.3px;">
-            AIM<span style="color:#e8c97e;">Studio</span>
-          </p>
-          <!-- Title -->
-          <h1 style="margin:0 0 16px;font-size:20px;font-weight:600;color:#f9fafb;line-height:1.3;">
-            ${opts.title}
-          </h1>
-          <!-- Body -->
-          ${opts.bodyHtml}
-          <!-- Divider -->
-          <hr style="margin:28px 0;border:none;border-top:1px solid #2a2a2a;">
-          <!-- Footer -->
-          <p style="margin:0 0 8px;font-size:11px;color:#6b7280;line-height:1.6;">
-            You are receiving this email because you have an account on AIM Studio.
-          </p>
-          <p style="margin:0;font-size:11px;color:#6b7280;line-height:1.6;">
-            <a href="${prefsUrl}" style="color:#6b7280;">Manage preferences</a>
-            &nbsp;&middot;&nbsp;
-            <a href="${unsubUrl}" style="color:#6b7280;">Unsubscribe</a>
-          </p>
-        </td></tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`;
-}
-
 // ── Shared helpers ────────────────────────────────────────────
 
 function htmlEsc(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-/**
- * Renders a safe, email-client-compatible image block.
- * Only called with http/https URLs (validated at action layer).
- * Falls back gracefully if image fails to load (display:block keeps layout intact).
- */
-function safeImageBlock(imageUrl: string | null | undefined, altText: string): string {
-  if (!imageUrl) return "";
-  return `<img src="${imageUrl}" alt="${htmlEsc(altText)}" width="440"
-    style="width:100%;max-width:440px;height:auto;border-radius:4px;
-           margin:0 0 20px;display:block;border:0;" />`;
+function goldBtn(label: string, href: string): string {
+  return `<a href="${href}"
+     style="display:inline-block;background:#e8c97e;color:#0a0a0a;font-size:13px;font-weight:700;
+            letter-spacing:0.04em;text-decoration:none;padding:12px 28px;border-radius:3px;">
+    ${label}
+  </a>`;
+}
+
+function ghostBtn(label: string, href: string): string {
+  return `<a href="${href}"
+     style="display:inline-block;color:#e5e7eb;font-size:13px;font-weight:500;
+            text-decoration:none;padding:12px 20px;border:1px solid #3a3a3a;border-radius:3px;">
+    ${label}
+  </a>`;
+}
+
+// ── Premium bulk email wrapper ────────────────────────────────
+// 600px dark card with gold header border and unsubscribe footer.
+// Images are passed as a dedicated option and rendered full-bleed
+// between the header and content area.
+
+function bulkBaseTemplate(opts: {
+  title:          string;
+  bodyHtml:       string;
+  recipientEmail: string;
+  preheader?:     string;
+  imageUrl?:      string | null;
+  label?:         string;         // e.g. "New Release", "Coming Soon" — gold caps above title
+}): string {
+  const unsubUrl = buildUnsubscribeUrl(opts.recipientEmail);
+  const prefsUrl = buildPreferencesUrl();
+
+  const preheaderDiv = opts.preheader
+    ? `<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">${opts.preheader}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;</div>`
+    : "";
+
+  const imageRow = opts.imageUrl
+    ? `<tr><td style="padding:0;font-size:0;line-height:0;">
+         <img src="${htmlEsc(opts.imageUrl)}" alt="${htmlEsc(opts.title)}" width="598"
+              style="width:100%;max-width:598px;height:auto;display:block;border:0;" />
+       </td></tr>`
+    : "";
+
+  const labelRow = opts.label
+    ? `<p style="margin:0 0 6px;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#e8c97e;">${htmlEsc(opts.label)}</p>`
+    : "";
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>${htmlEsc(opts.title)}</title>
+</head>
+<body style="margin:0;padding:0;background:#0a0a0a;font-family:system-ui,sans-serif;">
+  ${preheaderDiv}
+  <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:#0a0a0a;">
+    <tr><td align="center" style="padding:40px 16px;">
+      <table width="100%" cellpadding="0" cellspacing="0" role="presentation"
+             style="max-width:600px;background:#111111;border:1px solid #2a2a2a;border-radius:8px;">
+
+        <!-- ── Header ─────────────────────────────────────── -->
+        <tr><td style="padding:22px 32px;border-bottom:2px solid #e8c97e;">
+          <p style="margin:0;font-size:18px;font-weight:700;color:#f9fafb;letter-spacing:-0.4px;">
+            AIM<span style="color:#e8c97e;">Studio</span>
+          </p>
+        </td></tr>
+
+        ${imageRow}
+
+        <!-- ── Content ────────────────────────────────────── -->
+        <tr><td style="padding:32px 32px 28px;">
+          ${labelRow}
+          <h1 style="margin:0 0 16px;font-size:22px;font-weight:600;color:#f9fafb;line-height:1.3;">${htmlEsc(opts.title)}</h1>
+          ${opts.bodyHtml}
+        </td></tr>
+
+        <!-- ── Footer ─────────────────────────────────────── -->
+        <tr><td style="padding:18px 32px;background:#0a0a0a;border-top:1px solid #1a1a1a;border-radius:0 0 8px 8px;">
+          <p style="margin:0 0 5px;font-size:11px;color:#4b5563;line-height:1.6;letter-spacing:0.03em;">
+            AIM Studio &nbsp;&middot;&nbsp; Don&rsquo;t look away.
+          </p>
+          <p style="margin:0;font-size:11px;color:#374151;line-height:1.6;">
+            <a href="${prefsUrl}" style="color:#4b5563;text-decoration:underline;">Manage preferences</a>
+            &nbsp;&middot;&nbsp;
+            <a href="${unsubUrl}" style="color:#4b5563;text-decoration:underline;">Unsubscribe</a>
+          </p>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
 }
 
 // ── Email template builders ───────────────────────────────────
@@ -174,99 +202,87 @@ export function buildNewReleaseEmail(opts: {
   workTitle:      string;
   workSlug:       string;
   workType:       string;
-  releaseStage?:  ReleaseStage;
   genres?:        string[];
   description?:   string | null;
   imageUrl?:      string | null;
+  // Media presence flags — determines CTA label and link
+  hasTrailer?:    boolean;        // trailerUrl is set on the work
+  hasPreview?:    boolean;        // previewClipUrl is set on the work
+  hasVideo?:      boolean;        // videoUrl is set on the work (full film/series)
+  // Legacy — kept for backward compatibility, ignored when has* flags are provided
+  releaseStage?:  "coming_soon" | "trailer_out" | "now_streaming";
 }): { subject: string; html: string } {
-  const stage      = opts.releaseStage ?? "now_streaming";
-  const watchHref  = opts.workType === "SERIES"
-    ? `${APP_URL}/watch/${opts.workSlug}`
-    : `${APP_URL}/watch/${opts.workSlug}?full=1`;
+  const watchHref  = `${APP_URL}/watch/${opts.workSlug}`;
   const detailHref = `${APP_URL}/works/${opts.workSlug}`;
-  const typeLabel  = opts.workType === "SERIES" ? "New Series" : "New Release";
+  const isSeries   = opts.workType === "SERIES";
+  const typeLabel  = isSeries ? "New Series" : "New Release";
   const genreText  = opts.genres?.slice(0, 3).join(" · ") ?? "";
   const descText   = opts.description
-    ? opts.description.slice(0, 200) + (opts.description.length > 200 ? "…" : "")
+    ? opts.description.slice(0, 220) + (opts.description.length > 220 ? "…" : "")
     : null;
 
-  let subject:   string;
-  let leadText:  string;
-  let ctaBlock:  string;
-  let preheader: string;
+  // ── CTA priority: trailer > preview > full video > details ──
+  let ctaLabel:    string;
+  let ctaPrimary:  string;
+  let showSecondary = true;
 
-  if (stage === "coming_soon") {
-    subject   = `Coming Soon: ${opts.workTitle}`;
-    leadText  = descText ?? `${opts.workTitle} is coming to AIM Studio. Stay tuned.`;
-    preheader = `Coming soon to AIM Studio — ${opts.workTitle}`;
-    ctaBlock  = `
-      <a href="${detailHref}"
-         style="display:inline-block;background:#e8c97e;color:#0a0a0a;font-size:13px;font-weight:700;
-                letter-spacing:0.04em;text-decoration:none;padding:11px 24px;border-radius:3px;">
-        View Details
-      </a>`;
-  } else if (stage === "trailer_out") {
-    subject   = `Watch the Trailer: ${opts.workTitle}`;
-    leadText  = descText ?? `The first trailer for ${opts.workTitle} is here.`;
-    preheader = `The trailer for ${opts.workTitle} is here`;
-    ctaBlock  = `
-      <table cellpadding="0" cellspacing="0" style="margin:0 0 16px;">
-        <tr>
-          <td style="padding-right:8px;">
-            <a href="${detailHref}"
-               style="display:inline-block;background:#e8c97e;color:#0a0a0a;font-size:13px;font-weight:700;
-                      letter-spacing:0.04em;text-decoration:none;padding:11px 24px;border-radius:3px;">
-              Watch Trailer
-            </a>
-          </td>
-          <td>
-            <a href="${detailHref}"
-               style="display:inline-block;color:#e5e7eb;font-size:13px;font-weight:500;
-                      text-decoration:none;padding:11px 20px;border:1px solid #3a3a3a;border-radius:3px;">
-              View Details
-            </a>
-          </td>
-        </tr>
-      </table>`;
+  if (opts.hasTrailer) {
+    ctaLabel   = "Watch Trailer";
+    ctaPrimary = watchHref;
+  } else if (opts.hasPreview) {
+    ctaLabel   = "Watch Preview";
+    ctaPrimary = watchHref;
+  } else if (opts.hasVideo) {
+    ctaLabel   = isSeries ? "Watch Series" : "Watch Full Film";
+    ctaPrimary = watchHref;
   } else {
-    // now_streaming
-    subject   = `${typeLabel}: ${opts.workTitle}`;
-    leadText  = descText ?? `${opts.workTitle} is now available to watch on AIM Studio.`;
-    preheader = `${typeLabel} on AIM Studio — ${opts.workTitle}`;
-    ctaBlock  = `
-      <table cellpadding="0" cellspacing="0" style="margin:0 0 16px;">
-        <tr>
-          <td style="padding-right:8px;">
-            <a href="${watchHref}"
-               style="display:inline-block;background:#e8c97e;color:#0a0a0a;font-size:13px;font-weight:700;
-                      letter-spacing:0.04em;text-decoration:none;padding:11px 24px;border-radius:3px;">
-              ${opts.workType === "SERIES" ? "Watch Series" : "Watch Now"}
-            </a>
-          </td>
-          <td>
-            <a href="${detailHref}"
-               style="display:inline-block;color:#e5e7eb;font-size:13px;font-weight:500;
-                      text-decoration:none;padding:11px 20px;border:1px solid #3a3a3a;border-radius:3px;">
-              View Details
-            </a>
-          </td>
-        </tr>
-      </table>`;
+    // Fallback: check legacy releaseStage, then default to View Details
+    const stage = opts.releaseStage ?? "coming_soon";
+    if (stage === "trailer_out") {
+      ctaLabel   = "Watch Trailer";
+      ctaPrimary = watchHref;
+    } else if (stage === "now_streaming") {
+      ctaLabel   = isSeries ? "Watch Series" : "Watch Now";
+      ctaPrimary = watchHref;
+    } else {
+      ctaLabel      = "View Details";
+      ctaPrimary    = detailHref;
+      showSecondary = false;
+    }
   }
 
-  const body = `
-    ${safeImageBlock(opts.imageUrl, opts.workTitle)}
-    ${genreText ? `<p style="margin:0 0 8px;font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#e8c97e;">${genreText}</p>` : ""}
-    <p style="margin:0 0 16px;font-size:14px;color:#6b7280;line-height:1.6;">${leadText}</p>
-    ${ctaBlock}`;
+  const subject   = ctaLabel === "View Details"
+    ? `Coming Soon: ${opts.workTitle}`
+    : ctaLabel === "Watch Trailer"
+      ? `Watch the Trailer: ${opts.workTitle}`
+      : `${typeLabel}: ${opts.workTitle}`;
+
+  const preheader = ctaLabel === "View Details"
+    ? `Coming soon to AIM Studio — ${opts.workTitle}`
+    : `${typeLabel} on AIM Studio — ${opts.workTitle}`;
+
+  const ctaRow = `
+    <table cellpadding="0" cellspacing="0" role="presentation" style="margin:20px 0 0;">
+      <tr>
+        <td style="padding-right:10px;">${goldBtn(ctaLabel, ctaPrimary)}</td>
+        ${showSecondary ? `<td>${ghostBtn("View Details", detailHref)}</td>` : ""}
+      </tr>
+    </table>`;
+
+  const bodyHtml = `
+    ${genreText ? `<p style="margin:0 0 12px;font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#6b7280;">${htmlEsc(genreText)}</p>` : ""}
+    <p style="margin:0 0 8px;font-size:14px;color:#9ca3af;line-height:1.7;">${descText ? htmlEsc(descText) : `${htmlEsc(opts.workTitle)} is now available on AIM Studio.`}</p>
+    ${ctaRow}`;
 
   return {
     subject,
     html: bulkBaseTemplate({
       title:          opts.workTitle,
-      bodyHtml:       body,
+      bodyHtml,
       recipientEmail: opts.recipientEmail,
       preheader,
+      imageUrl:       opts.imageUrl,
+      label:          ctaLabel === "View Details" ? "Coming Soon" : typeLabel,
     }),
   };
 }
@@ -280,34 +296,32 @@ export function buildNewEpisodeEmail(opts: {
   seasonNumber?:  number | null;
   imageUrl?:      string | null;
 }): { subject: string; html: string } {
-  const watchHref  = `${APP_URL}/watch/${opts.seriesSlug}`;
-  const epLabel    = opts.seasonNumber && opts.episodeNumber
+  const watchHref = `${APP_URL}/watch/${opts.seriesSlug}`;
+  const epLabel   = opts.seasonNumber && opts.episodeNumber
     ? `S${opts.seasonNumber}E${opts.episodeNumber}`
     : opts.episodeNumber
       ? `Episode ${opts.episodeNumber}`
       : "New Episode";
 
-  const body = `
-    ${safeImageBlock(opts.imageUrl, opts.episodeTitle)}
-    <p style="margin:0 0 8px;font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#e8c97e;">
-      ${opts.seriesTitle}
+  const bodyHtml = `
+    <p style="margin:0 0 6px;font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#6b7280;">${htmlEsc(opts.seriesTitle)}</p>
+    <p style="margin:0 0 8px;font-size:13px;color:#9ca3af;line-height:1.7;">
+      ${htmlEsc(epLabel)} &mdash; <em style="color:#e5e7eb;">${htmlEsc(opts.episodeTitle)}</em>
     </p>
-    <p style="margin:0 0 20px;font-size:14px;color:#6b7280;line-height:1.6;">
-      ${epLabel} — <em style="color:#e5e7eb;">${opts.episodeTitle}</em> — is now available.
+    <p style="margin:0 0 20px;font-size:14px;color:#9ca3af;line-height:1.7;">
+      A new episode of <strong style="color:#e5e7eb;">${htmlEsc(opts.seriesTitle)}</strong> is now available.
     </p>
-    <a href="${watchHref}"
-       style="display:inline-block;background:#e8c97e;color:#0a0a0a;font-size:13px;font-weight:700;
-              letter-spacing:0.04em;text-decoration:none;padding:11px 24px;border-radius:3px;">
-      Watch Now
-    </a>`;
+    <div>${goldBtn("Watch Now", watchHref)}</div>`;
 
   return {
     subject: `New episode: ${opts.seriesTitle} — ${epLabel}`,
     html:    bulkBaseTemplate({
       title:          `${opts.episodeTitle}`,
-      bodyHtml:       body,
+      bodyHtml,
       recipientEmail: opts.recipientEmail,
       preheader:      `${epLabel} of ${opts.seriesTitle} is now streaming`,
+      imageUrl:       opts.imageUrl,
+      label:          "New Episode",
     }),
   };
 }
@@ -325,30 +339,15 @@ export function buildSeasonDropEmail(opts: {
   const seasonLabel = `Season ${opts.seasonNumber}`;
   const epText      = `${opts.episodeCount} episode${opts.episodeCount === 1 ? "" : "s"}`;
 
-  const body = `
-    ${safeImageBlock(opts.imageUrl, opts.seriesTitle)}
-    <p style="margin:0 0 8px;font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#e8c97e;">
-      ${htmlEsc(opts.seriesTitle)}
+  const bodyHtml = `
+    <p style="margin:0 0 6px;font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#6b7280;">${htmlEsc(opts.seriesTitle)}</p>
+    <p style="margin:0 0 20px;font-size:14px;color:#9ca3af;line-height:1.7;">
+      ${htmlEsc(seasonLabel)} is now streaming &mdash; ${htmlEsc(epText)} available.
     </p>
-    <p style="margin:0 0 20px;font-size:14px;color:#6b7280;line-height:1.6;">
-      ${htmlEsc(seasonLabel)} is now streaming — ${epText} available.
-    </p>
-    <table cellpadding="0" cellspacing="0" style="margin:0 0 16px;">
+    <table cellpadding="0" cellspacing="0" role="presentation">
       <tr>
-        <td style="padding-right:8px;">
-          <a href="${watchHref}"
-             style="display:inline-block;background:#e8c97e;color:#0a0a0a;font-size:13px;font-weight:700;
-                    letter-spacing:0.04em;text-decoration:none;padding:11px 24px;border-radius:3px;">
-            Watch ${htmlEsc(seasonLabel)}
-          </a>
-        </td>
-        <td>
-          <a href="${detailHref}"
-             style="display:inline-block;color:#e5e7eb;font-size:13px;font-weight:500;
-                    text-decoration:none;padding:11px 20px;border:1px solid #3a3a3a;border-radius:3px;">
-            View Details
-          </a>
-        </td>
+        <td style="padding-right:10px;">${goldBtn(`Watch ${seasonLabel}`, watchHref)}</td>
+        <td>${ghostBtn("View Details", detailHref)}</td>
       </tr>
     </table>`;
 
@@ -356,9 +355,11 @@ export function buildSeasonDropEmail(opts: {
     subject: `${opts.seriesTitle} — ${seasonLabel} is now streaming`,
     html:    bulkBaseTemplate({
       title:          `${opts.seriesTitle} — ${seasonLabel}`,
-      bodyHtml:       body,
+      bodyHtml,
       recipientEmail: opts.recipientEmail,
       preheader:      `${seasonLabel} of ${opts.seriesTitle} — ${epText} now streaming`,
+      imageUrl:       opts.imageUrl,
+      label:          "Now Streaming",
     }),
   };
 }
@@ -372,16 +373,11 @@ export function buildAnnouncementEmail(opts: {
   imageUrl?:      string | null;
 }): { subject: string; html: string } {
   const ctaHtml = opts.href
-    ? `<a href="${opts.href}"
-           style="display:inline-block;background:#e8c97e;color:#0a0a0a;font-size:13px;font-weight:700;
-                  letter-spacing:0.04em;text-decoration:none;padding:11px 24px;border-radius:3px;margin-top:20px;">
-          ${opts.hrefLabel ?? "Learn More"}
-        </a>`
+    ? `<div style="margin:20px 0 0;">${goldBtn(opts.hrefLabel ?? "Learn More", opts.href)}</div>`
     : "";
 
   const bodyHtml = `
-    ${safeImageBlock(opts.imageUrl, opts.title)}
-    <p style="margin:0 0 20px;font-size:14px;color:#6b7280;line-height:1.6;">${opts.body}</p>
+    <p style="margin:0 0 20px;font-size:14px;color:#9ca3af;line-height:1.7;">${opts.body}</p>
     ${ctaHtml}`;
 
   return {
@@ -391,6 +387,8 @@ export function buildAnnouncementEmail(opts: {
       bodyHtml,
       recipientEmail: opts.recipientEmail,
       preheader:      opts.title,
+      imageUrl:       opts.imageUrl,
+      label:          "From the Studio",
     }),
   };
 }
@@ -401,34 +399,44 @@ export function buildNotifyMeFollowupEmail(opts: {
   workTitle:      string;
   workSlug:       string;
   workType:       string;
+  imageUrl?:      string | null;
+  hasTrailer?:    boolean;
+  hasPreview?:    boolean;
+  hasVideo?:      boolean;
 }): { subject: string; html: string } {
-  const watchHref  = opts.workType === "SERIES"
-    ? `${APP_URL}/watch/${opts.workSlug}`
-    : `${APP_URL}/watch/${opts.workSlug}?full=1`;
+  const watchHref  = `${APP_URL}/watch/${opts.workSlug}`;
   const detailHref = `${APP_URL}/works/${opts.workSlug}`;
-  const greeting   = opts.recipientName ? `Hi ${opts.recipientName},` : "It's here.";
+  const greeting   = opts.recipientName ? `Hi ${htmlEsc(opts.recipientName)},` : "It&rsquo;s here.";
+
+  // CTA priority same as new release
+  let ctaLabel: string;
+  let ctaHref:  string;
+  let showSecondary = true;
+
+  if (opts.hasTrailer) {
+    ctaLabel = "Watch Trailer";
+    ctaHref  = watchHref;
+  } else if (opts.hasPreview) {
+    ctaLabel = "Watch Preview";
+    ctaHref  = watchHref;
+  } else if (opts.hasVideo) {
+    ctaLabel      = opts.workType === "SERIES" ? "Watch Series" : "Watch Now";
+    ctaHref       = watchHref;
+  } else {
+    ctaLabel      = "View Details";
+    ctaHref       = detailHref;
+    showSecondary = false;
+  }
 
   const bodyHtml = `
-    <p style="margin:0 0 16px;font-size:14px;color:#6b7280;line-height:1.6;">
-      ${greeting} You asked us to let you know when <strong style="color:#e5e7eb;">${opts.workTitle}</strong> was ready.
-      It&apos;s ready now.
+    <p style="margin:0 0 16px;font-size:14px;color:#9ca3af;line-height:1.7;">
+      ${greeting} You asked us to let you know when <strong style="color:#e5e7eb;">${htmlEsc(opts.workTitle)}</strong> was ready.
+      It&rsquo;s ready now.
     </p>
-    <table cellpadding="0" cellspacing="0" style="margin:0 0 16px;">
+    <table cellpadding="0" cellspacing="0" role="presentation">
       <tr>
-        <td style="padding-right:8px;">
-          <a href="${watchHref}"
-             style="display:inline-block;background:#e8c97e;color:#0a0a0a;font-size:13px;font-weight:700;
-                    letter-spacing:0.04em;text-decoration:none;padding:11px 24px;border-radius:3px;">
-            ${opts.workType === "SERIES" ? "Watch Series" : "Watch Now"}
-          </a>
-        </td>
-        <td>
-          <a href="${detailHref}"
-             style="display:inline-block;color:#e5e7eb;font-size:13px;font-weight:500;
-                    text-decoration:none;padding:11px 20px;border:1px solid #3a3a3a;border-radius:3px;">
-            View Details
-          </a>
-        </td>
+        <td style="padding-right:10px;">${goldBtn(ctaLabel, ctaHref)}</td>
+        ${showSecondary ? `<td>${ghostBtn("View Details", detailHref)}</td>` : ""}
       </tr>
     </table>`;
 
@@ -439,6 +447,8 @@ export function buildNotifyMeFollowupEmail(opts: {
       bodyHtml,
       recipientEmail: opts.recipientEmail,
       preheader:      `${opts.workTitle} is now available on AIM Studio`,
+      imageUrl:       opts.imageUrl,
+      label:          "You asked us to let you know.",
     }),
   };
 }
@@ -478,10 +488,11 @@ export async function enqueueBulkEmail(opts: {
 const ENQUEUE_BATCH = 50; // EmailQueue inserts per batch
 
 export async function enqueueBulkForRecipients(opts: {
-  recipients: { email: string; name?: string | null }[];
-  buildEmail: (recipient: { email: string; name?: string | null }) => { subject: string; html: string };
-  type:       EmailType;
-  campaignId: string;
+  recipients:  { email: string; name?: string | null }[];
+  buildEmail:  (recipient: { email: string; name?: string | null }) => { subject: string; html: string };
+  type:        EmailType;
+  campaignId:  string;
+  scheduledAt?: Date;
 }): Promise<{ queued: number; suppressed: number; skipped: number }> {
   let queued = 0;
   let suppressed = 0;
@@ -514,13 +525,14 @@ export async function enqueueBulkForRecipients(opts: {
     }
 
     rows.push({
-      to:         norm,
+      to:          norm,
       subject,
       bodyHtml,
-      type:       opts.type,
-      provider:   "ACS",
-      status:     "QUEUED",
-      campaignId: opts.campaignId,
+      type:        opts.type,
+      provider:    "ACS",
+      status:      "QUEUED",
+      campaignId:  opts.campaignId,
+      scheduledAt: opts.scheduledAt ?? new Date(),
     });
   }
 
@@ -601,11 +613,14 @@ export async function processEmailQueueBatch(limit = 50): Promise<ProcessResult>
   let failed = 0;
 
   for (const item of items) {
+    const trackingToken = generateTrackingToken();
+    const trackedHtml   = injectTrackingPixel(wrapLinksWithTracking(item.bodyHtml, trackingToken), trackingToken);
+
     try {
       if (providerKey === "acs") {
-        await sendViaAcs({ to: item.to, subject: item.subject, html: item.bodyHtml });
+        await sendViaAcs({ to: item.to, subject: item.subject, html: trackedHtml });
       } else if (providerKey === "graph") {
-        await sendViaBulkGraph({ to: item.to, subject: item.subject, html: item.bodyHtml });
+        await sendViaBulkGraph({ to: item.to, subject: item.subject, html: trackedHtml });
       } else {
         throw new Error("SMTP bulk sending requires additional server configuration. Switch to ACS or Graph.");
       }
@@ -617,7 +632,7 @@ export async function processEmailQueueBatch(limit = 50): Promise<ProcessResult>
 
       await logBulkSend({
         to: item.to, subject: item.subject, type: item.type,
-        status: "SENT", campaignId: item.campaignId, provider: logProvider,
+        status: "SENT", campaignId: item.campaignId, provider: logProvider, trackingToken,
       });
 
       sent++;
@@ -763,13 +778,14 @@ async function sendViaAcs(opts: {
 // ── Email log helper for bulk sends ──────────────────────────
 
 async function logBulkSend(opts: {
-  to:          string;
-  subject:     string;
-  type:        EmailType;
-  status:      "SENT" | "FAILED";
-  error?:      string;
-  campaignId?: string | null;
-  provider?:   EmailProvider;
+  to:            string;
+  subject:       string;
+  type:          EmailType;
+  status:        "SENT" | "FAILED";
+  error?:        string;
+  campaignId?:   string | null;
+  provider?:     EmailProvider;
+  trackingToken?: string;
 }): Promise<void> {
   try {
     const provider = opts.provider ?? "ACS";
@@ -779,15 +795,16 @@ async function logBulkSend(opts: {
 
     await prisma.emailLog.create({
       data: {
-        to:       opts.to,
+        to:            opts.to,
         from,
-        subject:  opts.subject,
-        type:     opts.type,
+        subject:       opts.subject,
+        type:          opts.type,
         provider,
-        status:   opts.status,
-        error:    opts.error ?? null,
-        metadata: opts.campaignId ? { campaignId: opts.campaignId } : undefined,
-        sentAt:   opts.status === "SENT" ? new Date() : null,
+        status:        opts.status,
+        error:         opts.error ?? null,
+        metadata:      opts.campaignId ? { campaignId: opts.campaignId } : undefined,
+        trackingToken: opts.trackingToken ?? null,
+        sentAt:        opts.status === "SENT" ? new Date() : null,
       },
     });
   } catch {

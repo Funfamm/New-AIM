@@ -9,6 +9,7 @@ import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
 import { writeAudit } from "@/lib/audit";
 import { writeSecurityEvent } from "@/lib/security";
+import { ensureWelcomeForUser } from "@/lib/onboarding/welcome";
 
 // ── Demote an admin to member (SUPER_ADMIN only) ─────────────
 export async function demoteAdmin(
@@ -70,7 +71,7 @@ export async function createPowerAdmin(
 
   if (!name)                     return { ok: false, error: "Full name is required." };
   if (!email || !email.includes("@")) return { ok: false, error: "A valid email is required." };
-  if (password.length < 6)       return { ok: false, error: "Password must be at least 6 characters." };
+  if (password.length < 8)       return { ok: false, error: "Password must be at least 8 characters." };
 
   const existing = await prisma.user.findUnique({ where: { email } });
 
@@ -137,6 +138,10 @@ export async function createPowerAdmin(
     metadata: { strategy: "create_new", role: "ADMIN" },
   });
 
+  // Welcome flow — fire-and-forget so the admin action returns immediately.
+  // ensureWelcomeForUser never throws; respects welcomeEmailEnabled setting.
+  void ensureWelcomeForUser(newUser.id).catch(() => {});
+
   revalidatePath("/admin/security");
   revalidatePath("/admin/users");
   return { ok: true, message: `Power Admin account created for ${email}.` };
@@ -181,7 +186,7 @@ export async function updateAdminPassword(
   const confirmPassword = (formData.get("confirmPassword") as string) ?? "";
 
   if (!currentPassword)        return { ok: false, error: "Current password is required." };
-  if (newPassword.length < 6)  return { ok: false, error: "New password must be at least 6 characters." };
+  if (newPassword.length < 8)  return { ok: false, error: "New password must be at least 8 characters." };
   if (newPassword !== confirmPassword) return { ok: false, error: "Passwords do not match." };
 
   const user = await prisma.user.findUnique({
@@ -195,6 +200,11 @@ export async function updateAdminPassword(
 
   const match = await bcrypt.compare(currentPassword, user.password);
   if (!match) return { ok: false, error: "Current password is incorrect." };
+
+  // Reject same-as-current password
+  if (currentPassword === newPassword) {
+    return { ok: false, error: "New password cannot be the same as your current password." };
+  }
 
   const newHash = await bcrypt.hash(newPassword, 12);
 

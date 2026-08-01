@@ -1,9 +1,9 @@
-﻿import Link from "next/link";
+import Link from "next/link";
 import type { Metadata } from "next";
 import "./about.css";
 
 export const metadata: Metadata = {
-  title: "About â€” AIM Studio",
+  title: "About — AIM Studio",
   description: "Cinema for the moments we can't take back. Why AIM Studio exists.",
 };
 
@@ -11,7 +11,7 @@ export default function AboutPage() {
   return (
     <main className="ab">
 
-      {/* â”€â”€ 1. Hero â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── 1. Hero ─────────────────────────────────────── */}
       <section className="ab-hero">
         <div className="container-app ab-hero-inner">
           <span className="ab-eyebrow">Who We Are</span>
@@ -26,7 +26,7 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* â”€â”€ 2. Manifesto Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── 2. Manifesto Card ──────────────────────────── */}
       <section className="ab-manifesto-sect">
         <div className="container-app">
           <div className="ab-manifesto-card">
@@ -49,12 +49,12 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* â”€â”€ 3. Vision â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── 3. Vision ──────────────────────────────────── */}
       <section className="ab-vision-sect">
         <div className="container-app">
           <div className="ab-vision-layout">
             <div className="ab-vision-left">
-              <span className="ab-eyebrow">â€” The Vision</span>
+              <span className="ab-eyebrow">&mdash; The Vision</span>
               <h2 className="ab-h2">
                 Cinema for the moments<br />
                 we can&apos;t take back.
@@ -76,10 +76,10 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* â”€â”€ 4. Three Pillars â€” numbered editorial list â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── 4. Three Pillars — numbered editorial list ── */}
       <section className="ab-pillars-sect">
         <div className="container-app">
-          <span className="ab-eyebrow">â€” Three Principles</span>
+          <span className="ab-eyebrow">&mdash; Three Principles</span>
           <ol className="ab-pillar-list">
             <li className="ab-pillar-item">
               <span className="ab-pillar-num" aria-hidden="true">01</span>
@@ -115,11 +115,11 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* â”€â”€ 5. Mission & Story â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── 5. Mission & Story ─────────────────────────── */}
       <section className="ab-mission-sect">
         <div className="container-app ab-mission-grid">
           <div className="ab-mission-col">
-            <span className="ab-eyebrow">â€” Our Mission</span>
+            <span className="ab-eyebrow">&mdash; Our Mission</span>
             <h2 className="ab-h2 ab-h2--sm">Why we exist.</h2>
             <p className="ab-body-p">
               Hollywood spends 100 million dollars to make one film.
@@ -132,7 +132,7 @@ export default function AboutPage() {
           </div>
           <div className="ab-mission-divider" aria-hidden="true" />
           <div className="ab-mission-col">
-            <span className="ab-eyebrow">â€” Our Story</span>
+            <span className="ab-eyebrow">&mdash; Our Story</span>
             <h2 className="ab-h2 ab-h2--sm">Where it started.</h2>
             <p className="ab-body-p">
               AIM Studio was built by a filmmaker tired of waiting for permission.
@@ -146,7 +146,7 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* â”€â”€ 6. Philosophy Quote â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── 6. Philosophy Quote ────────────────────────── */}
       <section className="ab-quote-sect">
         <div className="container-app ab-quote-wrap">
           <span className="ab-quote-deco" aria-hidden="true">&ldquo;</span>
@@ -155,14 +155,14 @@ export default function AboutPage() {
             The tools exist now. The audience exists now.
             The only question left is: what do we make?
           </blockquote>
-          <p className="ab-quote-attr">â€” Founder, AIM Studio</p>
+          <p className="ab-quote-attr">&mdash; Founder, AIM Studio</p>
         </div>
       </section>
 
-      {/* â”€â”€ 7. Journey Timeline â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── 7. Journey Timeline ────────────────────────── */}
       <section className="ab-journey-sect">
         <div className="container-app">
-          <span className="ab-eyebrow">â€” The Journey</span>
+          <span className="ab-eyebrow">&mdash; The Journey</span>
           <h2 className="ab-h2 ab-h2--sm">How we got here.</h2>
           <ol className="ab-timeline">
             <li className="ab-tl-item">
@@ -199,10 +199,10 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* â”€â”€ 8. Core Values â€” manifesto rows â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── 8. Core Values — manifesto rows ────────────── */}
       <section className="ab-values-sect">
         <div className="container-app">
-          <span className="ab-eyebrow">â€” What We Stand For</span>
+          <span className="ab-eyebrow">&mdash; What We Stand For</span>
           <div className="ab-values-list">
             <div className="ab-value-row ab-value-row--first">
               <h3 className="ab-value-label">Stories That Matter</h3>
@@ -232,10 +232,10 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* â”€â”€ 9. CTA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── 9. CTA ─────────────────────────────────────── */}
       <section className="ab-cta-sect">
         <div className="container-app ab-cta-inner">
-          <span className="ab-eyebrow">â€” Be Part of It</span>
+          <span className="ab-eyebrow">&mdash; Be Part of It</span>
           <h2 className="ab-cta-title">Be Part of<br className="ab-cta-br" /> Something Big</h2>
           <p className="ab-cta-desc">
             Watch for free. Share what moves you.<br className="ab-cta-br" />
@@ -253,4 +253,3 @@ export default function AboutPage() {
     </main>
   );
 }
-

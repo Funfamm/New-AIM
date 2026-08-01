@@ -1,5 +1,7 @@
 // Visitor Intelligence — premium live feed + breakdown charts
 import { prisma } from "@/lib/prisma";
+import { countryName } from "@/lib/country-names";
+import { withDbRetry } from "@/lib/db-retry";
 import type { Metadata } from "next";
 import ViFeed from "./vi-feed";
 
@@ -18,6 +20,13 @@ export default async function VisitorsPage() {
   const weekStart  = new Date(now.getTime() - 7 * 86400_000);
   const onlineCut  = new Date(now.getTime() - 2 * 60_000);  // 2 min = "online" (players beacon every 30s)
 
+  // Load in CONCURRENCY-CAPPED BATCHES (each retried on transient errors). A single
+  // render must never need more DB connections than the pool has: this page fanned out
+  // 13 parallel queries against connection_limit=10, so any concurrent traffic
+  // (analytics beacons, another admin) exhausted the pool and timed out one of them,
+  // crashing the whole render (React #419 + Server-Components digest error). Batching
+  // keeps peak in-flight ≤ 6, well under the pool, and isolates the heavy groupBy/
+  // findMany queries from the fast counts.
   const [
     totalSessions,
     sessionsWeek,
@@ -25,21 +34,21 @@ export default async function VisitorsPage() {
     loggedInSessions,
     onlineCount,
     onlineMembersCount,
-    deviceBreakdown,
-    browserBreakdown,
-    osBreakdown,
-    countryBreakdown,
-    recentSessions,
-    returningCount,
-    rawEvents,
-  ] = await Promise.all([
+  ] = await withDbRetry(() => Promise.all([
     prisma.visitorSession.count({ where: { isBot: false } }),
     prisma.visitorSession.count({ where: { isBot: false, createdAt: { gte: weekStart } } }),
     prisma.visitorSession.count({ where: { isBot: false, userId: null } }),
     prisma.visitorSession.count({ where: { isBot: false, userId: { not: null } } }),
     prisma.visitorSession.count({ where: { isBot: false, lastSeenAt: { gte: onlineCut } } }),
     prisma.visitorSession.count({ where: { isBot: false, lastSeenAt: { gte: onlineCut }, userId: { not: null } } }),
+  ]));
 
+  const [
+    deviceBreakdown,
+    browserBreakdown,
+    osBreakdown,
+    countryBreakdown,
+  ] = await withDbRetry(() => Promise.all([
     prisma.visitorSession.groupBy({
       by: ["deviceType"],
       where: { isBot: false },
@@ -67,7 +76,13 @@ export default async function VisitorsPage() {
       orderBy: { _count: { country: "desc" } },
       take: 10,
     }),
+  ]));
 
+  const [
+    recentSessions,
+    returningCount,
+    rawEvents,
+  ] = await withDbRetry(() => Promise.all([
     // 30 most recent sessions with nested event journey
     prisma.visitorSession.findMany({
       where: { isBot: false },
@@ -109,7 +124,7 @@ export default async function VisitorsPage() {
         },
       },
     }),
-  ]);
+  ]));
 
   // User enrichment — gather all userIds from sessions + raw events
   const sessionUserIds = recentSessions
@@ -122,13 +137,13 @@ export default async function VisitorsPage() {
 
   const users =
     userIds.length > 0
-      ? await prisma.user.findMany({
+      ? await withDbRetry(() => prisma.user.findMany({
           where: { id: { in: userIds } },
           select: {
             id: true, name: true, email: true, role: true,
             accounts: { select: { provider: true }, take: 2 },
           },
-        })
+        }))
       : [];
 
   type UserInfo = {
@@ -293,7 +308,7 @@ export default async function VisitorsPage() {
           <div className="achart">
             {countryBreakdown.map((c) => (
               <div key={c.country} className="abar-row">
-                <span className="abar-label">{c.country ?? "Unknown"}</span>
+                <span className="abar-label">{countryName(c.country)}</span>
                 <div className="abar-track"><div className="abar-fill" style={{ width: barPct(c._count.country, countryMax) }} /></div>
                 <span className="abar-count">{c._count.country}</span>
               </div>

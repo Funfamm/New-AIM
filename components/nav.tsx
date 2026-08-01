@@ -210,6 +210,14 @@ export default function Nav({
             </>
           ) : (
             <>
+              <Link href="/services" className="nav-sb-link" onClick={() => setOpen(false)}>
+                Services
+              </Link>
+              {/* Static production-breakdown page (public/process.html) — plain <a>, not
+                  <Link>, so it does a full navigation rather than a client-side route. */}
+              <a href="/process" className="nav-sb-link" onClick={() => setOpen(false)}>
+                How We Work
+              </a>
               <Link href="/about" className="nav-sb-link" onClick={() => setOpen(false)}>
                 About
               </Link>

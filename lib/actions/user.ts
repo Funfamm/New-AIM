@@ -30,6 +30,19 @@ export async function getUserProfile() {
   };
 }
 
+/** Returns whether the current user has a password set (false = Google-only). */
+export async function getUserPasswordState(): Promise<{ hasPassword: boolean }> {
+  const session = await auth();
+  if (!session?.user?.id) return { hasPassword: false };
+
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { password: true },
+  });
+
+  return { hasPassword: !!user?.password };
+}
+
 /** Update the current user's display name. */
 export async function updateUserProfile(formData: FormData) {
   const userId = await requireUser();

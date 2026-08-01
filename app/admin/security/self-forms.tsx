@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { updateAdminDisplayName, updateAdminPassword } from "@/lib/actions/admin-security";
+import { PasswordInput } from "@/components/password-input";
 
 // ── Display Name Form ─────────────────────────────────────────
 export function DisplayNameForm({ currentName }: { currentName: string }) {
@@ -33,10 +34,9 @@ export function DisplayNameForm({ currentName }: { currentName: string }) {
 // ── Password strength grader ──────────────────────────────────
 function strengthLabel(pw: string): { label: string; cls: string } {
   if (pw.length === 0) return { label: "", cls: "" };
-  if (pw.length < 6)   return { label: "🔴 Too short", cls: "sec-pw-str--weak" };
-  if (pw.length < 8)   return { label: "Acceptable",   cls: "sec-pw-str--ok" };
-  if (pw.length < 12)  return { label: "🟡 Good",       cls: "sec-pw-str--good" };
-  return                      { label: "🟢 Strong",     cls: "sec-pw-str--strong" };
+  if (pw.length < 8)   return { label: "Too short", cls: "sec-pw-str--weak" };
+  if (pw.length < 12)  return { label: "Acceptable",   cls: "sec-pw-str--ok" };
+  return                      { label: "Strong",     cls: "sec-pw-str--strong" };
 }
 
 // ── Password Form ─────────────────────────────────────────────
@@ -49,24 +49,24 @@ export function PasswordForm() {
     <form action={action} className="sec-mgmt-form">
       <div className="sec-field">
         <label className="sec-field-label">Current Password</label>
-        <input
+        <PasswordInput
           name="currentPassword"
-          type="password"
+          inputClassName="sec-field-input"
           required
           placeholder="Enter current password"
-          className="sec-field-input"
+          autoComplete="current-password"
           disabled={pending}
         />
       </div>
       <div className="sec-field">
         <label className="sec-field-label">New Password</label>
-        <input
+        <PasswordInput
           name="newPassword"
-          type="password"
+          inputClassName="sec-field-input"
           required
-          minLength={6}
-          placeholder="Min 6 characters"
-          className="sec-field-input"
+          minLength={8}
+          placeholder="Min 8 characters"
+          autoComplete="new-password"
           disabled={pending}
           value={newPw}
           onChange={(e) => setNewPw(e.target.value)}
@@ -77,12 +77,12 @@ export function PasswordForm() {
       </div>
       <div className="sec-field">
         <label className="sec-field-label">Confirm New Password</label>
-        <input
+        <PasswordInput
           name="confirmPassword"
-          type="password"
+          inputClassName="sec-field-input"
           required
           placeholder="Re-enter new password"
-          className="sec-field-input"
+          autoComplete="new-password"
           disabled={pending}
         />
       </div>

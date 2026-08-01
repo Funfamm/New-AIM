@@ -40,15 +40,70 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   }
 
   // Upsert suppression — idempotent
+  let isNewUnsubscribe = false;
+  let suppressionId: string | undefined;
+  let subscriberId: string | undefined;
+
   try {
-    await prisma.emailSuppression.upsert({
+    // Check before upsert to prevent duplicate admin notifications on repeated clicks
+    const existing = await prisma.emailSuppression.findUnique({
+      where:  { email },
+      select: { id: true },
+    });
+    isNewUnsubscribe = !existing;
+
+    const suppression = await prisma.emailSuppression.upsert({
       where:  { email },
       create: { email, reason: "unsubscribe", source: "user", active: true },
       update: { active: true, reason: "unsubscribe", source: "user" },
+      select: { id: true },
     });
+    suppressionId = suppression.id;
+
+    // Stamp subscriber.suppressedAt if they exist and aren't already suppressed
+    const subscriber = await prisma.subscriber.findUnique({
+      where:  { email },
+      select: { id: true, suppressedAt: true },
+    });
+    if (subscriber) {
+      subscriberId = subscriber.id;
+      if (!subscriber.suppressedAt) {
+        await prisma.subscriber.update({
+          where: { id: subscriber.id },
+          data:  { suppressedAt: new Date(), suppressReason: "unsubscribe" },
+        });
+      }
+    }
   } catch {
     // Suppression write failure: still redirect to success.
     // A failed unsubscribe is worse than a duplicate.
+  }
+
+  // Notify admins — only on the very first unsubscribe for this email.
+  // Repeated clicks to the same link do not generate duplicate notifications.
+  if (isNewUnsubscribe) {
+    try {
+      const admins = await prisma.user.findMany({
+        where:  { role: { in: ["ADMIN", "SUPER_ADMIN"] }, status: "ACTIVE" },
+        select: { id: true },
+      });
+      if (admins.length > 0) {
+        await prisma.notification.createMany({
+          data: admins.map((a) => ({
+            userId: a.id,
+            type:   "SYSTEM" as const,
+            title:  "New unsubscribe",
+            body:   `${email} unsubscribed from email updates.`,
+            href:   "/admin/email/suppressions",
+            read:   false,
+          })),
+        });
+      }
+      void suppressionId; // referenced in metadata for future use
+      void subscriberId;
+    } catch {
+      // Notification failure is non-fatal — suppression already succeeded
+    }
   }
 
   return NextResponse.redirect(`${APP_URL}/unsubscribed?success=1`);

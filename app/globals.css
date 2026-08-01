@@ -9,11 +9,15 @@
   --color-brand-black:    #0a0a0a;
   --color-brand-dark:     #111111;
   --color-brand-surface:  #1a1a1a;
+  --color-brand-surface-elevated: #222222;
   --color-brand-border:   #2a2a2a;
+  --color-brand-border-subtle: rgba(255,255,255,0.06);
   --color-brand-muted:    #6b7280;
   --color-brand-light:    #e5e7eb;
   --color-brand-white:    #f9fafb;
   --color-brand-accent:   #e8c97e;   /* cinematic gold */
+  --color-brand-accent-dim: #d4b565; /* subdued gold */
+  --color-brand-accent-glow: rgba(232,201,126,0.12);
   --color-brand-red:      #c0392b;   /* deep film red */
 
   /* Typography — next/font injects --font-cormorant and --font-manrope on <html> */
@@ -23,6 +27,43 @@
   /* Spacing scale additions */
   --spacing-18: 4.5rem;
   --spacing-22: 5.5rem;
+}
+
+/* ── Cinematic Custom Properties (outside @theme for CSS-only use) ── */
+:root {
+  /* Radius scale */
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-pill: 20px;
+
+  /* Transition presets */
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --duration-fast: 0.15s;
+  --duration-normal: 0.25s;
+  --duration-slow: 0.35s;
+
+  /* Shadows — warmer cinematic tones */
+  --shadow-card: 0 2px 16px rgba(0,0,0,0.4);
+  --shadow-card-hover: 0 8px 36px rgba(0,0,0,0.55), 0 0 40px rgba(229,190,91,0.03);
+  --shadow-glass: 0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06);
+  --shadow-gold-glow: 0 0 20px rgba(232,201,126,0.15), 0 0 40px rgba(232,201,126,0.06);
+  --shadow-gold-subtle: 0 0 12px rgba(232,201,126,0.08);
+
+  /* ── Cinematic premium tokens ── */
+  --aim-bg: #070706;
+  --aim-bg-soft: #0d0c0a;
+  --aim-panel: rgba(255, 255, 255, 0.045);
+  --aim-panel-strong: rgba(255, 255, 255, 0.075);
+  --aim-border: rgba(255, 255, 255, 0.10);
+  --aim-border-gold: rgba(229, 190, 91, 0.28);
+  --aim-gold: #e5be5b;
+  --aim-gold-soft: rgba(229, 190, 91, 0.14);
+  --aim-text: rgba(255, 255, 255, 0.92);
+  --aim-muted: rgba(190, 198, 215, 0.68);
 }
 
 /* ── Base ───────────────────────────────────────────── */
@@ -37,7 +78,11 @@ html {
 }
 
 body {
-  background-color: var(--color-brand-black);
+  background:
+    radial-gradient(circle at 18% 8%, rgba(229, 190, 91, 0.075), transparent 28%),
+    radial-gradient(circle at 82% 18%, rgba(120, 74, 30, 0.10), transparent 34%),
+    linear-gradient(180deg, #080807 0%, #0d0c0a 45%, #050505 100%);
+  background-color: var(--aim-bg);
   color: var(--color-brand-light);
   font-family: var(--font-body);
   font-size: 16px;
@@ -46,6 +91,15 @@ body {
   -moz-osx-font-smoothing: grayscale;
   min-height: 100dvh;
   overflow-x: hidden;
+}
+
+/* Mobile: simplified background for 4G performance */
+@media (max-width: 768px) {
+  body {
+    background:
+      linear-gradient(180deg, #090908 0%, #060606 100%);
+    background-color: #060606;
+  }
 }
 
 /* ── Typography ─────────────────────────────────────── */
@@ -97,7 +151,12 @@ a {
 /* ── Scrollbar (subtle, dark) ────────────────────────── */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: var(--color-brand-dark); }
-::-webkit-scrollbar-thumb { background: var(--color-brand-border); border-radius: 3px; }
+::-webkit-scrollbar-thumb {
+  background: var(--color-brand-border);
+  border-radius: 3px;
+  transition: background 0.2s;
+}
+::-webkit-scrollbar-thumb:hover { background: #3a3a3a; }
 
 /* ── Utilities ───────────────────────────────────────── */
 .container-app {
@@ -119,18 +178,228 @@ a {
    do not use the shared (public) layout (e.g. dashboard routes). */
 .nav-offset { padding-top: 68px; }
 
+/* ── Cinematic glass card ──────────────────────────── */
+.glass-card {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.015) 100%),
+    rgba(14, 13, 11, 0.72);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--aim-border);
+  box-shadow: var(--shadow-glass);
+  border-radius: var(--radius-lg);
+}
+/* Mobile: drop expensive blur on glass cards */
+@media (max-width: 768px) {
+  .glass-card {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+/* ── Gold glow accent ──────────────────────────────── */
+.gold-glow {
+  box-shadow: var(--shadow-gold-glow);
+}
+.gold-glow-subtle {
+  box-shadow: var(--shadow-gold-subtle);
+}
+
+/* ── Section divider ───────────────────────────────── */
+.section-divider {
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent 0%,
+    rgba(232,201,126,0.15) 20%,
+    rgba(232,201,126,0.25) 50%,
+    rgba(232,201,126,0.15) 80%,
+    transparent 100%
+  );
+  border: none;
+  margin: 0;
+}
+
+/* ── Fade-in-up animation ──────────────────────────── */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-fade-in-up {
+  animation: fade-in-up var(--duration-slow) var(--ease-smooth) both;
+}
+
+/* ── Skeleton shimmer ──────────────────────────────── */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-brand-surface) 25%,
+    var(--color-brand-surface-elevated) 50%,
+    var(--color-brand-surface) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
+  border-radius: var(--radius-sm);
+}
+
+/* ── View Transitions — page navigation fade ───────── */
+::view-transition-old(root) {
+  animation: vt-fade-out 180ms ease-out;
+}
+::view-transition-new(root) {
+  animation: vt-fade-in 180ms ease-in;
+}
+@keyframes vt-fade-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+@keyframes vt-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Reduced motion — global ───────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  html { scroll-behavior: auto; }
+  ::view-transition-old(root),
+  ::view-transition-new(root) { animation: none; }
+}
+
 /* ── Film rail ─────────────────────────────────────── */
+.rail-section {
+  padding: 2.5rem 0 0;
+}
+/* Tighter top gap on desktop — hero transitions directly into rails */
+@media (min-width: 768px)  { .rail-section { padding: 2rem 0 0; } }
+@media (min-width: 1024px) { .rail-section { padding: 2.5rem 0 0; } }
+
+.rail-header {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.rail-eyebrow {
+  display: inline-block;
+  font-family: var(--font-body);
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-brand-accent);
+  margin-bottom: 0.5rem;
+  padding: 0.2rem 0.55rem;
+  background: rgba(232,201,126,0.07);
+  border: 1px solid rgba(232,201,126,0.16);
+  border-radius: var(--radius-pill);
+}
+.rail-title-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.rail-title {
+  font-family: var(--font-display);
+  font-size: clamp(1.375rem, 2.5vw, 1.875rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  color: var(--color-brand-white);
+  margin: 0;
+}
+.rail-view-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.32);
+  text-decoration: none;
+  transition: color 0.15s;
+  white-space: nowrap;
+  margin-left: 1rem;
+}
+.rail-view-all:hover { color: var(--color-brand-accent); }
+
+/* Track wrap — needed to position scroll buttons */
+.rail-track-wrap { position: relative; }
+
 .rail-track {
   display: flex;
   flex-wrap: nowrap;
-  gap: 0.75rem;
+  gap: 0.875rem;
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
-  padding-bottom: 0.5rem;
+  padding-bottom: 1rem;
+  mask-image: linear-gradient(to right, transparent 0%, black 2%, black 95%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 2%, black 95%, transparent 100%);
 }
 .rail-track::-webkit-scrollbar { display: none; }
-.rail-card { width: 160px; flex-shrink: 0; }
+.rail-card { width: 155px; flex-shrink: 0; }
 
-@media (min-width: 768px) { .rail-track { gap: 1rem; } .rail-card { width: 180px; } }
-@media (min-width: 1024px) { .rail-card { width: 220px; } }
+@media (min-width: 640px) { .rail-card { width: 165px; } }
+@media (min-width: 768px)  { .rail-track { gap: 1rem;    } .rail-card { width: 185px; } .rail-header { margin-bottom: 1.75rem; } }
+@media (min-width: 1024px) { .rail-track { gap: 1.25rem; } .rail-card { width: 210px; } .rail-header { margin-bottom: 2rem; } .rail-eyebrow { font-size: 0.625rem; } }
+@media (min-width: 1280px) { .rail-card { width: 240px; } }
+
+/* ── Rail scroll buttons (desktop only) ── */
+.rail-scroll-btn {
+  display: none; /* mobile: hidden */
+  position: absolute;
+  top: 50%;
+  transform: translateY(-60%); /* offset slightly up from card center */
+  z-index: 4;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background:
+    linear-gradient(180deg, rgba(30,28,24,0.96) 0%, rgba(18,16,12,0.96) 100%);
+  border: 1px solid rgba(232,201,126,0.18);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: rgba(232,201,126,0.8);
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s, background 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+.rail-scroll-btn--left  { left:  -14px; }
+.rail-scroll-btn--right { right: -14px; }
+.rail-scroll-btn:hover {
+  background:
+    linear-gradient(180deg, rgba(232,201,126,0.14) 0%, rgba(232,201,126,0.06) 100%),
+    rgba(18,16,12,0.96);
+  border-color: rgba(232,201,126,0.45);
+  color: var(--color-brand-accent);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5), 0 0 16px rgba(232,201,126,0.1), inset 0 1px 0 rgba(255,255,255,0.08);
+}
+@media (min-width: 768px) {
+  .rail-scroll-btn { display: flex; }
+  .rail-scroll-btn--visible { opacity: 1; pointer-events: auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rail-scroll-btn { transition: none; }
+}
+

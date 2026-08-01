@@ -1,0 +1,104 @@
+/* Admin Engagement page */
+
+.eng-subtitle {
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  color: rgba(255,255,255,0.3);
+  margin: 0.2rem 0 0;
+}
+
+/* ── Top works leaderboard ── */
+.eng-top-wrap {
+  margin-bottom: 1.75rem;
+}
+.eng-top-header {
+  padding: 0.65rem 1.25rem;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.eng-top-title {
+  font-family: var(--font-body);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.3);
+}
+.eng-top-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 1.25rem;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  transition: background 0.12s;
+}
+.eng-top-row:last-child { border-bottom: none; }
+.eng-top-row:hover { background: rgba(255,255,255,0.025); }
+.eng-top-rank {
+  font-family: var(--font-body);
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.2);
+  width: 18px;
+  text-align: right;
+  flex-shrink: 0;
+}
+.eng-top-link {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--color-brand-light);
+  text-decoration: none;
+  flex: 1;
+  transition: color 0.12s;
+}
+.eng-top-link:hover { color: var(--color-brand-white); }
+.eng-top-type {
+  font-family: var(--font-body);
+  font-size: 0.68rem;
+  color: rgba(255,255,255,0.28);
+  white-space: nowrap;
+}
+.eng-top-count {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--color-brand-accent);
+  min-width: 36px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ── Table label ── */
+.eng-table-label {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-family: var(--font-body);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.28);
+  margin-bottom: 0.75rem;
+}
+.eng-table-count {
+  color: rgba(255,255,255,0.18);
+  font-weight: 400;
+}
+
+/* ── Table cells ── */
+.eng-cell-primary {
+  font-weight: 600;
+  color: var(--color-brand-white);
+}
+.eng-cell-muted {
+  font-size: 0.8rem;
+  color: rgba(255,255,255,0.35);
+}
+.eng-work-link {
+  font-size: 0.82rem;
+  color: var(--color-brand-accent);
+  text-decoration: none;
+  transition: opacity 0.15s;
+}
+.eng-work-link:hover { opacity: 0.75; }

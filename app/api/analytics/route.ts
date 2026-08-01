@@ -14,7 +14,8 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { trackEvent, getOrCreateSession, parseUserAgent } from "@/lib/analytics";
+import { trackEvent, getOrCreateSession, parseUserAgent, looksAutomated } from "@/lib/analytics";
+import { rateLimit } from "@/lib/rate-limit";
 import type { AnalyticsEventType, Prisma } from "@prisma/client";
 
 const VALID_TYPES = new Set<string>([
@@ -29,6 +30,7 @@ const VALID_TYPES = new Set<string>([
   "PAGE_LEAVE",                                        // page dwell duration
   "LIKE_WORK", "UNLIKE_WORK",                         // likes
   "SHARE_WORK",                                        // share
+  "PROCESS_CLICK", "GUIDE_DOWNLOAD",                  // production-breakdown funnel
 ]);
 
 export async function POST(request: NextRequest) {
@@ -46,9 +48,22 @@ export async function POST(request: NextRequest) {
     // Validate event type against the allowlist
     if (!type || !VALID_TYPES.has(String(type))) return new NextResponse(null, { status: 204 });
 
+    // Admin pages are never tracked — drop server-side too (stale cached clients,
+    // crafted payloads) so admin browsing can't inflate public view counts.
+    if (typeof path === "string" && path.startsWith("/admin")) {
+      return new NextResponse(null, { status: 204 });
+    }
+
     // visitorId is read server-side from the HttpOnly cookie — never trusted from the payload
     const visitorId = request.cookies.get("aim-vid")?.value;
     if (!visitorId) return new NextResponse(null, { status: 204 });
+
+    // Cap event floods per visitor (the cookie is the natural key). A cheap POST fans
+    // out to auth() + getOrCreateSession + trackEvent (several DB ops), so uncapped this
+    // is a write-DoS and metrics-poisoning vector. 120/min is far above real usage.
+    if (!rateLimit(`analytics:${visitorId}`, 120, 60 * 1000).allowed) {
+      return new NextResponse(null, { status: 204 });
+    }
 
     // Parse device/browser/OS from UA — no raw UA stored
     const ua = request.headers.get("user-agent") ?? "";
@@ -62,6 +77,11 @@ export async function POST(request: NextRequest) {
     const region  = request.headers.get("x-vercel-ip-region")  ?? undefined;
     const city    = request.headers.get("x-vercel-ip-city")    ?? undefined;
 
+    // Flag automated/datacenter traffic that slips past UA detection (real browser UA
+    // from a script or a cloud datacenter). isBot sessions are excluded from every
+    // human-facing analytics view, so the visitor feed stays real people only.
+    const isBot = looksAutomated({ acceptLanguage: request.headers.get("accept-language"), city });
+
     // Resolve userId from JWT (decode only — no DB query)
     const session = await auth();
     const userId  = session?.user?.id ?? undefined;
@@ -74,7 +94,7 @@ export async function POST(request: NextRequest) {
       referrer:    request.headers.get("referer")?.slice(0, 512) ?? undefined,
       country, region, city,
       browser, os, deviceType,
-      isBot: false,
+      isBot,
     });
 
     // Write the event

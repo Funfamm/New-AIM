@@ -156,28 +156,22 @@ export default async function SecurityPage({
          ══════════════════════════════════════════════════════ */}
 
       {/* ── Stats ── */}
-      <div className="ustat-row">
-        <div className="ustat-cell">
-          <div className={`ustat-val${openAlertsCount > 0 ? " ustat-val--warn" : ""}`}>
-            {openAlertsCount}
-          </div>
-          <div className="ustat-lbl">Open Alerts</div>
+      <div className="admin-stat-grid">
+        <div className={`admin-stat-card${openAlertsCount > 0 ? " admin-stat-card--red" : ""}`}>
+          <span className="admin-stat-value">{openAlertsCount}</span>
+          <span className="admin-stat-label">Open Alerts</span>
         </div>
-        <div className="ustat-cell">
-          <div className={`ustat-val${highEventsCount > 0 ? " ustat-val--warn" : ""}`}>
-            {highEventsCount}
-          </div>
-          <div className="ustat-lbl">High+ Events (7d)</div>
+        <div className={`admin-stat-card${highEventsCount > 0 ? " admin-stat-card--warn" : ""}`}>
+          <span className="admin-stat-value">{highEventsCount}</span>
+          <span className="admin-stat-label">High+ Events (7d)</span>
         </div>
-        <div className="ustat-cell">
-          <div className={`ustat-val${blockedLoginsCount > 0 ? " ustat-val--warn" : ""}`}>
-            {blockedLoginsCount}
-          </div>
-          <div className="ustat-lbl">Blocked Logins (7d)</div>
+        <div className={`admin-stat-card${blockedLoginsCount > 0 ? " admin-stat-card--warn" : ""}`}>
+          <span className="admin-stat-value">{blockedLoginsCount}</span>
+          <span className="admin-stat-label">Blocked Logins (7d)</span>
         </div>
-        <div className="ustat-cell">
-          <div className="ustat-val">{totalEventsCount.toLocaleString()}</div>
-          <div className="ustat-lbl">Total Events</div>
+        <div className="admin-stat-card">
+          <span className="admin-stat-value">{totalEventsCount.toLocaleString()}</span>
+          <span className="admin-stat-label">Total Events</span>
         </div>
       </div>
 

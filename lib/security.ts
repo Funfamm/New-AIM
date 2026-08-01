@@ -3,7 +3,6 @@
 // Raw IPs and UAs are hashed before storage — never stored raw.
 import "server-only";
 
-import { createHash } from "crypto";
 import { prisma } from "@/lib/prisma";
 import type { SecurityEventType, SecuritySeverity, DeviceType, Prisma } from "@prisma/client";
 
@@ -12,16 +11,20 @@ import type { SecurityEventType, SecuritySeverity, DeviceType, Prisma } from "@p
 // ─────────────────────────────────────────────
 
 /** SHA-256 hash any string. Used for IP, UA, and device fingerprints. */
-export function hashValue(raw: string): string {
-  return createHash("sha256").update(raw.trim().toLowerCase()).digest("hex");
+export async function hashValue(raw: string): Promise<string> {
+  const data = new TextEncoder().encode(raw.trim().toLowerCase());
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(hashBuffer))
+    .map(b => b.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 /** Build a device fingerprint hash from available request signals. */
-export function buildFingerprintHash(opts: {
+export async function buildFingerprintHash(opts: {
   userAgent: string;
   acceptLanguage: string;
   country: string;
-}): string {
+}): Promise<string> {
   const raw = `${opts.userAgent}|${opts.acceptLanguage}|${opts.country}`;
   return hashValue(raw);
 }

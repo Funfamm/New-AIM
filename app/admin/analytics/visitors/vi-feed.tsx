@@ -1,7 +1,8 @@
 "use client";
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { RefreshCw, ChevronDown, ChevronRight, ChevronUp } from "lucide-react";
+import { countryName } from "@/lib/country-names";
 
 /* ── Types ── */
 
@@ -48,12 +49,22 @@ type Props = {
 
 /* ── Helpers ── */
 
+// timeAgo depends on the live clock (Date.now), so it renders different text on the
+// server (SSR) vs the client (hydration) → React #418. It must only run AFTER mount.
 function timeAgo(iso: string): string {
   const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
   if (s < 60)    return `${s}s ago`;
   if (s < 3600)  return `${Math.floor(s / 60)}m ago`;
   if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
   return `${Math.floor(s / 86400)}d ago`;
+}
+
+// Deterministic absolute time (pinned to UTC) — identical on server and client, so it
+// is safe to render pre-mount as the SSR/hydration-stable placeholder for timeAgo.
+function absTime(iso: string): string {
+  return new Date(iso).toLocaleString("en-GB", {
+    timeZone: "UTC", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
+  });
 }
 
 function formatDur(startISO: string, endISO: string): string {
@@ -130,6 +141,10 @@ export default function ViFeed({
   const [collapsed, setCollapsed] = useState(false);
   const [mode, setMode]           = useState<"grouped" | "all">("grouped");
   const [expanded, setExpanded]   = useState<Set<string>>(new Set());
+  // Gate clock-dependent relative times behind mount so SSR and first client render
+  // produce identical text (the stable absTime), then swap to timeAgo. Avoids #418.
+  const [mounted, setMounted]     = useState(false);
+  useEffect(() => { setMounted(true); }, []);
 
   const cutoff = new Date(onlineCutISO);
 
@@ -244,6 +259,14 @@ export default function ViFeed({
               const lastPg  = s.events.filter(e => e.path && e.type === "PAGE_VIEW").pop()?.path
                               ?? s.landingPage;
 
+              const registered = !s.userId && s.events.some((e) => e.type === "SIGN_UP");
+
+              // Real human (this feed is bots-excluded) who opened the login/register page
+              // but never became authenticated this session — a possible sign-in problem.
+              const triedAuth     = s.events.some((e) => e.type === "PAGE_VIEW" && (e.path === "/login" || e.path === "/register"));
+              const completedAuth = !!s.userId || s.events.some((e) => e.type === "SIGN_IN" || e.type === "SIGN_UP");
+              const stuckAtLogin  = triedAuth && !completedAuth;
+
               return (
                 <div key={s.id} className={`vi-session${isOpen ? " vi-session--open" : ""}`}>
                   <button className="vi-session-row" onClick={() => toggleExpand(s.id)} aria-expanded={isOpen}>
@@ -283,7 +306,7 @@ export default function ViFeed({
 
                     {/* Geo */}
                     <span className="vi-session-geo">
-                      {[s.city, s.country].filter(Boolean).join(", ") || "—"}
+                      {[s.city, s.country ? countryName(s.country) : null].filter(Boolean).join(", ") || "—"}
                     </span>
 
                     {/* Last page */}
@@ -295,14 +318,21 @@ export default function ViFeed({
                     <span className="vi-session-dur">{dur}</span>
 
                     {/* Time ago */}
-                    <span className="vi-session-time">{timeAgo(s.lastSeenAt)}</span>
+                    <span className="vi-session-time">{mounted ? timeAgo(s.lastSeenAt) : absTime(s.lastSeenAt)}</span>
 
                     {/* Event count */}
                     <span className="vi-session-count">{s.events.length} ev</span>
 
+                    {/* Sign-in trouble flag — real visitor who hit login but didn't get in */}
+                    {stuckAtLogin && (
+                      <span className="vi-auth-tag vi-auth-tag--stuck" title="Opened the login/register page but did not complete sign-in this session">
+                        sign-in not completed
+                      </span>
+                    )}
+
                     {/* Auth tag */}
-                    <span className={`vi-auth-tag${s.userId ? " vi-auth-tag--member" : ""}`}>
-                      {s.userId ? "Member" : "Guest"}
+                    <span className={`vi-auth-tag${s.userId ? " vi-auth-tag--member" : registered ? " vi-auth-tag--registered" : ""}`}>
+                      {s.userId ? "Member" : registered ? "Registered" : "Guest"}
                     </span>
                   </button>
 
@@ -321,7 +351,7 @@ export default function ViFeed({
                             ) : (
                               <span className="vi-event-pg-dur vi-event-pg-dur--empty">—</span>
                             )}
-                            <span className="vi-event-time">{timeAgo(e.createdAt)}</span>
+                            <span className="vi-event-time">{mounted ? timeAgo(e.createdAt) : absTime(e.createdAt)}</span>
                           </div>
                         ))
                       )}
@@ -344,7 +374,7 @@ export default function ViFeed({
               const userId = e.session?.userId ?? null;
               const user   = userId ? userMap[userId] ?? null : null;
               const geo    = e.session
-                ? [e.session.city, e.session.country].filter(Boolean).join(", ") || "—"
+                ? [e.session.city, e.session.country ? countryName(e.session.country) : null].filter(Boolean).join(", ") || "—"
                 : "—";
 
               return (
@@ -359,7 +389,7 @@ export default function ViFeed({
                     {e.session ? (DEVICE_ICONS[e.session.deviceType] ?? "?") : "?"}
                   </span>
                   <span className="vi-feed-geo">{geo}</span>
-                  <span className="vi-feed-time">{timeAgo(e.createdAt)}</span>
+                  <span className="vi-feed-time">{mounted ? timeAgo(e.createdAt) : absTime(e.createdAt)}</span>
                 </div>
               );
             })

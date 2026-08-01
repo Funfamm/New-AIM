@@ -85,19 +85,12 @@ export default async function EmailTemplatesPage() {
                   <td>{statusBadge(t)}</td>
                   <td className="tmpl-date">{fmtDate(t.updatedAt)}</td>
                   <td>
-                    <span className="tmpl-actions">
-                      <Link
-                        href={`/admin/email/templates/${t.id}`}
-                        className="tmpl-action-btn"
-                      >
-                        Edit
-                      </Link>
-                      <TemplateListActions
-                        id={t.id}
-                        isActive={t.isActive}
-                        isSystem={t.isSystem}
-                      />
-                    </span>
+                    <TemplateListActions
+                      id={t.id}
+                      name={t.name}
+                      isActive={t.isActive}
+                      isSystem={t.isSystem}
+                    />
                   </td>
                 </tr>
               ))}

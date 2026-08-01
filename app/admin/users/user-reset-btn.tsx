@@ -16,7 +16,7 @@ export function UserResetBtn({ userId }: { userId: string }) {
       <button
         type="submit"
         disabled={isPending || state?.ok === true}
-        className="action-btn"
+        className="tbl-btn"
         title={state?.message ?? "Send password reset email"}
         style={{ fontSize: "0.75rem", letterSpacing: 0 }}
       >

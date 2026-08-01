@@ -66,6 +66,30 @@ export async function createBulkInAppNotification(
   return { created };
 }
 
+// ── Bulk — specific user IDs ──────────────────────────────────
+// Sends to a pre-resolved list of user IDs.
+// Applies per-type preference filter. Batched at BATCH_SIZE rows.
+
+export async function createBulkInAppNotificationForUserIds(
+  userIds: string[],
+  input: NotificationInput,
+): Promise<{ created: number }> {
+  if (userIds.length === 0) return { created: 0 };
+
+  const filtered = await filterByTypePreference(userIds, input.type);
+
+  let created = 0;
+  for (let i = 0; i < filtered.length; i += BATCH_SIZE) {
+    const batch = filtered.slice(i, i + BATCH_SIZE);
+    const result = await prisma.notification.createMany({
+      data: batch.map((userId) => ({ userId, ...input })),
+      skipDuplicates: true,
+    });
+    created += result.count;
+  }
+  return { created };
+}
+
 // ── Per-type preference filter ────────────────────────────────
 // Loads preferences only for users who have a prefs row.
 // Users without a row keep their slot (defaults are all true).

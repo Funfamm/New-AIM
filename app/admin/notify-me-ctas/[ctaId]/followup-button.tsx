@@ -43,14 +43,14 @@ export default function FollowupButton({ ctaId, signupCount, acsReady }: Props) 
       {canSend && (
         <>
           <p className="cta-followup-desc">
-            Queues a <strong>release-ready email</strong> to {signupCount} signup{signupCount === 1 ? "" : "s"}.
+            Queue a notice email to pending signup{signupCount === 1 ? "" : "s"} who have not been notified yet.
+            Logged-in members also receive an in-app notification.
             Suppressed addresses and opted-out users are automatically skipped.
-            Emails are sent when the queue is processed from the Email page.
           </p>
 
           {confirmed && !pending && (
             <p className="cta-followup-confirm">
-              Send follow-up emails to {signupCount} address{signupCount === 1 ? "" : "es"}?
+              Send notice to {signupCount} pending signup{signupCount === 1 ? "" : "s"}?
               Click again to confirm.
             </p>
           )}
@@ -61,10 +61,10 @@ export default function FollowupButton({ ctaId, signupCount, acsReady }: Props) 
             disabled={pending}
           >
             {pending
-              ? "Queuing…"
+              ? "Sending…"
               : confirmed
-                ? "Confirm — Queue Emails"
-                : "Send Follow-up Emails"}
+                ? "Confirm — Send Notice"
+                : "Send Notice"}
           </button>
 
           {confirmed && !pending && (
@@ -81,8 +81,10 @@ export default function FollowupButton({ ctaId, signupCount, acsReady }: Props) 
       {result && !result.error && (
         <p className="cta-followup-ok">
           ✓ {result.queued} email{result.queued === 1 ? "" : "s"} queued
+          {result.inApp      > 0 ? ` · ${result.inApp} in-app` : ""}
           {result.suppressed > 0 ? ` · ${result.suppressed} suppressed` : ""}
-          {result.skipped   > 0 ? ` · ${result.skipped} skipped` : ""}
+          {result.skipped    > 0 ? ` · ${result.skipped} skipped` : ""}
+          {result.failed     > 0 ? ` · ${result.failed} failed` : ""}
           {" · "}Process from the Email page to send.
         </p>
       )}

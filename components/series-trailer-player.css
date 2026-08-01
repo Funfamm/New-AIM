@@ -42,19 +42,20 @@
 }
 
 /* ── "Watch Trailer" play button — centred at bottom ── */
+/* Icon-only play button — text removed to avoid duplicate Watch Trailer CTA.
+   Main CTAs live in the detail-actions section below. */
 .stp-play-btn {
   position: absolute;
   bottom: 1rem; left: 50%;
   transform: translateX(-50%);
-  display: inline-flex; align-items: center; gap: 0.45rem;
-  font-family: var(--font-body); font-size: 0.875rem; font-weight: 700;
-  letter-spacing: 0.03em;
+  display: inline-flex; align-items: center; justify-content: center;
   color: var(--color-brand-black);
   background: var(--color-brand-accent);
-  border: none; border-radius: 2px;
-  padding: 0.6rem 1.5rem;
-  cursor: pointer; white-space: nowrap;
-  transition: opacity 0.15s;
+  border: none; border-radius: 50%;
+  width: 52px; height: 52px;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.15s;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.45);
 }
 .stp-play-btn:hover { opacity: 0.88; }
 

@@ -4,6 +4,8 @@
 // No tracking pixels. Transactional only.
 
 import { prisma } from "@/lib/prisma";
+import { premiumTransactionalEmail } from "@/lib/email-base";
+import { generateTrackingToken, injectTrackingPixel, wrapLinksWithTracking } from "@/lib/email-tracking";
 import type { EmailType, EmailProvider, Prisma } from "@prisma/client";
 
 const APP_URL    = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
@@ -31,7 +33,9 @@ const BYPASS_SUPPRESSION_TYPES = new Set<EmailType>([
   "PASSWORD_RESET",
   "SECURITY_ALERT",
   "ADMIN_ALERT",
+  "CONTACT_FORM",
   "ACCOUNT",
+  "WELCOME", // transactional account confirmation — must not be blocked by marketing suppression
 ]);
 
 // ── Suppression check ─────────────────────────────────────────
@@ -58,19 +62,21 @@ async function logEmail(opts: {
   status: "SENT" | "FAILED" | "SUPPRESSED";
   error?: string;
   metadata?: Record<string, unknown>;
+  trackingToken?: string;
 }): Promise<void> {
   try {
     await prisma.emailLog.create({
       data: {
-        to:       opts.to,
-        from:     FROM_EMAIL,
-        subject:  opts.subject,
-        type:     opts.type,
-        provider: opts.provider,
-        status:   opts.status,
-        error:    opts.error ?? null,
-        metadata: opts.metadata != null ? (opts.metadata as Prisma.InputJsonValue) : undefined,
-        sentAt:   opts.status === "SENT" ? new Date() : null,
+        to:            opts.to,
+        from:          FROM_EMAIL,
+        subject:       opts.subject,
+        type:          opts.type,
+        provider:      opts.provider,
+        status:        opts.status,
+        error:         opts.error ?? null,
+        metadata:      opts.metadata != null ? (opts.metadata as Prisma.InputJsonValue) : undefined,
+        trackingToken: opts.trackingToken ?? null,
+        sentAt:        opts.status === "SENT" ? new Date() : null,
       },
     });
   } catch {
@@ -145,7 +151,7 @@ async function sendViaGraph(to: string, subject: string, html: string): Promise<
 // ── Dispatch ──────────────────────────────────────────────────
 
 export async function sendEmail(opts: SendOptions): Promise<void> {
-  const { to, subject, html, type, metadata } = opts;
+  const { to, subject, type, metadata } = opts;
   const toNorm = to.toLowerCase().trim();
   const isDev  = process.env.NODE_ENV !== "production";
 
@@ -160,6 +166,9 @@ export async function sendEmail(opts: SendOptions): Promise<void> {
     return;
   }
 
+  const trackingToken = generateTrackingToken();
+  const html = injectTrackingPixel(wrapLinksWithTracking(opts.html, trackingToken), trackingToken);
+
   const graphConfigured =
     process.env.AZURE_CLIENT_ID &&
     process.env.AZURE_CLIENT_SECRET &&
@@ -170,10 +179,10 @@ export async function sendEmail(opts: SendOptions): Promise<void> {
   if (!isDev) {
     try {
       await sendViaGraph(toNorm, subject, html);
-      await logEmail({ to: toNorm, subject, type, provider: "GRAPH", status: "SENT", metadata });
+      await logEmail({ to: toNorm, subject, type, provider: "GRAPH", status: "SENT", metadata, trackingToken });
     } catch (err) {
       const error = err instanceof Error ? err.message : String(err);
-      await logEmail({ to: toNorm, subject, type, provider: "GRAPH", status: "FAILED", error, metadata });
+      await logEmail({ to: toNorm, subject, type, provider: "GRAPH", status: "FAILED", error, metadata, trackingToken });
       throw err; // re-throw so callers can decide whether to surface the error
     }
     return;
@@ -183,10 +192,10 @@ export async function sendEmail(opts: SendOptions): Promise<void> {
   if (graphConfigured) {
     try {
       await sendViaGraph(toNorm, subject, html);
-      await logEmail({ to: toNorm, subject, type, provider: "GRAPH", status: "SENT", metadata });
+      await logEmail({ to: toNorm, subject, type, provider: "GRAPH", status: "SENT", metadata, trackingToken });
     } catch (err) {
       const error = err instanceof Error ? err.message : String(err);
-      await logEmail({ to: toNorm, subject, type, provider: "GRAPH", status: "FAILED", error, metadata });
+      await logEmail({ to: toNorm, subject, type, provider: "GRAPH", status: "FAILED", error, metadata, trackingToken });
       throw err;
     }
     return;
@@ -198,31 +207,37 @@ export async function sendEmail(opts: SendOptions): Promise<void> {
   console.log(`Subject: ${subject}`);
   console.log(`Body:    ${html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()}`);
   console.log("[END DEV EMAIL]\n");
-  await logEmail({ to: toNorm, subject, type, provider: "DEV_LOG", status: "SENT", metadata });
+  await logEmail({ to: toNorm, subject, type, provider: "DEV_LOG", status: "SENT", metadata, trackingToken });
 }
 
-// ── Email templates ────────────────────────────────────────────
+// ── HTML helpers ──────────────────────────────────────────────
 
-function baseTemplate(title: string, bodyHtml: string): string {
-  return `<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#0a0a0a;font-family:system-ui,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0a;padding:40px 16px;">
-    <tr><td align="center">
-      <table width="100%" style="max-width:480px;background:#111111;border:1px solid #2a2a2a;border-radius:12px;padding:40px 32px;">
-        <tr><td>
-          <p style="margin:0 0 8px;font-size:22px;font-weight:700;color:#f9fafb;letter-spacing:-0.3px;">AIM<span style="color:#e8c97e;">Studio</span></p>
-          <h1 style="margin:0 0 16px;font-size:20px;font-weight:600;color:#f9fafb;">${title}</h1>
-          ${bodyHtml}
-          <hr style="margin:24px 0;border:none;border-top:1px solid #2a2a2a;">
-          <p style="margin:0;font-size:11px;color:#6b7280;">You are receiving this email because you have an account on AIM Studio.</p>
-        </td></tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`;
+function esc(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function btn(label: string, href: string): string {
+  return `<a href="${href}"
+     style="display:inline-block;background:#e8c97e;color:#0a0a0a;font-size:13px;font-weight:700;
+            letter-spacing:0.04em;text-decoration:none;padding:12px 28px;border-radius:3px;">
+    ${label}
+  </a>`;
+}
+
+function ghostBtn(label: string, href: string): string {
+  return `<a href="${href}"
+     style="display:inline-block;color:#e5e7eb;font-size:13px;font-weight:500;
+            text-decoration:none;padding:12px 20px;border:1px solid #3a3a3a;border-radius:3px;">
+    ${label}
+  </a>`;
+}
+
+function bodyP(text: string): string {
+  return `<p style="margin:0 0 18px;font-size:14px;color:#9ca3af;line-height:1.7;">${text}</p>`;
+}
+
+function noteP(text: string): string {
+  return `<p style="margin:18px 0 0;font-size:12px;color:#6b7280;line-height:1.6;">${text}</p>`;
 }
 
 // ── Password reset ─────────────────────────────────────────────
@@ -231,28 +246,40 @@ export async function sendPasswordResetEmail(to: string, rawToken: string): Prom
   const resetUrl = `${APP_URL}/reset-password?token=${encodeURIComponent(rawToken)}`;
   // rawToken is never logged — only the URL is used here and only in the email body
 
-  const body = `
-    <p style="margin:0 0 24px;font-size:14px;color:#6b7280;line-height:1.6;">
-      We received a request to reset the password for your AIM Studio account.
-      Click the button below to choose a new password. This link expires in 30 minutes.
-    </p>
-    <a href="${resetUrl}"
-       style="display:inline-block;background:#e8c97e;color:#0a0a0a;font-size:14px;font-weight:600;
-              text-decoration:none;padding:12px 28px;border-radius:6px;">
-      Reset Password
-    </a>
-    <p style="margin:24px 0 0;font-size:12px;color:#6b7280;line-height:1.6;">
-      If you did not request a password reset, you can safely ignore this email.
-    </p>
-    <p style="margin:12px 0 0;font-size:11px;color:#6b7280;">
-      If the button does not work, copy this link:<br>
-      <span style="color:#e5e7eb;word-break:break-all;">${resetUrl}</span>
-    </p>`;
+  const bodyHtml = `
+    ${bodyP("We received a request to reset the password for your AIM Studio account. Click the button below to choose a new password. <strong style='color:#e5e7eb;'>This link expires in 30 minutes.</strong>")}
+    ${btn("Reset Password", resetUrl)}
+    ${noteP("If you did not request a password reset, you can safely ignore this email.")}
+    ${noteP("Do not share this link with anyone. AIM Studio will never ask for your password.")}
+    ${noteP(`If the button doesn&rsquo;t work, copy this link:<br><span style="color:#9ca3af;word-break:break-all;font-size:11px;">${esc(resetUrl)}</span>`)}`;
 
   await sendEmail({
     to,
     subject: "Reset your AIM Studio password",
-    html:    baseTemplate("Reset your password", body),
+    html:    premiumTransactionalEmail({ title: "Reset your password", bodyHtml }),
+    type:    "PASSWORD_RESET",
+  });
+}
+
+// ── Password reset code (user-initiated) ──────────────────────
+
+export async function sendPasswordResetCodeEmail(to: string, code: string): Promise<void> {
+  const bodyHtml = `
+    ${bodyP("We received a request to reset the password for your AIM Studio account. Enter the verification code below. <strong style='color:#e5e7eb;'>This code expires in 30 minutes.</strong>")}
+    <div style="text-align:center;margin:24px 0;">
+      <span style="display:inline-block;background:#1a1a1a;border:2px solid #e8c97e;border-radius:6px;
+                    padding:16px 36px;font-size:34px;font-weight:700;letter-spacing:10px;color:#f9fafb;
+                    font-family:monospace;">
+        ${esc(code)}
+      </span>
+    </div>
+    ${noteP("If you did not request a password reset, you can safely ignore this email.")}
+    ${noteP("Do not share this code with anyone.")}`;
+
+  await sendEmail({
+    to,
+    subject: "Your AIM Studio password reset code",
+    html:    premiumTransactionalEmail({ title: "Password reset code", bodyHtml }),
     type:    "PASSWORD_RESET",
   });
 }
@@ -269,53 +296,58 @@ export async function sendSecurityAlertEmail(opts: {
   const resetUrl = `${APP_URL}/forgot-password`;
 
   const actionHtml = opts.actionUrl
-    ? `<a href="${opts.actionUrl}"
-         style="display:inline-block;background:#e8c97e;color:#0a0a0a;font-size:14px;font-weight:600;
-                text-decoration:none;padding:12px 28px;border-radius:6px;margin-top:20px;">
-        ${opts.actionLabel ?? "Take Action"}
-       </a>`
+    ? `<div style="margin:20px 0 0;">${btn(opts.actionLabel ?? "Take Action", opts.actionUrl)}</div>`
     : "";
 
-  const html = `
-    <p style="margin:0 0 16px;font-size:14px;color:#6b7280;line-height:1.6;">${opts.body}</p>
+  const bodyHtml = `
+    ${bodyP(esc(opts.body))}
     ${actionHtml}
-    <p style="margin:24px 0 0;font-size:12px;color:#6b7280;line-height:1.6;">
-      If this was you, no action is needed.<br>
-      If this was not you,
-      <a href="${resetUrl}" style="color:#e8c97e;">reset your password immediately</a>.
-    </p>`;
+    ${noteP(`If this was you, no action is needed.`)}
+    ${noteP(`If this was <strong style="color:#e5e7eb;">not</strong> you, <a href="${resetUrl}" style="color:#f87171;">reset your password immediately</a>.`)}`;
 
   await sendEmail({
     to:      opts.to,
-    subject: `Security alert for your AIM Studio account`,
-    html:    baseTemplate(opts.title, html),
+    subject: `Security alert — AIM Studio`,
+    html:    premiumTransactionalEmail({ title: opts.title, bodyHtml, label: "Security Alert" }),
     type:    "SECURITY_ALERT",
   });
 }
 
 // ── Welcome email ──────────────────────────────────────────────
 
-export async function sendWelcomeEmail(to: string, name?: string | null): Promise<void> {
-  const greeting = name ? `Welcome, ${name}` : "Welcome to AIM Studio";
-  const dashboardUrl = `${APP_URL}/dashboard`;
+export async function sendWelcomeEmail(to: string, name?: string | null, userId?: string): Promise<void> {
+  const firstName = name?.split(" ")[0] ?? null;
+  const greeting  = firstName ? `Welcome, ${esc(firstName)}` : "Welcome to AIM Studio";
 
-  const body = `
-    <p style="margin:0 0 16px;font-size:14px;color:#6b7280;line-height:1.6;">
-      Your account is ready. Start exploring our films, series, and creative work.
-    </p>
-    <a href="${dashboardUrl}"
-       style="display:inline-block;background:#e8c97e;color:#0a0a0a;font-size:14px;font-weight:600;
-              text-decoration:none;padding:12px 28px;border-radius:6px;">
-      Go to Dashboard
-    </a>
-    <p style="margin:24px 0 0;font-size:12px;color:#6b7280;line-height:1.6;">
-      If you did not create this account, please ignore this email.
-    </p>`;
+  // Build magic-link URL if we have a userId so the CTA logs the user in automatically.
+  // Falls back to plain /dashboard (requires manual sign-in) if no userId is provided.
+  let ctaUrl = `${APP_URL}/dashboard`;
+  if (userId) {
+    const { generateWelcomeToken } = await import("@/lib/welcome-token");
+    const token = await generateWelcomeToken(userId);
+    ctaUrl = `${APP_URL}/welcome-login?uid=${encodeURIComponent(userId)}&t=${encodeURIComponent(token)}`;
+  }
+
+  const bodyHtml = `
+    ${bodyP("Your AIM Studio account is ready. Here&rsquo;s what&rsquo;s waiting for you:")}
+    <table cellpadding="0" cellspacing="0" role="presentation" style="margin:0 0 24px;width:100%;">
+      <tr><td style="padding:7px 0;font-size:13px;color:#d1d5db;line-height:1.6;border-bottom:1px solid #1e1e1e;">
+        <span style="color:#e8c97e;margin-right:10px;">&#9654;</span>Exclusive AIM Studio films and series
+      </td></tr>
+      <tr><td style="padding:7px 0;font-size:13px;color:#d1d5db;line-height:1.6;border-bottom:1px solid #1e1e1e;">
+        <span style="color:#e8c97e;margin-right:10px;">&#9654;</span>Behind-the-scenes work from the studio
+      </td></tr>
+      <tr><td style="padding:7px 0;font-size:13px;color:#d1d5db;line-height:1.6;">
+        <span style="color:#e8c97e;margin-right:10px;">&#9654;</span>New releases when they drop
+      </td></tr>
+    </table>
+    ${btn("Enter AIM Studio", ctaUrl)}
+    ${noteP("If you did not create this account, please ignore this email.")}`;
 
   await sendEmail({
     to,
     subject: "Welcome to AIM Studio",
-    html:    baseTemplate(greeting, body),
+    html:    premiumTransactionalEmail({ title: greeting, bodyHtml }),
     type:    "WELCOME",
   });
 }
@@ -334,24 +366,18 @@ export async function sendAccountEmail(opts: {
   ctaLabel?: string;
 }): Promise<void> {
   const ctaHtml = opts.ctaUrl
-    ? `<a href="${opts.ctaUrl}"
-         style="display:inline-block;background:#e8c97e;color:#0a0a0a;font-size:14px;font-weight:600;
-                text-decoration:none;padding:12px 28px;border-radius:6px;margin-top:20px;">
-        ${opts.ctaLabel ?? "View Account"}
-       </a>`
+    ? `<div style="margin:20px 0 0;">${btn(opts.ctaLabel ?? "View Account", opts.ctaUrl)}</div>`
     : "";
 
-  const html = `
-    <p style="margin:0 0 16px;font-size:14px;color:#6b7280;line-height:1.6;">${opts.body}</p>
+  const bodyHtml = `
+    ${bodyP(esc(opts.body))}
     ${ctaHtml}
-    <p style="margin:24px 0 0;font-size:12px;color:#6b7280;line-height:1.6;">
-      If you have questions about your account, contact us through the site.
-    </p>`;
+    ${noteP("If you have questions about your account, contact us through the site.")}`;
 
   await sendEmail({
     to:      opts.to,
     subject: opts.subject,
-    html:    baseTemplate(opts.title, html),
+    html:    premiumTransactionalEmail({ title: opts.title, bodyHtml, label: "Account" }),
     type:    "ACCOUNT",
   });
 }

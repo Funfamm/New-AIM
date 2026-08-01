@@ -6,15 +6,26 @@
 //  - CTA paired validation (label + URL — both required or both empty)
 //  - Live preview panel: in-app notification card + email channel hint
 //  - Release / Episode now call sendReleaseOutreach / sendEpisodeOutreach (imageUrl support)
+//  - Audience selector on all compose types, including "Specific members" search UI
 
-import { useTransition, useState, useMemo } from "react";
+import { useTransition, useState, useMemo, useEffect, useRef } from "react";
 import {
   sendAnnouncement,
   sendReleaseOutreach,
   sendSeasonDropOutreach,
 } from "@/lib/actions/outreach";
 import type { OutreachResult, AudienceType } from "@/lib/actions/outreach";
+
+// Format a scheduled Date as a human-readable label for the success message
+function fmtScheduled(iso: string): string {
+  const d = new Date(iso);
+  const date = new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric" }).format(d);
+  const time = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", hour12: true }).format(d);
+  return `${date}, ${time}`;
+}
 import type { ReleaseStage } from "@/lib/bulk-email";
+
+type MemberResult = { id: string; name: string | null; email: string };
 
 type PublishedWork    = {
   id:          string;
@@ -66,10 +77,11 @@ function detectStage(work: PublishedWork): ReleaseStage {
 }
 
 const AUDIENCE_OPTIONS: { id: AudienceType; label: string; hint: string }[] = [
-  { id: "all",        label: "All users",        hint: "All active registered users" },
-  { id: "admins",     label: "Admins only",       hint: "Admin accounts only" },
-  { id: "notify_me",  label: "Notify Me signups", hint: "Email addresses from Notify Me CTAs" },
-  { id: "saved_work", label: "Saved work users",  hint: "Users who saved at least one work" },
+  { id: "all",        label: "All users",         hint: "All active registered users" },
+  { id: "admins",     label: "Admins only",        hint: "Admin accounts only" },
+  { id: "notify_me",  label: "Notify Me signups",  hint: "Email addresses from Notify Me CTAs" },
+  { id: "saved_work", label: "Saved work users",   hint: "Users who saved at least one work" },
+  { id: "specific",   label: "Specific members",   hint: "Search and select individual members" },
 ];
 
 const CHANNELS: { id: ChannelType; label: string }[] = [
@@ -87,6 +99,7 @@ function isValidUrl(url: string): boolean {
 }
 
 function formatResult(r: OutreachResult): string {
+  if (r.scheduledFor) return `✓ Scheduled for ${fmtScheduled(r.scheduledFor)}`;
   const parts: string[] = [];
   if ((r.created    ?? 0) > 0) parts.push(`${r.created} in-app`);
   if ((r.queued     ?? 0) > 0) parts.push(`${r.queued} email${r.queued === 1 ? "" : "s"} queued`);
@@ -126,9 +139,104 @@ export default function OutreachComposeForm({
   const [ctaUrl,   setCtaUrl]   = useState("");
   const [ctaLabel, setCtaLabel] = useState("");
 
+  // ── Member search state ─────────────────────────────────────
+  const [specificUsers,   setSpecificUsers]   = useState<MemberResult[]>([]);
+  const [memberQuery,     setMemberQuery]     = useState("");
+  const [memberResults,   setMemberResults]   = useState<MemberResult[]>([]);
+  const [memberSearching, setMemberSearching] = useState(false);
+  const [memberDropOpen,  setMemberDropOpen]  = useState(false);
+  const [activeIdx,       setActiveIdx]       = useState(-1);
+  const searchTimerRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const memberInputRef  = useRef<HTMLInputElement>(null);
+  const memberWrapRef   = useRef<HTMLDivElement>(null);
+
+  // Scheduling
+  const [scheduledAt, setScheduledAt] = useState("");
+
   const [pending, startTransition] = useTransition();
   const [result,  setResult]       = useState<OutreachResult | null>(null);
   const [formKey, setFormKey]      = useState(0);
+
+  // ── Member search: debounced fetch (fires at 1 char) ────────
+  useEffect(() => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    const q = memberQuery.trim();
+    if (q.length < 1) {
+      setMemberResults([]);
+      setMemberDropOpen(false);
+      setMemberSearching(false);
+      setActiveIdx(-1);
+      return;
+    }
+    setMemberSearching(true);
+    searchTimerRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/admin/users/search?q=${encodeURIComponent(q)}`);
+        if (res.ok) {
+          const data: MemberResult[] = await res.json();
+          // Filter out already-selected users
+          const selectedIds = new Set(specificUsers.map((u) => u.id));
+          const filtered = data.filter((u) => !selectedIds.has(u.id));
+          setMemberResults(filtered);
+          setMemberDropOpen(filtered.length > 0);
+          setActiveIdx(-1);
+        }
+      } catch {
+        // silent — non-critical
+      } finally {
+        setMemberSearching(false);
+      }
+    }, 200);
+    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
+  }, [memberQuery, specificUsers]);
+
+  // ── Member search: click-outside closes dropdown ────────────
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (memberWrapRef.current && !memberWrapRef.current.contains(e.target as Node)) {
+        setMemberDropOpen(false);
+        setActiveIdx(-1);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  function addSpecificUser(user: MemberResult) {
+    if (!specificUsers.find((u) => u.id === user.id)) {
+      setSpecificUsers((prev) => [...prev, user]);
+    }
+    setMemberQuery("");
+    setMemberResults([]);
+    setMemberDropOpen(false);
+    setActiveIdx(-1);
+    // Keep focus in the input so admin can keep typing
+    requestAnimationFrame(() => memberInputRef.current?.focus());
+  }
+
+  function removeSpecificUser(id: string) {
+    setSpecificUsers((prev) => prev.filter((u) => u.id !== id));
+    requestAnimationFrame(() => memberInputRef.current?.focus());
+  }
+
+  function handleMemberKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (!memberDropOpen || memberResults.length === 0) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveIdx((i) => Math.min(i + 1, memberResults.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveIdx((i) => Math.max(i - 1, 0));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (activeIdx >= 0 && activeIdx < memberResults.length) {
+        addSpecificUser(memberResults[activeIdx]);
+      }
+    } else if (e.key === "Escape") {
+      setMemberDropOpen(false);
+      setActiveIdx(-1);
+    }
+  }
 
   // ── Season Drop derived data ─────────────────────────────────
   const { seriesList, seasonsBySeriesId } = useMemo(() => {
@@ -227,10 +335,8 @@ export default function OutreachComposeForm({
       ? `${selectedSeries.title} — Season ${selectedSeasonNumber} is now streaming`
       : previewTitle;
 
-  // Show email preview when channel includes email (or for release/episode which are email-only)
-  const showEmailPreview =
-    composeType === "release" || composeType === "episode" ||
-    (channel === "both" || channel === "email");
+  // Show email preview when channel includes email
+  const showEmailPreview = channel === "both" || channel === "email";
 
   // ── Handlers ─────────────────────────────────────────────────
   function resetState() {
@@ -246,6 +352,12 @@ export default function OutreachComposeForm({
     setSelectedSeasonNumber("");
     setCtaUrl("");
     setCtaLabel("");
+    setScheduledAt("");
+    setSpecificUsers([]);
+    setMemberQuery("");
+    setMemberResults([]);
+    setMemberDropOpen(false);
+    setActiveIdx(-1);
   }
 
   function handleTypeChange(t: ComposeType) {
@@ -261,6 +373,13 @@ export default function OutreachComposeForm({
     setCtaLabel("");
     setAnnTitle("");
     setAnnBody("");
+    setAudience("all");
+    setScheduledAt("");
+    setSpecificUsers([]);
+    setMemberQuery("");
+    setMemberResults([]);
+    setMemberDropOpen(false);
+    setActiveIdx(-1);
   }
 
   function handleWorkChange(workId: string) {
@@ -294,6 +413,12 @@ export default function OutreachComposeForm({
     e.preventDefault();
     if (ctaError) return;
 
+    // Validate specific audience
+    if (audience === "specific" && specificUsers.length === 0) {
+      setResult({ error: "Select at least one member to send to." });
+      return;
+    }
+
     const formData = new FormData(e.currentTarget);
     setResult(null);
 
@@ -304,11 +429,29 @@ export default function OutreachComposeForm({
         r = await sendAnnouncement(formData);
       } else if (composeType === "release") {
         if (!selectedWorkId) { setResult({ error: "Select a published work." }); return; }
-        r = await sendReleaseOutreach(selectedWorkId, imageUrl || null, releaseStageOverride || undefined);
+        const schedDate = scheduledAt ? new Date(scheduledAt) : undefined;
+        r = await sendReleaseOutreach(
+          selectedWorkId,
+          imageUrl || null,
+          releaseStageOverride || undefined,
+          audience,
+          audience === "specific" ? specificUsers.map((u) => u.id) : undefined,
+          channel,
+          schedDate && !isNaN(schedDate.getTime()) ? schedDate : undefined,
+        );
       } else if (composeType === "episode") {
         if (!selectedSeriesId) { setResult({ error: "Select a series." }); return; }
         if (selectedSeasonNumber === "") { setResult({ error: "Select a season." }); return; }
-        r = await sendSeasonDropOutreach(selectedSeriesId, selectedSeasonNumber as number, imageUrl || null);
+        const schedDate = scheduledAt ? new Date(scheduledAt) : undefined;
+        r = await sendSeasonDropOutreach(
+          selectedSeriesId,
+          selectedSeasonNumber as number,
+          imageUrl || null,
+          audience,
+          audience === "specific" ? specificUsers.map((u) => u.id) : undefined,
+          channel,
+          schedDate && !isNaN(schedDate.getTime()) ? schedDate : undefined,
+        );
       } else {
         r = { error: "This message type is coming in a future phase." };
       }
@@ -318,9 +461,122 @@ export default function OutreachComposeForm({
     });
   }
 
+  // ── Member search UI (shared across all forms) ───────────────
+  const memberSearchUI = (
+    <div className="outreach-member-search" ref={memberWrapRef}>
+
+      {/* Selected chips — shown above the input */}
+      {specificUsers.length > 0 && (
+        <div className="outreach-member-chips">
+          {specificUsers.map((u) => (
+            <span key={u.id} className="outreach-member-chip">
+              {u.name ?? u.email}
+              <button
+                type="button"
+                className="outreach-member-chip-remove"
+                onClick={() => removeSpecificUser(u.id)}
+                aria-label={`Remove ${u.name ?? u.email}`}
+              >
+                ✕
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Search input + dropdown */}
+      <div style={{ position: "relative" }}>
+        <div className="outreach-member-input-wrap">
+          <input
+            ref={memberInputRef}
+            type="text"
+            role="combobox"
+            aria-autocomplete="list"
+            aria-expanded={memberDropOpen}
+            aria-haspopup="listbox"
+            value={memberQuery}
+            onChange={(e) => { setMemberQuery(e.target.value); setMemberDropOpen(true); }}
+            onFocus={() => { if (memberResults.length > 0) setMemberDropOpen(true); }}
+            onKeyDown={handleMemberKeyDown}
+            placeholder={memberSearching ? "Searching…" : "Type a name or email to search…"}
+            className="outreach-input"
+            autoComplete="off"
+            spellCheck={false}
+          />
+          {memberSearching && (
+            <span className="outreach-member-spinner" aria-hidden="true" />
+          )}
+        </div>
+
+        {memberDropOpen && memberResults.length > 0 && (
+          <ul className="outreach-member-dropdown" role="listbox">
+            {memberResults.map((u, i) => (
+              <li
+                key={u.id}
+                role="option"
+                aria-selected={i === activeIdx}
+                id={`member-option-${u.id}`}
+              >
+                <button
+                  type="button"
+                  className={`outreach-member-result${i === activeIdx ? " outreach-member-result--active" : ""}`}
+                  onMouseDown={(e) => { e.preventDefault(); addSpecificUser(u); }}
+                  onMouseEnter={() => setActiveIdx(i)}
+                >
+                  <span className="outreach-member-result-name">
+                    {u.name ?? <em style={{ color: "var(--color-brand-muted)" }}>No name</em>}
+                  </span>
+                  <span className="outreach-member-result-email">{u.email}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {/* Empty state — only when user has typed something and results came back empty */}
+        {memberDropOpen && !memberSearching && memberQuery.trim().length > 0 && memberResults.length === 0 && (
+          <div className="outreach-member-empty">
+            No members found for &ldquo;{memberQuery.trim()}&rdquo;
+          </div>
+        )}
+      </div>
+
+      <p className="outreach-hint" style={{ margin: "0.4rem 0 0" }}>
+        {specificUsers.length === 0
+          ? "Type a name or email — results appear from the first character."
+          : `${specificUsers.length} member${specificUsers.length !== 1 ? "s" : ""} selected. Keep typing to add more.`
+        }
+      </p>
+    </div>
+  );
+
+  // ── Audience selector (reused across all forms) ──────────────
+  const audienceSelector = (
+    <div>
+      <p className="outreach-label" style={{ marginBottom: "0.6rem" }}>Audience</p>
+      <div className="outreach-audience-grid">
+        {AUDIENCE_OPTIONS.map((a) => (
+          <button
+            key={a.id}
+            type="button"
+            onClick={() => setAudience(a.id)}
+            className={`outreach-audience-btn${audience === a.id ? " outreach-audience-btn--active" : ""}`}
+            title={a.hint}
+            aria-pressed={audience === a.id}
+          >
+            {a.label}
+          </button>
+        ))}
+      </div>
+      {audience === "specific" && (
+        <div style={{ marginTop: "0.75rem" }}>
+          {memberSearchUI}
+        </div>
+      )}
+    </div>
+  );
+
   // ── Shared: image URL field ──────────────────────────────────
-  // Visible input drives imageUrl state; hidden input in announcement form
-  // carries the value into formData.
   const imageField = (
     <div className="outreach-field outreach-field--full">
       <label className="outreach-label" htmlFor="oc-image-url">
@@ -406,7 +662,37 @@ export default function OutreachComposeForm({
     </div>
   );
 
-  // ── Channel selector (announcement only) ─────────────────────
+  // ── Shared: "Send at" scheduling field ──────────────────────
+  // If set and in the future: announcement is saved as draft (cron publishes);
+  // release/season drop: email is queued with that scheduledAt timestamp.
+  const scheduleField = (
+    <div className="outreach-field" style={{ maxWidth: "300px" }}>
+      <label className="outreach-label" htmlFor="oc-scheduled-at">
+        Send at{" "}
+        <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>
+          (optional — leave blank to send now)
+        </span>
+      </label>
+      <input
+        id="oc-scheduled-at"
+        name="scheduledAt"
+        type="datetime-local"
+        value={scheduledAt}
+        onChange={(e) => setScheduledAt(e.target.value)}
+        className="outreach-input"
+      />
+      {scheduledAt && (
+        <p className="outreach-hint" style={{ marginTop: "0.3rem" }}>
+          {composeType === "announcement"
+            ? "Announcement will be saved as a draft and published automatically at this time."
+            : "Email will be queued now and delivered at this time. In-app notifications send immediately."
+          }
+        </p>
+      )}
+    </div>
+  );
+
+  // ── Channel selector (all compose types) ─────────────────────
   const channelSelector = (
     <div>
       <p className="outreach-label" style={{ marginBottom: "0.6rem" }}>Delivery Channel</p>
@@ -478,28 +764,17 @@ export default function OutreachComposeForm({
       {composeType === "announcement" && (
         <form key={formKey} onSubmit={handleSubmit} className="outreach-form">
           {/* Hidden fields carry state into FormData */}
-          <input type="hidden" name="audienceType" value={audience} />
-          <input type="hidden" name="channel"      value={channel}  />
-          <input type="hidden" name="imageUrl"      value={imageUrl} />
+          <input type="hidden" name="audienceType"     value={audience}   />
+          <input type="hidden" name="channel"          value={channel}    />
+          <input type="hidden" name="imageUrl"         value={imageUrl}   />
+          <input
+            type="hidden"
+            name="specificUserIds"
+            value={JSON.stringify(specificUsers.map((u) => u.id))}
+          />
 
           {/* Audience */}
-          <div>
-            <p className="outreach-label" style={{ marginBottom: "0.6rem" }}>Audience</p>
-            <div className="outreach-audience-grid">
-              {AUDIENCE_OPTIONS.map((a) => (
-                <button
-                  key={a.id}
-                  type="button"
-                  onClick={() => setAudience(a.id)}
-                  className={`outreach-audience-btn${audience === a.id ? " outreach-audience-btn--active" : ""}`}
-                  title={a.hint}
-                  aria-pressed={audience === a.id}
-                >
-                  {a.label}
-                </button>
-              ))}
-            </div>
-          </div>
+          {audienceSelector}
 
           {/* Title */}
           <div className="outreach-field">
@@ -579,6 +854,9 @@ export default function OutreachComposeForm({
           {/* Image URL — only shown when email channel is active */}
           {(channel === "both" || channel === "email") && !emailChannelDisabled && imageField}
 
+          {/* Scheduling */}
+          {scheduleField}
+
           {/* Live preview */}
           {previewPanel}
 
@@ -593,7 +871,10 @@ export default function OutreachComposeForm({
             disabled={pending || !!ctaError}
             className="outreach-submit-btn"
           >
-            {pending ? "Sending…" : "Send Now"}
+            {pending
+              ? (scheduledAt ? "Scheduling…" : "Sending…")
+              : (scheduledAt ? "Schedule" : "Send Now")
+            }
           </button>
         </form>
       )}
@@ -609,6 +890,9 @@ export default function OutreachComposeForm({
               }{" "}Email will not be queued.
             </p>
           )}
+
+          {/* Audience */}
+          {audienceSelector}
 
           <div className="outreach-field">
             <label className="outreach-label" htmlFor="oc-release-work">Published Work *</label>
@@ -660,13 +944,19 @@ export default function OutreachComposeForm({
             </div>
           )}
 
-          {/* Image URL with auto-populated poster */}
-          {imageField}
+          {/* Delivery Channel */}
+          {channelSelector}
+
+          {/* Image URL with auto-populated poster — shown when email channel active */}
+          {(channel === "both" || channel === "email") && !emailChannelDisabled && imageField}
+          {channel === "inapp" && selectedWorkId && imageField}
+
+          {/* Scheduling */}
+          {scheduleField}
 
           <p className="outreach-hint">
-            Queues a bulk email to all opted-in users announcing this release.
-            Selecting a work auto-fills the image URL with its poster if available.
-            Stage determines subject line and CTA — re-send is allowed per stage.
+            Release stage determines subject line and CTA. Re-send per stage is blocked for mass sends;
+            Specific Members can always be retargeted. Email scheduling queues emails for future delivery.
           </p>
 
           {/* Preview — shown once a work is selected */}
@@ -682,7 +972,7 @@ export default function OutreachComposeForm({
             disabled={pending || !selectedWorkId}
             className="outreach-submit-btn"
           >
-            {pending ? "Queuing…" : "Queue Release Email"}
+            {pending ? "Sending…" : (scheduledAt ? "Schedule" : "Send")}
           </button>
         </form>
       )}
@@ -698,6 +988,9 @@ export default function OutreachComposeForm({
               }{" "}Email will not be queued.
             </p>
           )}
+
+          {/* Audience */}
+          {audienceSelector}
 
           {/* Series selector */}
           <div className="outreach-field">
@@ -751,13 +1044,25 @@ export default function OutreachComposeForm({
             </div>
           )}
 
-          {/* Image URL — only shown when series + season are selected */}
-          {selectedSeriesId && selectedSeasonNumber !== "" && imageField}
+          {/* Delivery Channel */}
+          {channelSelector}
+
+          {/* Image URL — only shown when series + season are selected and email channel active */}
+          {selectedSeriesId && selectedSeasonNumber !== "" && (
+            (channel === "both" || channel === "email") && !emailChannelDisabled
+              ? imageField
+              : channel === "inapp"
+                ? imageField
+                : null
+          )}
+
+          {/* Scheduling */}
+          {scheduleField}
 
           <p className="outreach-hint">
-            One email per season — sent to users with episode notifications enabled.
+            One send per season — sent to users with episode notifications enabled (or Specific Members).
             Selecting a season auto-fills the image from episode posters when available.
-            Re-send is blocked per season so users are never emailed twice for the same drop.
+            Re-send is blocked per season for mass sends; Specific Members can always be retargeted.
           </p>
 
           {/* Preview — shown once series + season are selected */}
@@ -773,7 +1078,7 @@ export default function OutreachComposeForm({
             disabled={pending || !selectedSeriesId || selectedSeasonNumber === ""}
             className="outreach-submit-btn"
           >
-            {pending ? "Queuing…" : "Queue Season Drop Email"}
+            {pending ? "Sending…" : (scheduledAt ? "Schedule" : "Send")}
           </button>
         </form>
       )}

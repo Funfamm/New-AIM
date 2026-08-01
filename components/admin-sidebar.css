@@ -53,8 +53,22 @@
   color: var(--color-brand-muted); display: block;
 }
 
-/* Nav */
-.adm-nav { display: flex; flex-direction: column; gap: 0.125rem; flex: 1; }
+/* Nav — scrollable, fills space between logo and bottom actions */
+.adm-nav {
+  display: flex; flex-direction: column; gap: 0.125rem; flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(226, 184, 101, 0.28) transparent;
+  /* small right gap so the scrollbar doesn't sit on top of link text */
+  margin-right: -0.25rem;
+  padding-right: 0.25rem;
+}
+.adm-nav::-webkit-scrollbar        { width: 4px; }
+.adm-nav::-webkit-scrollbar-thumb  { background: rgba(226, 184, 101, 0.28); border-radius: 999px; }
+.adm-nav::-webkit-scrollbar-track  { background: transparent; }
+
 .adm-link {
   display: flex; align-items: center; gap: 0.6rem;
   font-family: var(--font-body); font-size: 0.875rem; font-weight: 500;
@@ -67,6 +81,13 @@
 .adm-link--active {
   background: var(--color-brand-surface); color: var(--color-brand-white);
   border-left-color: var(--color-brand-accent);
+}
+/* Unresolved-error count on the Errors item — clears as errors are resolved. */
+.adm-link-badge {
+  margin-left: auto; min-width: 18px; text-align: center;
+  font-family: var(--font-body); font-size: 0.6rem; font-weight: 700; line-height: 1;
+  padding: 3px 6px; border-radius: 999px;
+  background: rgba(248,113,113,0.14); color: #f87171; border: 1px solid rgba(248,113,113,0.28);
 }
 
 /* Bottom */
@@ -90,3 +111,23 @@
   transition: color 0.15s, background 0.15s;
 }
 .adm-signout:hover { color: var(--color-brand-white); background: var(--color-brand-surface); }
+
+/* Bell notification indicator in sidebar header */
+.adm-top-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 0.5rem; margin-bottom: 0.25rem;
+}
+.adm-top-row .adm-logo { margin-bottom: 0; }
+.adm-bell {
+  display: flex; align-items: center; gap: 0.3rem;
+  padding: 0.25rem 0.5rem; border-radius: 6px;
+  background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.2);
+  color: #f87171; text-decoration: none;
+  transition: background 0.15s, border-color 0.15s;
+  flex-shrink: 0;
+}
+.adm-bell:hover { background: rgba(248,113,113,0.18); border-color: rgba(248,113,113,0.35); }
+.adm-bell-count {
+  font-family: var(--font-body); font-size: 0.6rem; font-weight: 700;
+  line-height: 1;
+}

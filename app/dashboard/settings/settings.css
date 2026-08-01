@@ -173,6 +173,44 @@
 }
 .settings-text-link:hover { color: var(--color-brand-accent); }
 
+/* ── Password section ── */
+.pwd-section {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--color-brand-border);
+}
+.pwd-section--success {
+  display: flex; align-items: center; gap: 1rem;
+}
+.pwd-hint {
+  font-family: var(--font-body); font-size: 0.8rem;
+  color: var(--color-brand-muted); margin: 0 0 0.875rem;
+}
+.pwd-error {
+  font-family: var(--font-body); font-size: 0.8rem;
+  color: #e07060; margin: 0 0 0.75rem;
+}
+.pwd-success-msg {
+  font-family: var(--font-body); font-size: 0.875rem;
+  color: var(--color-brand-accent); margin: 0;
+}
+.pwd-form { display: flex; flex-direction: column; gap: 0.75rem; }
+.pwd-field { display: flex; flex-direction: column; gap: 0.35rem; }
+.pwd-actions {
+  display: flex; align-items: center; gap: 1rem; margin-top: 0.25rem;
+}
+.pwd-code-input { max-width: 160px; letter-spacing: 0.18em; }
+.pwd-cancel-btn {
+  font-family: var(--font-body); font-size: 0.8rem; font-weight: 500;
+  color: var(--color-brand-muted); background: none; border: none;
+  padding: 0; cursor: pointer; transition: color 0.15s;
+}
+.pwd-cancel-btn:hover { color: var(--color-brand-white); }
+
+/* Save button: pending + disabled state */
+.settings-save-btn:disabled {
+  opacity: 0.6; cursor: not-allowed; filter: none;
+}
+
 /* ── Logout ── */
 .settings-logout-btn {
   display: inline-flex; align-items: center; gap: 0.4rem;
