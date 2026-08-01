@@ -84,6 +84,16 @@
 .watch-upsell a:hover { text-decoration: underline; }
 .watch-upsell-btn { color: var(--color-brand-accent) !important; font-weight: 600; }
 
+/* ── How We Made It — quiet accent link, own line (same idiom as .watch-next-ep) ── */
+.watch-hwmi-row { margin-top: 1rem; }
+.watch-hwmi {
+  display: inline-flex; align-items: center; gap: 0.45rem;
+  font-family: var(--font-body); font-size: 0.875rem; font-weight: 600;
+  color: var(--color-brand-accent); text-decoration: none;
+  transition: opacity 0.15s;
+}
+.watch-hwmi:hover { opacity: 0.72; }
+
 /* ── Episode sidebar ── */
 .watch-ep-sidebar {
   border: 1px solid var(--color-brand-border);
