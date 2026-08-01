@@ -3,6 +3,26 @@
 import { useEffect } from "react";
 import { isIgnorableClientError } from "@/lib/monitoring/ignore";
 
+// Stale-deploy chunk failures (patterns mirror lib/monitoring/classify.ts): an open
+// tab from a previous deployment requests JS/CSS chunks that no longer exist. A
+// one-shot reload picks up the new build. The 60s sessionStorage guard prevents a
+// reload loop when the failure has another cause (offline, extension blocking).
+const CHUNK_ERROR_PATTERNS = [
+  /Loading chunk\s+[\w-]+\s+failed/i,
+  /\bChunkLoadError\b/i,
+  /Loading CSS chunk/i,
+];
+
+function maybeRecoverFromStaleChunk(msg: string) {
+  if (!CHUNK_ERROR_PATTERNS.some((re) => re.test(msg))) return;
+  try {
+    const last = Number(sessionStorage.getItem("aim-chunk-reload") ?? 0);
+    if (Date.now() - last < 60_000) return;
+    sessionStorage.setItem("aim-chunk-reload", String(Date.now()));
+    location.reload();
+  } catch { /* sessionStorage unavailable — recovery is best-effort */ }
+}
+
 // Captures uncaught browser errors + unhandled promise rejections and beacons them
 // to the in-house monitor. Mounted once in the root layout. Silent and best-effort.
 export default function ClientErrorReporter() {
@@ -27,6 +47,9 @@ export default function ClientErrorReporter() {
           });
         }
       } catch { /* ignore */ }
+
+      // After reporting, self-heal stale-deploy chunk errors with a guarded reload
+      maybeRecoverFromStaleChunk(msg);
     }
 
     const onError = (e: ErrorEvent) => report(e.message, e.error?.stack);
