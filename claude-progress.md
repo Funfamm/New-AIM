@@ -29,6 +29,7 @@ Read this at the start of every session. Update it after every task.
 - Per-work "How We Made It" link (`Work.processUrl`, nullable): admin sets internal path (e.g. /process) or external URL in Video Assets section; button renders on `/works/[slug]` CTA row + as accent link under `/watch/[slug]` engagement row (all modes incl. trailer); episodes/TRAILER types inherit parent's via fallback; shared `components/how-we-made-it-button.tsx`
 - /process guide download: pre-rendered `public/how-we-produced-no-mans-land.pdf` (headless Edge print-to-pdf of process.html, 8pp); both page buttons are direct `<a download>` links — regenerate the PDF whenever process.html content changes
 - Production-guide analytics: `PROCESS_CLICK` (How We Made It button, workId-attributed, parent for episodes) + `GUIDE_DOWNLOAD` (PDF link clicks on /process) enum values; process.html fires its own PAGE_VIEW + GUIDE_DOWNLOAD beacons (static page, outside AnalyticsBeacon); counts + per-work click ranking on Admin → Engagement
+- Admin pages excluded from analytics: AnalyticsBeacon skips `/admin*` paths (client) AND /api/analytics drops them (server); historical admin PAGE_VIEW/PAGE_LEAVE rows (6,702) deleted 2026-07-31 — daily view counts are public traffic only
 - HLS video playback (`lib/use-hls-video.ts`, R2 paths, CDN)
 - Video player: skip intro, skip credits, playback speed, subtitles
 - Episode player: up-next countdown, episode sidebar, season grouping

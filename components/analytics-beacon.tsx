@@ -38,20 +38,23 @@ export default function AnalyticsBeacon() {
 
     const prevPath = lastPathRef.current;
     const now = Date.now();
+    // Admin pages are never tracked — they would inflate the public view counts.
+    const isAdmin = pathname.startsWith("/admin");
 
-    // Fire PAGE_LEAVE for the previous path before switching
-    if (prevPath) {
+    // Fire PAGE_LEAVE for the previous (non-admin) path before switching
+    if (prevPath && !prevPath.startsWith("/admin")) {
       const dur = Math.min(Math.round((now - enteredAtRef.current) / 1000), 1800);
       if (dur >= 1) send("PAGE_LEAVE", prevPath, { durationSeconds: dur });
     }
 
     // Fire PAGE_VIEW for the incoming path
-    send("PAGE_VIEW", pathname);
+    if (!isAdmin) send("PAGE_VIEW", pathname);
     lastPathRef.current = pathname;
     enteredAtRef.current = now;
 
     // Also fire PAGE_LEAVE when the tab closes or user navigates to a different domain
     function onPageHide() {
+      if (isAdmin) return;
       const dur = Math.min(
         Math.round((Date.now() - enteredAtRef.current) / 1000),
         1800
