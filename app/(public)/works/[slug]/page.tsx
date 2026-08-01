@@ -357,7 +357,7 @@ export default async function WorkDetailPage({ params }: Props) {
 
                 {/* Production breakdown — independent of watch/trailer CTA state */}
                 {work.processUrl && (
-                  <HowWeMadeItButton processUrl={work.processUrl} />
+                  <HowWeMadeItButton processUrl={work.processUrl} workId={work.id} />
                 )}
               </div>
 

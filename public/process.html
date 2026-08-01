@@ -334,6 +334,19 @@ footer{margin-top:50px;padding-top:20px;border-top:1px solid var(--line);color:v
   }
   window.addEventListener('scroll', onScroll, { passive: true });
   onScroll();
+
+  // Analytics beacons — this static page sits outside the app's AnalyticsBeacon
+  // component, so page views and guide downloads are reported here directly.
+  function send(type) {
+    if (!('sendBeacon' in navigator)) return;
+    navigator.sendBeacon('/api/analytics',
+      new Blob([JSON.stringify({ type: type, path: '/process' })], { type: 'application/json' }));
+  }
+  send('PAGE_VIEW');
+  var links = document.querySelectorAll('a[download]');
+  for (var i = 0; i < links.length; i++) {
+    links[i].addEventListener('click', function () { send('GUIDE_DOWNLOAD'); });
+  }
 })();
 </script>
 
