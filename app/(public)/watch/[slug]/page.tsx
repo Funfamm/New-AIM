@@ -448,13 +448,14 @@ export default async function WatchPage({ params, searchParams }: Props) {
                   workId={isEpisode && work.parent ? work.parent.id : work.id}
                   size="sm"
                 />
-                {processUrl && (
-                  <HowWeMadeItButton
-                    processUrl={processUrl}
-                    className="action-btn action-btn--sm"
-                  />
-                )}
               </div>
+
+              {/* Production breakdown — accent link, own line under the engagement row */}
+              {processUrl && (
+                <div className="watch-hwmi-row">
+                  <HowWeMadeItButton processUrl={processUrl} className="watch-hwmi" />
+                </div>
+              )}
 
               {/* Next Episode button (below player on mobile) */}
               {isEpisode && nextEp && (
