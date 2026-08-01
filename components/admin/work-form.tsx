@@ -38,6 +38,7 @@ type WorkData = {
   year: number | null; duration: number | null; director: string | null; genres: string[];
   clientName: string | null; industry: string | null; projectGoal: string | null;
   deliverables: string | null; caseStudy: string | null; galleryUrls: string[];
+  processUrl: string | null;
   requiresAuth: boolean; requiresLoginToViewTrailer: boolean;
   featured: boolean; showOnHome: boolean;
   featuredOnHome: boolean; featuredOnWorks: boolean;
@@ -574,6 +575,20 @@ export default function WorkForm({
                   <R2FileUpload targetField="teaserUrl" projectTitle={title || "untitled"}
                     projectSlug={work?.slug} onSuccess={setTeaserUrl} accept="video/*" />
                 </div>
+              </div>
+            )}
+
+            {/* How We Made It link — text input, not type="url": internal paths like /process must pass */}
+            {!isEpisode && (
+              <div className="form-group">
+                <label className="form-label">How We Made It URL (optional)</label>
+                <input type="text" name="processUrl" className="form-input"
+                  defaultValue={work?.processUrl ?? ""}
+                  placeholder="/process or https://…" />
+                <span className="form-hint">
+                  Shows a &ldquo;How We Made It&rdquo; button on this work&rsquo;s public pages.
+                  Internal path (e.g. /process) or external link. Episodes inherit the series value.
+                </span>
               </div>
             )}
 

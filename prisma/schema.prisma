@@ -363,6 +363,11 @@ model Work {
   caseStudy   String?
   galleryUrls String[]  @default([])
 
+  // Behind-the-scenes / production breakdown. When set, a "How We Made It" button
+  // appears on this work's public pages (detail, watch, trailer). Any URL: an internal
+  // path like /process, or an external write-up. Episodes inherit the parent's.
+  processUrl  String?
+
   // Display controls
   requiresAuth               Boolean @default(false)
   requiresLoginToViewTrailer Boolean @default(false)

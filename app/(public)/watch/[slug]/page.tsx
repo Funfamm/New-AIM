@@ -22,6 +22,7 @@ import CommentSection from "@/components/comment-section";
 import ShareButton from "@/components/share-button";
 import { isWorkSaved } from "@/lib/actions/watchlist";
 import { getWorkLikeState } from "@/lib/actions/likes";
+import HowWeMadeItButton from "@/components/how-we-made-it-button";
 import { getOrCreateSession, trackEvent } from "@/lib/analytics";
 import { listPublishedSubtitles } from "@/lib/subtitles/subtitle-repo";
 import { getVttUrl } from "@/lib/subtitles/vtt-storage";
@@ -90,7 +91,7 @@ const getWork = unstable_cache(async (slug: string) => {
     select: {
       id: true, slug: true, title: true, status: true, type: true,
       commentsEnabled: true,
-      trailerUrl: true, previewClipUrl: true, videoUrl: true,
+      trailerUrl: true, previewClipUrl: true, videoUrl: true, processUrl: true,
       requiresAuth: true, requiresLoginToViewTrailer: true,
       posterUrl: true, heroMobileUrl: true, heroDesktopUrl: true, thumbnailUrl: true, description: true,
       episodeNumber: true, seasonNumber: true, duration: true,
@@ -112,7 +113,7 @@ const getWork = unstable_cache(async (slug: string) => {
       parent: {
         select: {
           id: true, slug: true, title: true, requiresAuth: true,
-          status: true, videoUrl: true,
+          status: true, videoUrl: true, processUrl: true,
           introStart: true, introEnd: true, creditsStart: true,
           contentRating: true, contentDescriptors: true,
           episodes: {
@@ -321,6 +322,8 @@ export default async function WatchPage({ params, searchParams }: Props) {
   const introEnd     = isEpisode ? (work.introEnd     ?? work.parent?.introEnd     ?? null) : work.introEnd;
   const creditsStart = isEpisode ? (work.creditsStart ?? work.parent?.creditsStart ?? null) : work.creditsStart;
   const contentRating   = isEpisode ? (work.parent?.contentRating   ?? null) : work.contentRating;
+  // Episodes and TRAILER-type works inherit the parent's production-breakdown link
+  const processUrl      = work.processUrl ?? work.parent?.processUrl ?? null;
   const contentDescriptors = isEpisode
     ? (work.parent?.contentDescriptors ?? [])
     : work.contentDescriptors;
@@ -445,6 +448,12 @@ export default async function WatchPage({ params, searchParams }: Props) {
                   workId={isEpisode && work.parent ? work.parent.id : work.id}
                   size="sm"
                 />
+                {processUrl && (
+                  <HowWeMadeItButton
+                    processUrl={processUrl}
+                    className="action-btn action-btn--sm"
+                  />
+                )}
               </div>
 
               {/* Next Episode button (below player on mobile) */}
