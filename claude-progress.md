@@ -26,7 +26,8 @@ Read this at the start of every session. Update it after every task.
 
 ### Video & Works
 - Works with type: FULL_FILM, SHORT_FILM, SERIES, EPISODE, TRAILER, COMMERCIAL, etc.
-- Per-work "How We Made It" link (`Work.processUrl`, nullable): admin sets internal path (e.g. /process) or external URL in Video Assets section; button renders on `/works/[slug]` CTA row + `/watch/[slug]` engagement row (all modes incl. trailer); episodes/TRAILER types inherit parent's via fallback; shared `components/how-we-made-it-button.tsx`
+- Per-work "How We Made It" link (`Work.processUrl`, nullable): admin sets internal path (e.g. /process) or external URL in Video Assets section; button renders on `/works/[slug]` CTA row + as accent link under `/watch/[slug]` engagement row (all modes incl. trailer); episodes/TRAILER types inherit parent's via fallback; shared `components/how-we-made-it-button.tsx`
+- /process guide download: pre-rendered `public/how-we-produced-no-mans-land.pdf` (headless Edge print-to-pdf of process.html, 8pp); both page buttons are direct `<a download>` links — regenerate the PDF whenever process.html content changes
 - HLS video playback (`lib/use-hls-video.ts`, R2 paths, CDN)
 - Video player: skip intro, skip credits, playback speed, subtitles
 - Episode player: up-next countdown, episode sidebar, season grouping

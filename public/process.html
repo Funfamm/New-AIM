@@ -127,9 +127,9 @@ footer{margin-top:50px;padding-top:20px;border-top:1px solid var(--line);color:v
     <a class="btn btn-primary btn-sm" href="/works/no-mans-land">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="6 4 20 12 6 20 6 4" fill="currentColor" stroke="none"/></svg>
       Watch the film</a>
-    <button class="btn btn-ghost btn-sm" id="dl">
+    <a class="btn btn-ghost btn-sm" href="/how-we-produced-no-mans-land.pdf" download>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5M4 19h16"/></svg>
-      Download this guide</button>
+      Download this guide</a>
   </div>
   <div class="stats">
     <div class="stat"><b>8:17</b><span>Runtime</span></div>
@@ -317,9 +317,9 @@ footer{margin-top:50px;padding-top:20px;border-top:1px solid var(--line);color:v
     <a class="btn btn-primary btn-sm" href="/works/no-mans-land">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="6 4 20 12 6 20 6 4" fill="currentColor" stroke="none"/></svg>
       Watch the film</a>
-    <button class="btn btn-ghost btn-sm" id="dl2">
+    <a class="btn btn-ghost btn-sm" href="/how-we-produced-no-mans-land.pdf" download>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5M4 19h16"/></svg>
-      Download</button>
+      Download</a>
   </div>
 </div>
 
@@ -334,11 +334,6 @@ footer{margin-top:50px;padding-top:20px;border-top:1px solid var(--line);color:v
   }
   window.addEventListener('scroll', onScroll, { passive: true });
   onScroll();
-  function download() { window.print(); }
-  ['dl', 'dl2'].forEach(function (id) {
-    var el = document.getElementById(id);
-    if (el) el.addEventListener('click', download);
-  });
 })();
 </script>
 
