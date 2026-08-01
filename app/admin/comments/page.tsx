@@ -90,7 +90,7 @@ export default async function AdminCommentsPage({ searchParams }: Props) {
                   "use server";
                   await purgeDeletedComments();
                 }}
-                className="admin-action-btn admin-action-btn--danger"
+                className="admin-tbl-btn admin-tbl-btn--danger"
                 style={{ fontSize: "0.75rem", padding: "0.3rem 0.75rem" }}
               >
                 Purge {deletedCount} deleted
@@ -218,7 +218,7 @@ export default async function AdminCommentsPage({ searchParams }: Props) {
                               "use server";
                               await adminModerateComment(c.id, "HIDE");
                             }}
-                            className="admin-action-btn"
+                            className="admin-tbl-btn"
                           >
                             Hide
                           </button>
@@ -231,7 +231,7 @@ export default async function AdminCommentsPage({ searchParams }: Props) {
                               "use server";
                               await adminModerateComment(c.id, "RESTORE");
                             }}
-                            className="admin-action-btn"
+                            className="admin-tbl-btn"
                           >
                             Restore
                           </button>
@@ -244,7 +244,7 @@ export default async function AdminCommentsPage({ searchParams }: Props) {
                               "use server";
                               await adminModerateComment(c.id, "DELETE");
                             }}
-                            className="admin-action-btn admin-action-btn--danger"
+                            className="admin-tbl-btn admin-tbl-btn--danger"
                           >
                             Delete
                           </button>
@@ -257,7 +257,7 @@ export default async function AdminCommentsPage({ searchParams }: Props) {
                               "use server";
                               await purgeSingleComment(c.id);
                             }}
-                            className="admin-action-btn admin-action-btn--danger"
+                            className="admin-tbl-btn admin-tbl-btn--danger"
                             title="Permanently remove from database"
                           >
                             Purge
@@ -271,7 +271,7 @@ export default async function AdminCommentsPage({ searchParams }: Props) {
                               "use server";
                               await adminModerateComment(c.id, "PIN");
                             }}
-                            className="admin-action-btn"
+                            className="admin-tbl-btn"
                           >
                             Pin
                           </button>
@@ -284,7 +284,7 @@ export default async function AdminCommentsPage({ searchParams }: Props) {
                               "use server";
                               await adminModerateComment(c.id, "UNPIN");
                             }}
-                            className="admin-action-btn"
+                            className="admin-tbl-btn"
                           >
                             Unpin
                           </button>

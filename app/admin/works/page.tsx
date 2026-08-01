@@ -3,7 +3,7 @@ import { setWorkStatus, reorderWork } from "@/lib/actions/works";
 import { DeleteWorkButton } from "@/components/delete-work-button";
 import Link from "next/link";
 import "./admin-works.css";
-import { Plus, Pencil, Eye, EyeOff, Heart, Share2, Film, ChevronsUp, ChevronsDown, ChevronUp, ChevronDown, LinkIcon } from "lucide-react";
+import { Plus, Pencil, Eye, EyeOff, Heart, Share2, Film, Clapperboard, Zap, Star, Home, ChevronsUp, ChevronsDown, ChevronUp, ChevronDown, LinkIcon } from "lucide-react";
 import type { Metadata } from "next";
 import type { WorkType, WorkStatus } from "@prisma/client";
 import WorkerStatus from "@/components/admin/worker-status";
@@ -169,11 +169,11 @@ export default async function AdminWorksPage({
               <th>Title</th>
               <th>Type</th>
               <th>Status</th>
-              <th title="Main video">Video</th>
-              <th title="Trailer">Trailer</th>
-              <th title="Preview clip">Preview</th>
-              <th>Featured</th>
-              <th>Home</th>
+              <th className="th-stat" title="Main video"><Film size={12} /></th>
+              <th className="th-stat" title="Trailer"><Clapperboard size={12} /></th>
+              <th className="th-stat" title="Preview clip"><Zap size={12} /></th>
+              <th className="th-stat" title="Featured"><Star size={12} /></th>
+              <th className="th-stat" title="Show on Home"><Home size={12} /></th>
               <th className="th-stat" title="Likes">
                 <Heart size={12} />
               </th>
@@ -264,14 +264,14 @@ export default async function AdminWorksPage({
                     </div>
                   </td>
                   <td>
-                    <div className="action-btns">
-                      <Link href={`/admin/works/${w.id}`} className="action-btn" title="Edit">
+                    <div className="tbl-btns">
+                      <Link href={`/admin/works/${w.id}`} className="tbl-btn" title="Edit">
                         <Pencil size={14} />
                       </Link>
                       <form action={setWorkStatus.bind(null, w.id, nextStatus)}>
                         <button
                           type="submit"
-                          className="action-btn"
+                          className="tbl-btn"
                           title={w.status === "PUBLISHED" ? "Unpublish" : "Publish"}
                         >
                           {w.status === "PUBLISHED" ? <EyeOff size={14} /> : <Eye size={14} />}

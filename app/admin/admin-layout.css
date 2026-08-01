@@ -298,8 +298,8 @@
 .role-badge--user  { background: rgba(148,163,184,0.07); color: var(--color-brand-muted);  border: 1px solid rgba(148,163,184,0.12); }
 
 /* ── Action buttons — rounded ── */
-.action-btns { display: flex; gap: 0.35rem; align-items: center; }
-.action-btn {
+.tbl-btns { display: flex; gap: 0.35rem; align-items: center; }
+.tbl-btn {
   display: flex; align-items: center; justify-content: center;
   width: 30px; height: 30px;
   background: rgba(255,255,255,0.04);
@@ -308,12 +308,12 @@
   text-decoration: none; cursor: pointer;
   transition: color 0.15s, border-color 0.15s, background 0.15s;
 }
-.action-btn:hover {
+.tbl-btn:hover {
   color: var(--color-brand-white);
   border-color: rgba(255,255,255,0.22);
   background: rgba(255,255,255,0.07);
 }
-.action-btn--danger:hover { color: #f87171; border-color: rgba(248,113,113,0.35); background: rgba(248,113,113,0.05); }
+.tbl-btn--danger:hover { color: #f87171; border-color: rgba(248,113,113,0.35); background: rgba(248,113,113,0.05); }
 
 /* ── Legacy ustat-row (kept for compat, pages with own glass cards override) ── */
 .ustat-row {

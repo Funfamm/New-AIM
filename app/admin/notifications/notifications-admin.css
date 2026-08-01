@@ -199,7 +199,7 @@
   flex-wrap: wrap;
 }
 
-.notif-action-btn {
+.notif-tbl-btn {
   font-family: var(--font-body);
   font-size: 0.75rem;
   font-weight: 600;
@@ -211,13 +211,13 @@
   cursor: pointer;
   transition: border-color 0.15s, color 0.15s;
 }
-.notif-action-btn:hover:not(:disabled) {
+.notif-tbl-btn:hover:not(:disabled) {
   border-color: var(--color-brand-accent);
   color: var(--color-brand-accent);
 }
-.notif-action-btn:disabled { opacity: 0.5; cursor: default; }
+.notif-tbl-btn:disabled { opacity: 0.5; cursor: default; }
 
-.notif-action-btn--danger:hover:not(:disabled) {
+.notif-tbl-btn--danger:hover:not(:disabled) {
   border-color: var(--color-brand-red);
   color: var(--color-brand-red);
 }

@@ -38,7 +38,7 @@ export default function AnnouncementActions({ id, isPublished }: Props) {
       <div className="notif-card-actions">
         {!isPublished ? (
           <button
-            className="notif-action-btn"
+            className="notif-tbl-btn"
             disabled={pending}
             onClick={() => run(() => publishAnnouncement(id))}
           >
@@ -46,7 +46,7 @@ export default function AnnouncementActions({ id, isPublished }: Props) {
           </button>
         ) : (
           <button
-            className="notif-action-btn"
+            className="notif-tbl-btn"
             disabled={pending}
             onClick={() => run(() => unpublishAnnouncement(id))}
           >
@@ -54,7 +54,7 @@ export default function AnnouncementActions({ id, isPublished }: Props) {
           </button>
         )}
         <button
-          className="notif-action-btn notif-action-btn--danger"
+          className="notif-tbl-btn notif-tbl-btn--danger"
           disabled={pending}
           onClick={() => {
             if (confirm("Delete this announcement? This cannot be undone.")) {
