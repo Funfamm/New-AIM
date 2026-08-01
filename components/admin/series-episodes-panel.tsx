@@ -1,5 +1,5 @@
 // Server component — episodes management panel rendered inside Series edit page.
-// CSS classes from admin-layout.css (admin-table, status-badge, action-btn, etc.)
+// CSS classes from admin-layout.css (admin-table, status-badge, tbl-btn, etc.)
 // are globally available under /admin via the admin layout.
 
 import Link from "next/link";
@@ -80,10 +80,10 @@ export default function SeriesEpisodesPanel({ seriesId, episodes }: Props) {
                     <span className={`dot ${ep.videoUrl ? "dot--green" : "dot--red"}`} />
                   </td>
                   <td>
-                    <div className="action-btns">
+                    <div className="tbl-btns">
                       <Link
                         href={`/admin/works/${ep.id}`}
-                        className="action-btn"
+                        className="tbl-btn"
                         title="Edit episode"
                       >
                         <Pencil size={14} />

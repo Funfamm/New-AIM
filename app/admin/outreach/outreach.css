@@ -556,7 +556,7 @@
   flex-wrap: wrap;
 }
 
-.outreach-action-btn {
+.outreach-tbl-btn {
   font-family: var(--font-body);
   font-size: 0.75rem;
   font-weight: 600;
@@ -568,12 +568,12 @@
   cursor: pointer;
   transition: border-color 0.15s, color 0.15s;
 }
-.outreach-action-btn:hover:not(:disabled) {
+.outreach-tbl-btn:hover:not(:disabled) {
   border-color: var(--color-brand-accent);
   color: var(--color-brand-accent);
 }
-.outreach-action-btn:disabled { opacity: 0.5; cursor: default; }
-.outreach-action-btn--danger:hover:not(:disabled) {
+.outreach-tbl-btn:disabled { opacity: 0.5; cursor: default; }
+.outreach-tbl-btn--danger:hover:not(:disabled) {
   border-color: var(--color-brand-red);
   color: var(--color-brand-red);
 }

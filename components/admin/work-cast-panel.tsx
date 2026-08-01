@@ -235,19 +235,19 @@ export default function WorkCastPanel({ workId }: Props) {
                 <div className="wcp-member-actions">
                   {confirmDeleteId === m.id ? (
                     <>
-                      <button type="button" className="wcp-action-btn wcp-action-btn--danger" onClick={() => remove(m.id)} title="Confirm delete">
+                      <button type="button" className="wcp-tbl-btn wcp-tbl-btn--danger" onClick={() => remove(m.id)} title="Confirm delete">
                         <Check size={12} />
                       </button>
-                      <button type="button" className="wcp-action-btn" onClick={() => setConfirmDeleteId(null)} title="Cancel">
+                      <button type="button" className="wcp-tbl-btn" onClick={() => setConfirmDeleteId(null)} title="Cancel">
                         <X size={12} />
                       </button>
                     </>
                   ) : (
                     <>
-                      <button type="button" className="wcp-action-btn" onClick={() => openEdit(m)} title="Edit">
+                      <button type="button" className="wcp-tbl-btn" onClick={() => openEdit(m)} title="Edit">
                         <Pencil size={12} />
                       </button>
-                      <button type="button" className="wcp-action-btn wcp-action-btn--danger" onClick={() => setConfirmDeleteId(m.id)} title="Delete">
+                      <button type="button" className="wcp-tbl-btn wcp-tbl-btn--danger" onClick={() => setConfirmDeleteId(m.id)} title="Delete">
                         <Trash2 size={12} />
                       </button>
                     </>

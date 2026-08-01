@@ -256,7 +256,7 @@
   flex-shrink: 0;
 }
 
-.wcp-action-btn {
+.wcp-tbl-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -269,12 +269,12 @@
   cursor: pointer;
   transition: color 0.15s, border-color 0.15s, background 0.15s;
 }
-.wcp-action-btn:hover {
+.wcp-tbl-btn:hover {
   color: var(--color-brand-light);
   border-color: rgba(255,255,255,0.2);
   background: var(--color-brand-surface);
 }
-.wcp-action-btn--danger:hover {
+.wcp-tbl-btn--danger:hover {
   color: var(--color-brand-red);
   border-color: rgba(192,57,43,0.4);
   background: rgba(192,57,43,0.06);

@@ -95,7 +95,7 @@
 
 /* ── Row actions ── */
 .tmpl-actions { display: flex; align-items: center; gap: 0.5rem; }
-.tmpl-action-btn {
+.tmpl-tbl-btn {
   font-family: var(--font-body); font-size: 0.75rem; font-weight: 500;
   background: none; border: 1px solid var(--color-brand-border);
   border-radius: 2px; padding: 0.25rem 0.6rem; cursor: pointer;
@@ -103,14 +103,14 @@
   text-decoration: none; display: inline-flex; align-items: center; gap: 0.25rem;
   white-space: nowrap;
 }
-.tmpl-action-btn:hover { color: var(--color-brand-white); border-color: var(--color-brand-muted); }
-.tmpl-action-btn--danger:hover  { color: var(--color-brand-red);    border-color: var(--color-brand-red); }
-.tmpl-action-btn--test          { color: #4ade80; border-color: rgba(74,222,128,0.3); }
-.tmpl-action-btn--test:hover    { color: #4ade80; border-color: rgba(74,222,128,0.7); background: rgba(74,222,128,0.06); }
-.tmpl-action-btn--reset         { color: var(--color-brand-accent); border-color: rgba(232,201,126,0.3); }
-.tmpl-action-btn--reset:hover   { color: var(--color-brand-accent); border-color: rgba(232,201,126,0.7); background: rgba(232,201,126,0.06); }
-.tmpl-action-btn--reset-confirm { color: #0a0a0a; background: var(--color-brand-accent); border-color: var(--color-brand-accent); }
-.tmpl-action-btn--reset-confirm:hover { filter: brightness(1.08); }
+.tmpl-tbl-btn:hover { color: var(--color-brand-white); border-color: var(--color-brand-muted); }
+.tmpl-tbl-btn--danger:hover  { color: var(--color-brand-red);    border-color: var(--color-brand-red); }
+.tmpl-tbl-btn--test          { color: #4ade80; border-color: rgba(74,222,128,0.3); }
+.tmpl-tbl-btn--test:hover    { color: #4ade80; border-color: rgba(74,222,128,0.7); background: rgba(74,222,128,0.06); }
+.tmpl-tbl-btn--reset         { color: var(--color-brand-accent); border-color: rgba(232,201,126,0.3); }
+.tmpl-tbl-btn--reset:hover   { color: var(--color-brand-accent); border-color: rgba(232,201,126,0.7); background: rgba(232,201,126,0.06); }
+.tmpl-tbl-btn--reset-confirm { color: #0a0a0a; background: var(--color-brand-accent); border-color: var(--color-brand-accent); }
+.tmpl-tbl-btn--reset-confirm:hover { filter: brightness(1.08); }
 
 /* ── Inline flash message ── */
 .tmpl-msg {

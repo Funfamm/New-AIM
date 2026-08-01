@@ -44,7 +44,7 @@ export default function OutreachCardActions({ id, isPublished }: Props) {
       <div className="outreach-card-actions">
         {!isPublished ? (
           <button
-            className="outreach-action-btn"
+            className="outreach-tbl-btn"
             disabled={pending}
             onClick={() => run(() => publishAnnouncement(id))}
           >
@@ -52,7 +52,7 @@ export default function OutreachCardActions({ id, isPublished }: Props) {
           </button>
         ) : (
           <button
-            className="outreach-action-btn"
+            className="outreach-tbl-btn"
             disabled={pending}
             onClick={() => run(() => unpublishAnnouncement(id))}
           >
@@ -64,14 +64,14 @@ export default function OutreachCardActions({ id, isPublished }: Props) {
         {confirming ? (
           <>
             <button
-              className="outreach-action-btn outreach-action-btn--danger"
+              className="outreach-tbl-btn outreach-tbl-btn--danger"
               disabled={pending}
               onClick={() => run(() => deleteAnnouncement(id))}
             >
               {pending ? "Deleting…" : "Yes, delete"}
             </button>
             <button
-              className="outreach-action-btn"
+              className="outreach-tbl-btn"
               disabled={pending}
               onClick={() => setConfirming(false)}
             >
@@ -80,7 +80,7 @@ export default function OutreachCardActions({ id, isPublished }: Props) {
           </>
         ) : (
           <button
-            className="outreach-action-btn outreach-action-btn--danger"
+            className="outreach-tbl-btn outreach-tbl-btn--danger"
             disabled={pending}
             onClick={() => setConfirming(true)}
           >

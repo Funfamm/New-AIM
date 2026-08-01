@@ -1,7 +1,4 @@
-/* Narrow the page container so the 11-col table doesn't give title 500px of air */
-.admin-page { max-width: 900px; }
-
-/* ── Works table — fixed column layout so 11 cols fit on desktop ── */
+/* ── Works table — fixed column layout so all 12 cols fit on desktop ── */
 .admin-works-table { table-layout: fixed; }
 
 /* Reduce horizontal padding on all works cells */
@@ -39,7 +36,8 @@
 .admin-works-table th:nth-child(8)  { width: 28px;  } /* Home */
 .admin-works-table th:nth-child(9)  { width: 38px;  } /* Likes */
 .admin-works-table th:nth-child(10) { width: 38px;  } /* Shares */
-.admin-works-table th:nth-child(11) { width: 128px; } /* Actions */
+.admin-works-table th:nth-child(11) { width: 132px; } /* Pos. — 4 chevrons + order number */
+.admin-works-table th:nth-child(12) { width: 128px; } /* Actions — 3 icon buttons */
 
 /* ── Title cell ── */
 .td-title {

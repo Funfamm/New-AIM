@@ -422,25 +422,25 @@
 }
 
 /* ── Action button variants ── */
-.action-btn--deactivate {
+.tbl-btn--deactivate {
   color: #f59e0b;
   font-size: 1.1rem;
   line-height: 1;
 }
 
-.action-btn--restore {
+.tbl-btn--restore {
   color: #60a5fa;
   font-size: 0.9rem;
   line-height: 1;
 }
 
-.action-btn--purge {
+.tbl-btn--purge {
   color: rgba(239, 68, 68, 0.6);
   font-size: 0.7rem;
   line-height: 1;
 }
 
-.action-btn--purge:hover:not(:disabled) {
+.tbl-btn--purge:hover:not(:disabled) {
   color: #ef4444;
 }
 

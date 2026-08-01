@@ -281,7 +281,7 @@ export default function SubtitleReviewModal({ subtitle, onClose, onTranslate }: 
             <span className="srm-grid-title">Language Status</span>
             <div className="srm-grid-actions">
               {failedLangs.length > 0 && (
-                <button className="srm-action-btn srm-action-btn--retry" onClick={retryAllFailed} disabled={globalRetrying}>
+                <button className="srm-tbl-btn srm-tbl-btn--retry" onClick={retryAllFailed} disabled={globalRetrying}>
                   <RefreshCw size={10} /> {globalRetrying ? "Retrying…" : `Retry ${failedLangs.length} failed`}
                 </button>
               )}
@@ -407,11 +407,11 @@ export default function SubtitleReviewModal({ subtitle, onClose, onTranslate }: 
                 : "No languages selected"}
             </div>
             <div className="srm-footer-actions">
-              <button className="srm-action-btn" onClick={selectMissing} disabled={missingLangs.length === 0 && failedLangs.length === 0}>
+              <button className="srm-tbl-btn" onClick={selectMissing} disabled={missingLangs.length === 0 && failedLangs.length === 0}>
                 Select missing
               </button>
-              <button className="srm-action-btn" onClick={selectAll}>Select all</button>
-              <button className="srm-action-btn" onClick={clearAll}>Clear</button>
+              <button className="srm-tbl-btn" onClick={selectAll}>Select all</button>
+              <button className="srm-tbl-btn" onClick={clearAll}>Clear</button>
               <button
                 className="srm-translate-btn"
                 onClick={handleTranslate}
@@ -616,16 +616,16 @@ export default function SubtitleReviewModal({ subtitle, onClose, onTranslate }: 
         .srm-cue-text { color: #ccc; white-space: pre-wrap; word-break: break-word; }
         .srm-cue-empty { padding: 12px 16px; font-size: 12px; color: #555; font-style: italic; }
         /* Footer */
-        .srm-action-btn {
+        .srm-tbl-btn {
           background: rgba(255,255,255,0.06);
           border: 1px solid #222; color: #999;
           font-size: 10px; padding: 4px 9px; border-radius: 4px;
           cursor: pointer; display: inline-flex; align-items: center; gap: 4px;
           white-space: nowrap;
         }
-        .srm-action-btn:hover:not(:disabled) { background: rgba(255,255,255,0.1); color: #ddd; }
-        .srm-action-btn:disabled { opacity: 0.35; cursor: not-allowed; }
-        .srm-action-btn--retry {
+        .srm-tbl-btn:hover:not(:disabled) { background: rgba(255,255,255,0.1); color: #ddd; }
+        .srm-tbl-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+        .srm-tbl-btn--retry {
           background: rgba(245,158,11,0.08);
           border-color: rgba(245,158,11,0.2); color: #f59e0b;
         }

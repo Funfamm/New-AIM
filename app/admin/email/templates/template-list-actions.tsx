@@ -110,55 +110,55 @@ export default function TemplateListActions({ id, name, isActive, isSystem }: Pr
       {/* ── Action row ── */}
       <span className="tmpl-actions">
 
-        <Link href={`/admin/email/templates/${id}`} className="tmpl-action-btn">
+        <Link href={`/admin/email/templates/${id}`} className="tmpl-tbl-btn">
           Edit
         </Link>
 
-        <button className="tmpl-action-btn" onClick={handlePreview} disabled={pending || previewLoading}>
+        <button className="tmpl-tbl-btn" onClick={handlePreview} disabled={pending || previewLoading}>
           {previewLoading ? "…" : "Preview"}
         </button>
 
-        <button className="tmpl-action-btn tmpl-action-btn--test" onClick={handleSendTest} disabled={pending}>
+        <button className="tmpl-tbl-btn tmpl-tbl-btn--test" onClick={handleSendTest} disabled={pending}>
           Send Test
         </button>
 
         {canReset && !confirmReset && (
-          <button className="tmpl-action-btn tmpl-action-btn--reset" onClick={handleReset} disabled={pending}>
+          <button className="tmpl-tbl-btn tmpl-tbl-btn--reset" onClick={handleReset} disabled={pending}>
             Reset Default
           </button>
         )}
         {canReset && confirmReset && (
           <>
-            <button className="tmpl-action-btn tmpl-action-btn--reset-confirm" onClick={handleReset} disabled={pending}>
+            <button className="tmpl-tbl-btn tmpl-tbl-btn--reset-confirm" onClick={handleReset} disabled={pending}>
               {pending ? "Resetting…" : "Confirm Reset"}
             </button>
-            <button className="tmpl-action-btn" onClick={() => setConfirmReset(false)} disabled={pending}>
+            <button className="tmpl-tbl-btn" onClick={() => setConfirmReset(false)} disabled={pending}>
               Cancel
             </button>
           </>
         )}
 
         {!isSystem && (
-          <button className="tmpl-action-btn" onClick={handleToggle} disabled={pending}>
+          <button className="tmpl-tbl-btn" onClick={handleToggle} disabled={pending}>
             {isActive ? "Deactivate" : "Activate"}
           </button>
         )}
 
-        <button className="tmpl-action-btn" onClick={handleDuplicate} disabled={pending}>
+        <button className="tmpl-tbl-btn" onClick={handleDuplicate} disabled={pending}>
           Duplicate
         </button>
 
         {!isSystem && !confirmDelete && (
-          <button className="tmpl-action-btn tmpl-action-btn--danger" onClick={handleDelete} disabled={pending}>
+          <button className="tmpl-tbl-btn tmpl-tbl-btn--danger" onClick={handleDelete} disabled={pending}>
             Delete
           </button>
         )}
         {!isSystem && confirmDelete && (
           <>
-            <button className="tmpl-action-btn tmpl-action-btn--danger" onClick={handleDelete} disabled={pending}>
+            <button className="tmpl-tbl-btn tmpl-tbl-btn--danger" onClick={handleDelete} disabled={pending}>
               {pending ? "Deleting…" : "Confirm delete"}
             </button>
-            <button className="tmpl-action-btn" onClick={() => setConfirmDelete(false)} disabled={pending}>
+            <button className="tmpl-tbl-btn" onClick={() => setConfirmDelete(false)} disabled={pending}>
               Cancel
             </button>
           </>

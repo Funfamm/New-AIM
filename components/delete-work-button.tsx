@@ -11,7 +11,7 @@ export function DeleteWorkButton({ id, title }: { id: string; title: string }) {
         if (!confirm(`Delete "${title}"?`)) e.preventDefault();
       }}
     >
-      <button type="submit" className="action-btn action-btn--danger" title="Delete">
+      <button type="submit" className="tbl-btn tbl-btn--danger" title="Delete">
         <Trash2 size={14} />
       </button>
     </form>
