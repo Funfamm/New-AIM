@@ -45,8 +45,8 @@ export function RegisterForm({ error }: { error?: string }) {
             fill it; form-filling bots do, and the server action drops the sign-up. */}
         <div aria-hidden="true" style={{ position: "absolute", left: "-10000px", width: 1, height: 1, overflow: "hidden" }}>
           <label>
-            Company website
-            <input type="text" name={HONEYPOT_FIELD} tabIndex={-1} autoComplete="off" defaultValue="" />
+            Leave this field empty
+            <input type="text" name={HONEYPOT_FIELD} tabIndex={-1} autoComplete="off" data-1p-ignore data-lpignore="true" defaultValue="" />
           </label>
         </div>
 

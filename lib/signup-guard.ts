@@ -76,5 +76,10 @@ export function isDisposableEmail(email: string | null | undefined): boolean {
   return DISPOSABLE_EMAIL_DOMAINS.some((d) => domain === d || domain.endsWith("." + d));
 }
 
-/** Name of the hidden honeypot input on the register form. People never see or fill it. */
-export const HONEYPOT_FIELD = "company_website";
+/**
+ * Name of the hidden honeypot input on the register form. People never see or fill it.
+ * The name is deliberately meaningless: browser and password-manager autofill match on
+ * words like "company", "website", "address" or "phone" and would fill such a field for
+ * a real person (in-app browsers included), silently dropping a genuine sign-up.
+ */
+export const HONEYPOT_FIELD = "aim_hp_k7";

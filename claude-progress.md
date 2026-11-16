@@ -198,7 +198,7 @@ Bots were registering with throwaway inboxes (`merepost.com`, `fextemp.com`) and
 - **New `lib/signup-guard.ts`** (pure, client+server): `validateDisplayName` (≤60 chars, letters/marks/digits + `space . , ' -` only, no URL/markup/TLD shapes), `isPlausibleEmail`, `isDisposableEmail` + `DISPOSABLE_EMAIL_DOMAINS` (extend the list when a new provider shows up), `HONEYPOT_FIELD`.
 - **`registerUser`**: honeypot (filled → silent redirect home, nothing created), email shape check, name validation, disposable-domain rejection — all before the DB/email work.
 - **`updateUserProfile`**: same name validation (was length-only), so the rule can't be bypassed from dashboard settings.
-- **Register form**: hidden honeypot input + `maxLength` on Name.
+- **Register form**: hidden honeypot input (meaningless field name so browser autofill never fills it for a real person) + `maxLength` on Name.
 - **Admin Users table**: name is one ellipsised line with the full value in `title`, so a junk name can't stretch a row.
 
 Not done here: Turnstile on `/register` (the widget + `TURNSTILE_SECRET_KEY` already exist for `/api/subscribe`; adding it to a Server Action form needs an end-to-end test against a real DB, which wasn't available). Existing spam rows were NOT touched — delete them from Admin → Users (name contains `***` or `hs=`).
