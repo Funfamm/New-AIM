@@ -61,10 +61,15 @@ function timeAgo(iso: string): string {
 
 // Deterministic absolute time (pinned to UTC) — identical on server and client, so it
 // is safe to render pre-mount as the SSR/hydration-stable placeholder for timeAgo.
+// Formatted by hand, NOT with toLocaleString: Intl output for the same locale/options
+// differs between Node's ICU and Safari/Firefox (separator, "at", narrow spaces), which
+// still produced React #418 on this page even with timeZone pinned to UTC.
+const UTC_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 function absTime(iso: string): string {
-  return new Date(iso).toLocaleString("en-GB", {
-    timeZone: "UTC", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
-  });
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${p(d.getUTCDate())} ${UTC_MONTHS[d.getUTCMonth()]}, ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}`;
 }
 
 function formatDur(startISO: string, endISO: string): string {

@@ -26,7 +26,24 @@ const TRANSIENT_CLIENT_PATTERNS: RegExp[] = [
   /Loading CSS chunk/i,
   /error loading dynamically imported module/i,    // dynamic import() flakiness
   /Importing a module script failed/i,
+  /^A network error occurred\.?$/i,                // WebKit: fetch dropped mid-flight
+  /An unexpected response was received from the server/i, // Next.js Server Action reply wasn't RSC (connection dropped / proxy page / stale tab)
 ];
+
+// SERVER-side requests that fail before reaching our code: a Server Action POST whose
+// action id doesn't exist in this build (a tab left open across a deploy, or a bot
+// replaying/forging the POST). Real but not actionable per-occurrence → WARN, so they
+// stay visible and countable without paging.
+const TRANSIENT_SERVER_PATTERNS: RegExp[] = [
+  /Failed to find Server Action/i,
+  /Invalid Server Actions request/i,
+];
+
+/** Level for an uncaught SERVER error: "WARN" for stale/forged Server Action posts, else "ERROR". */
+export function serverErrorLevel(message: string | null | undefined): ErrorLevel {
+  if (!message) return "ERROR";
+  return TRANSIENT_SERVER_PATTERNS.some((re) => re.test(message)) ? "WARN" : "ERROR";
+}
 
 /**
  * Level for a client error message: "WARN" for known-benign-but-real transient failures

@@ -98,6 +98,18 @@ _Nothing currently in progress._
 
 ---
 
+## Nov error digest: #418 on Visitors, Graph 502, monitor noise — 2026-11-15
+
+Triage of the Aug–Nov digest (13 groups, ~16 occurrences, all on release b1e0a3e). Only one was a code bug; the rest were transient or third-party.
+
+- **React #418 on `/admin/analytics/visitors`** (×2, Safari): the pre-mount `absTime` placeholder was pinned to UTC but still used `toLocaleString("en-GB", …)`. Intl output differs between Node's ICU and Safari, so server and client text could still mismatch. Now formatted by hand from `getUTC*` + a fixed month table — no Intl on the hydration path.
+- **`Graph sendMail failed: 502`** (error-digest cron, once): `sendViaGraph` in `lib/email.ts` retries once after 1.5s on 502/503/504 only. 4xx is never retried. `lib/bulk-email.ts` left alone (a retry there risks duplicate campaign sends).
+- **Monitor noise** — `ignore.ts`: drop `Error invoking postMessage: Java object is gone` (Android FB/IG in-app browser bridge, the Android twin of the WKWebView entry). `classify.ts`: WARN for WebKit `A network error occurred` and Server Action `An unexpected response was received from the server`; new `serverErrorLevel()` used by `instrumentation.ts` → WARN for `Failed to find Server Action` / `Invalid Server Actions request` (stale tabs / forged POSTs). Note: the level is part of the fingerprint, so these start new WARN groups; resolve the old ERROR groups in `/admin/errors`.
+- No action: `Load failed` / chunk-load (already WARN), one Neon `Can't reach database server` blip on Aug 10 (already degraded gracefully).
+
+`tsc --noEmit` clean; `npm run lint` exit 0. Not verified in a browser (no local DB) — confirm #418 stays gone on the preview/production Visitors page in Safari.
+
+
 ## Admin dashboard resilience + env save never landed — 2026-07-23
 
 A `work.count()` pool timeout (**still printing "connection limit: 5"**) crashed `GET /admin` for the admin. Two findings:
