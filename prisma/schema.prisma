@@ -1657,3 +1657,40 @@ model CastingApplicationNote {
   @@index([applicationId])
   @@map("casting_application_notes")
 }
+
+// ── Client website briefs ─────────────────────────────────────
+// A prospective web-design client fills in a brief at /brief/<token> with no account.
+// The token is the only credential, so it must stay unguessable (see makeToken()).
+enum ClientBriefStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  SUBMITTED
+}
+
+model ClientBrief {
+  id          String            @id @default(cuid())
+  token       String            @unique
+  club        String
+  contactName String?
+  email       String?
+  phone       String?
+  answers     Json              @default("{}")
+  status      ClientBriefStatus @default(NOT_STARTED)
+  submittedAt DateTime?
+  lastSeenAt  DateTime?
+  adminNotes  String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([status, updatedAt])
+  @@map("client_briefs")
+}
+
+// Single-row rate card used to price client briefs (id is always "singleton").
+model ClientBriefConfig {
+  id        String   @id @default("singleton")
+  rates     Json
+  updatedAt DateTime @updatedAt
+
+  @@map("client_brief_config")
+}

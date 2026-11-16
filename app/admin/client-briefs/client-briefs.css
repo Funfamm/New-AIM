@@ -1,0 +1,132 @@
+/* Client Briefs — admin. Brand tokens only; builds on the shared admin-* classes. */
+
+.cbrief .admin-page-title { display: flex; align-items: center; gap: 0.6rem; }
+.cbrief-sub {
+  margin: 0.4rem 0 0; max-width: 62ch;
+  font-family: var(--font-body); font-size: 0.85rem; color: var(--color-brand-muted);
+}
+
+.cbrief-flash {
+  margin: 0 0 1.25rem; padding: 0.75rem 1rem; border-radius: var(--radius-lg);
+  border: 1px solid var(--aim-border-gold); background: var(--aim-gold-soft);
+  font-family: var(--font-body); font-size: 0.85rem; color: var(--color-brand-white);
+}
+.cbrief-flash--error { border-color: rgba(248,113,113,0.35); background: rgba(248,113,113,0.08); }
+
+.cbrief-card {
+  border: 1px solid var(--color-brand-border-subtle); border-radius: 14px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.045) 0%, rgba(255,255,255,0.015) 100%), rgba(12,12,15,0.82);
+  padding: 1.25rem 1.35rem; margin-bottom: 1rem;
+}
+.cbrief-h2 {
+  margin: 0 0 0.85rem; font-family: var(--font-body); font-size: 0.95rem; font-weight: 700;
+  color: var(--color-brand-white);
+}
+.cbrief-h3 {
+  margin: 1.1rem 0 0.5rem; font-family: var(--font-body); font-size: 0.62rem; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-brand-accent);
+}
+.cbrief-empty { margin: 0; font-size: 0.85rem; color: var(--color-brand-muted); }
+
+/* ── Inputs ── */
+.cbrief-input {
+  width: 100%; height: 38px; padding: 0 0.8rem; border-radius: var(--radius-md);
+  border: 1px solid var(--color-brand-border); background: var(--color-brand-dark);
+  color: var(--color-brand-white); font-family: var(--font-body); font-size: 0.85rem;
+}
+.cbrief-input:focus-visible { outline: 2px solid var(--color-brand-accent); outline-offset: 1px; }
+.cbrief-textarea { height: auto; min-height: 96px; padding: 0.65rem 0.8rem; resize: vertical; line-height: 1.5; }
+.cbrief-new { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0.6rem; align-items: center; }
+.cbrief-new .admin-add-btn { justify-self: start; height: 38px; }
+
+/* ── List + detail ── */
+.cbrief-grid { display: grid; grid-template-columns: minmax(250px, 340px) minmax(0, 1fr); gap: 1rem; align-items: start; }
+.cbrief-list { display: grid; gap: 0.35rem; padding: 0.6rem; }
+.cbrief-list .cbrief-empty { padding: 0.6rem; }
+.cbrief-row {
+  display: grid; gap: 0.4rem; padding: 0.75rem 0.85rem; border-radius: 10px;
+  border: 1px solid transparent; text-decoration: none; color: var(--color-brand-light);
+  transition: background var(--duration-fast), border-color var(--duration-fast);
+}
+.cbrief-row:hover { background: rgba(255,255,255,0.04); }
+.cbrief-row--on { background: rgba(255,255,255,0.06); border-color: var(--aim-border-gold); }
+.cbrief-row-top, .cbrief-row-bottom { display: flex; justify-content: space-between; align-items: center; gap: 0.6rem; }
+.cbrief-row-top strong { font-size: 0.9rem; color: var(--color-brand-white); overflow-wrap: anywhere; }
+.cbrief-row-bottom { font-size: 0.72rem; color: var(--color-brand-muted); }
+.cbrief-num { font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
+
+.cbrief-status {
+  font-family: var(--font-body); font-size: 0.6rem; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; padding: 0.18rem 0.6rem; border-radius: 999px; white-space: nowrap;
+  background: rgba(148,163,184,0.12); color: #94a3b8;
+}
+.cbrief-status--in_progress { background: rgba(251,191,36,0.12); color: #fbbf24; }
+.cbrief-status--submitted   { background: rgba(74,222,128,0.13); color: #4ade80; }
+
+.cbrief-detail { min-width: 0; }
+.cbrief-detail-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.75rem; flex-wrap: wrap; }
+.cbrief-club { margin: 0; font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; color: var(--color-brand-white); }
+.cbrief-meta { margin: 0.35rem 0 0; font-size: 0.82rem; color: var(--color-brand-light); overflow-wrap: anywhere; }
+.cbrief-meta--dim { color: var(--color-brand-muted); font-size: 0.75rem; }
+.cbrief-link { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; margin-top: 0.9rem; }
+.cbrief-link-url {
+  flex: 1 1 240px; min-width: 0; padding: 0.55rem 0.75rem; border-radius: var(--radius-md);
+  border: 1px solid var(--color-brand-border); background: var(--color-brand-dark);
+  font-size: 0.75rem; color: var(--color-brand-light);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.cbrief-actions { display: flex; gap: 0.6rem; align-items: center; margin-top: 0.9rem; }
+
+/* ── Quote ── */
+.cbrief-quote-head { display: flex; gap: 2rem; flex-wrap: wrap; margin-bottom: 0.4rem; }
+.cbrief-label {
+  display: block; font-size: 0.6rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--color-brand-muted);
+}
+.cbrief-big {
+  display: block; font-family: var(--font-body); font-size: 1.6rem; font-weight: 700;
+  color: var(--color-brand-white); font-variant-numeric: tabular-nums;
+}
+.cbrief-fit { margin-right: 0.6rem; }
+.cbrief-fit--ok   { color: #4ade80; }
+.cbrief-fit--warn { color: #fbbf24; }
+.cbrief-fit--bad  { color: #f87171; }
+.cbrief-quote { width: 100%; border-collapse: collapse; margin-top: 0.75rem; font-size: 0.86rem; }
+.cbrief-quote td { padding: 0.45rem 0; border-bottom: 1px solid var(--color-brand-border-subtle); vertical-align: top; }
+.cbrief-quote td.cbrief-num { padding-left: 1rem; }
+.cbrief-quote-group td {
+  padding-top: 0.95rem; border-bottom: 0; font-size: 0.62rem; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-brand-muted);
+}
+.cbrief-quote-total td { border-bottom: 0; padding-top: 0.75rem; font-weight: 700; color: var(--color-brand-white); }
+
+/* ── Answers ── */
+.cbrief-swatches { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+.cbrief-swatch { width: 32px; height: 32px; border-radius: 8px; outline: 1px solid rgba(255,255,255,0.18); }
+.cbrief-swatches .cbrief-meta { margin: 0 0 0 0.4rem; }
+.cbrief-dl { margin: 0; display: grid; gap: 0.4rem; }
+.cbrief-dl > div { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); gap: 0.85rem; }
+.cbrief-dl dt { font-size: 0.8rem; color: var(--color-brand-muted); }
+.cbrief-dl dd { margin: 0; font-size: 0.84rem; color: var(--color-brand-light); white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* ── Delete ── */
+.cbrief-danger { margin-top: 1.1rem; padding-top: 0.9rem; border-top: 1px solid var(--color-brand-border-subtle); }
+.cbrief-danger summary { cursor: pointer; font-size: 0.8rem; color: #f87171; }
+.cbrief-delete {
+  display: inline-flex; align-items: center; gap: 0.4rem; margin-top: 0.7rem;
+  height: 36px; padding: 0 1rem; border-radius: 999px; cursor: pointer;
+  border: 1px solid rgba(248,113,113,0.45); background: rgba(248,113,113,0.08); color: #f87171;
+  font-family: var(--font-body); font-size: 0.78rem; font-weight: 600;
+}
+.cbrief-delete:hover { background: rgba(248,113,113,0.16); }
+
+/* ── Rate card ── */
+.cbrief-rates summary { cursor: pointer; font-family: var(--font-body); font-size: 0.95rem; font-weight: 700; color: var(--color-brand-white); }
+.cbrief-rate-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 0.45rem 1.5rem; }
+.cbrief-rate { display: grid; grid-template-columns: minmax(0, 1fr) 100px; gap: 0.6rem; align-items: center; font-size: 0.82rem; color: var(--color-brand-light); }
+.cbrief-rate-input { height: 32px; text-align: right; font-variant-numeric: tabular-nums; }
+
+@media (max-width: 900px) {
+  .cbrief-grid { grid-template-columns: minmax(0, 1fr); }
+  .cbrief-dl > div { grid-template-columns: minmax(0, 1fr); gap: 0.1rem; }
+}
