@@ -182,6 +182,22 @@ Production CLIENT error `TypeError: undefined is not an object (evaluating 'wind
 
 Net: the gate now protects the deployed app's runtime deps (the thing that matters), stays green against dev-tool + build-time-only churn, and still fails on a real runtime high/critical.
 
+## Dependency CVEs, Nov 2026: Next 15.5.29 + sharp/nanoid/source-map-js/deepmerge-ts — 2026-11-15
+
+The audit gate went red on every PR: advisories published since August against versions already in the lockfile (nothing in the PRs caused it).
+
+- **`next` 15.5.21 → 15.5.29** (`package.json` floor raised to `^15.5.28`, the first release patched for all six). Closes GHSA-p293-qw3h-jr36, GHSA-2xp9-vwfh-vxw4, GHSA-2464-fhr4-w9xw (all critical: RCE on Windows-hosted servers; RCE in the Image Optimization API via AVIF / SVG), GHSA-p3m5-59mp-jv5r (high: Server Actions DoS), GHSA-4jqv-mc3x-m676 + GHSA-mcj8-r9mp-w47p (moderate: SSG/ISR cache poisoning). Same major, patch releases only.
+- **`sharp` 0.35.3 → 0.35.5** (existing `overrides` entry raised): GHSA-rgj7-g3m4-5g8c, GHSA-wq5f-xc86-pv6w (bundled libheif / librsvg).
+- **`nanoid` 3.3.12 → 3.3.20**, **`source-map-js` 1.2.1 → 1.2.2** (transitive via postcss; `npm update`): GHSA-28wg-ghj8-5hjv, GHSA-2v37-7h3g-55p8, GHSA-68fv-2mgg-jv7q.
+- **`deepmerge-ts` 7.1.5 → 8.0.2** via a new `overrides` entry: GHSA-ggr8-5vv4-36mx. Its only consumer is the Prisma CLI's `@prisma/config`, which pins `7.1.5` exactly and has no patched 6.x release — the alternative was a Prisma major bump. v8 still ships a CJS build and the same `deepmerge` export; `prisma validate`, `prisma generate` and `prisma migrate deploy` (up to the DB connection) all run with it. **Remove the override once Prisma ships its own bump.**
+- Low-severity cleanup: `@aws-sdk/xml-builder` 3.972.28 → 3.972.43 drops the flagged `fast-xml-parser`.
+- No new allowlist entries. Still allowlisted as before: Next's own pinned build-time `postcss`.
+
+Lockfile diff is limited to those packages and their platform binaries (49 entries, checked against `main`); `npm ci` under npm 10 (CI's version) accepts it. `scripts/check-audit.mjs` passes; `npm run lint` exit 0; `tsc --noEmit` clean; `next build` succeeds (42/42 static pages); `/`, `/login`, `/register`, `/services` render and `/admin` redirects to login under `next dev`. Not verified: anything needing a database, and a Vercel build (blocked by the Hobby-plan cron limit, see below).
+
+**Deploy blocker found the same day (not fixed here):** every Vercel build fails instantly with "Hobby accounts are limited to daily cron jobs" because `vercel.json` has `*/5`, `*/15` and `*/30` crons. Builds worked through 2026-08-01, so the account dropped from Pro to Hobby after that. Owner decision: upgrade, or make those three crons daily.
+
+
 ## Dependency CVEs + audit-gate allowlist — 2026-07-23
 
 CI's `npm audit --audit-level=high` went red (newly-disclosed advisories; the #160 fix made the audit step actually block). NOT introduced by our code. Two classes:
