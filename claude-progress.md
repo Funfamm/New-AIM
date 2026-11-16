@@ -107,6 +107,19 @@ A `work.count()` pool timeout (**still printing "connection limit: 5"**) crashed
 
 `tsc` + lint clean.
 
+## Vercel deploys unblocked: all crons daily (Hobby plan) — 2026-11-15
+
+Every Vercel build had been failing instantly with "Hobby accounts are limited to daily cron jobs. This cron expression (*/5 * * * *) would run more than once per day." Builds worked through 2026-08-01, so the account dropped from Pro to Hobby after that; the three sub-daily crons then blocked all deploys, previews included. Owner chose to make them daily rather than upgrade.
+
+- `vercel.json`: `scheduled-outreach` `*/5` → `0 14 * * *`; `heal-video-jobs` `*/15` → `15 4 * * *`; `heal-email-queue` `*/30` → `45 4 * * *`. All eight crons are now daily.
+- **Behaviour change:** a scheduled announcement is published by the first daily run at or after its `scheduledAt` — up to 24h late (and Hobby fires anywhere within the hour). The compose-form hint now says so. "Send now" is unaffected. On Pro, restore `*/5` for near-exact timing; no code depends on the cadence.
+- Route header comments updated to match.
+
+**Pre-existing bug noticed, NOT fixed here:** `heal-video-jobs`, `heal-email-queue` and `reconcile-counts` export only `POST`, but Vercel Cron invokes its paths with `GET` — so these three have been answering 405 and never ran from cron, at any cadence. Adding a `GET` export would fix it, but the first `heal-email-queue` run would re-queue every old FAILED email that still has retries left; check the size of that backlog before enabling it.
+
+`tsc --noEmit` clean; `npm run lint` exit 0. Real proof is the Vercel preview build on the PR.
+
+
 ## Legacy locale 404s → 301 redirects — 2026-07-31
 
 Search Console reported **37 "Not found (404)"** URLs. Pulled the list: they are all **locale-prefixed routes from the previous platform** — /ar/about, /zh, /de/about, /ar, /fr, /ru, /ar/works/year-of-completeness, /de/contact, /pt/about … The site no longer has i18n, so Google kept re-crawling dead translated routes. Not a bug in the current site.
