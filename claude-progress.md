@@ -116,6 +116,22 @@ Search Console reported **37 "Not found (404)"** URLs. Pulled the list: they are
 
 Chose 301/permanent over leaving 404s (or serving 410) because these old URLs may still hold inbound links; redirecting preserves that value and gives a working page to anyone who clicks an old link.
 
+## Client website brief (`/brief/[token]`) + admin Client Briefs — 2026-11-15
+
+The studio now takes website-build clients (first: Dunamis FC, a NY youth soccer academy). A client fills in a brief with **no account**; the studio prices from the answers.
+
+- **Schema**: `ClientBrief` (`client_briefs`), `ClientBriefConfig` (`client_brief_config`, singleton rate card), enum `ClientBriefStatus`. Migration `20261115120000_add_client_briefs` — additive only, auto-applied by the `build` script's `prisma migrate deploy`.
+- **Shared module `lib/client-brief/schema.ts`** (pure, client+server): the 8-step question set, `sanitizeAnswers` (known keys, allowed option values, length caps), `summarize`, the rate card (`DEFAULT_RATES`, `normalizeRates`), `estimate` (itemised quote, range, monthly care, budget fit) and `makeToken` (club slug + 10 random chars).
+- **Client page `app/brief/[token]/`** — outside `(public)` on purpose (no nav/footer), `noindex`, `/brief` disallowed in robots. Canvas stadium cover, match-clock progress, a **live sketch of the client's future homepage** that rebuilds from their answers (6 style themes, team colors, nav, a section per ticked feature), debounced autosave, and a "full time" submit screen. `/brief/demo` runs everything without saving. Uses Big Shoulders + JetBrains Mono via `next/font` (scoped CSS variables) and CSS modules; `loading.tsx` replaces the global spinner.
+- **Public API `app/api/brief/[token]/route.ts`** (GET/PUT): per-IP `rateLimit` (40/min), 100 KB body cap, token shape check, honeypot, answers re-sanitized server-side. On submit it emails `ADMIN_ALERT_EMAIL` (falls back to `GRAPH_EMAIL_SENDER`) as `ADMIN_ALERT`, awaited so serverless freeze can't drop it.
+- **Admin `app/admin/client-briefs/`** — Server Component page (`?id=` selects a brief): create link, answers, quote, private notes, delete, editable rate card. Actions in `brief-actions.ts`, each `requireAdmin` + `writeAudit` (`CLIENT_BRIEF_CREATE/NOTES/DELETE/RATES`). Sidebar link added.
+- Gotcha fixed during the port: `globals.css` paints every `h1–h4` brand-white, which made headings invisible on the sketch's light themes → `.page h1…h4 { color: inherit }` in `preview.module.css`.
+
+**Starting rates are placeholders** ($3,500 base for 5 pages, etc.) — set real prices in the rate card before quoting.
+
+Verified locally with `/brief/demo` (cover, flow, all 6 themes, palettes, feature sections, submit), the API demo path, token 404s, and the logged-out admin redirect. `tsc --noEmit` clean; `npm run lint` exit 0. **Not verified** (no local DB): real token load/autosave/submit, the submit email, and the admin page with data — test on the preview deploy before sending a client a link. Note: `next dev --turbopack` currently fails on `app/favicon.ico` ("PNG is not in RGBA format"), unrelated to this change; plain `next dev` works.
+
+
 ## Services page — client-work landing page + Service schema — 2026-07-31
 
 Gap found while working the SEO checklist: the WorkType enum has COMMERCIAL, BRANDING, CAMPAIGN, CASE_STUDY (they DO offer client services) but there was **no /services page** — a brand searching for AI video production had nowhere to land, and no page targeted those terms.
