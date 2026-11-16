@@ -191,6 +191,21 @@ CI's `npm audit --audit-level=high` went red (newly-disclosed advisories; the #1
 
 Process note: PR #171 was merged while this audit check was red (the red was these pre-existing dep CVEs, not #171's code — lint+tsc+Vercel were green). Now that the audit gate is real (#160), verify it green before merging.
 
+## Sign-up link-spam guard — 2026-11-15
+
+Bots were registering with throwaway inboxes (`merepost.com`, `fextemp.com`) and stuffing link spam into the optional Name field (`*** <a href=…>$3,222 payment available</a> *** hs=…`). `registerUser` stored the name unvalidated, so junk rows landed in Admin → Users and each sign-up spent a welcome email. (The welcome email itself was safe: it escapes the name and uses only its first word.)
+
+- **New `lib/signup-guard.ts`** (pure, client+server): `validateDisplayName` (≤60 chars, letters/marks/digits + `space . , ' -` only, no URL/markup/TLD shapes), `isPlausibleEmail`, `isDisposableEmail` + `DISPOSABLE_EMAIL_DOMAINS` (extend the list when a new provider shows up), `HONEYPOT_FIELD`.
+- **`registerUser`**: honeypot (filled → silent redirect home, nothing created), email shape check, name validation, disposable-domain rejection — all before the DB/email work.
+- **`updateUserProfile`**: same name validation (was length-only), so the rule can't be bypassed from dashboard settings.
+- **Register form**: hidden honeypot input + `maxLength` on Name.
+- **Admin Users table**: name is one ellipsised line with the full value in `title`, so a junk name can't stretch a row.
+
+Not done here: Turnstile on `/register` (the widget + `TURNSTILE_SECRET_KEY` already exist for `/api/subscribe`; adding it to a Server Action form needs an end-to-end test against a real DB, which wasn't available). Existing spam rows were NOT touched — delete them from Admin → Users (name contains `***` or `hs=`).
+
+Helper checked with 37 ad-hoc cases (real names in several scripts pass; the captured spam payloads fail). `tsc --noEmit` clean; `npm run lint` exit 0. The register flow itself was not run end-to-end (no local DB).
+
+
 ## Auth surface hardening (rate limits + kill-switch) — 2026-07-23
 
 Fixes from a multi-agent security audit of the auth/anti-abuse surface (both HIGH findings adversarially confirmed). Baseline was already strong (DB-backed login throttle, bcrypt-12, hashed rotating refresh tokens, tokenVersion revocation, enumeration-safe forgot responses, security headers). Closed the exploitable gaps:

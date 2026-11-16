@@ -808,6 +808,14 @@
   max-width: 200px;
 }
 
+/* One line, ellipsised — a junk/over-long name can't stretch the row (full value in title). */
+.ucell-name-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .ucell-email {
   max-width: 200px;
   word-break: break-word;
