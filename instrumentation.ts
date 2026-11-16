@@ -16,8 +16,10 @@ export async function onRequestError(
       route:  "API",
       action: "ACTION",
     };
+    const { serverErrorLevel } = await import("@/lib/monitoring/classify");
+    const message = error instanceof Error ? error.message : String(error ?? "");
     captureError(error, {
-      level:  "ERROR",
+      level:  serverErrorLevel(message),
       source: SOURCE[context?.routeType ?? "render"] ?? "SERVER",
       route:  request?.path,
       method: request?.method,

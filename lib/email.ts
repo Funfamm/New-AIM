@@ -117,8 +117,10 @@ async function sendViaGraph(to: string, subject: string, html: string): Promise<
 
   const { access_token } = (await tokenRes.json()) as { access_token: string };
 
-  // Send mail via Graph API
-  const mailRes = await fetch(
+  // Send mail via Graph API. Graph's front door occasionally answers 502/503/504 with an
+  // empty "UnknownError" body (a gateway blip, not a rejection of the message); one
+  // delayed retry clears it. 4xx and other failures are never retried.
+  const send = () => fetch(
     `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(from)}/sendMail`,
     {
       method: "POST",
@@ -137,6 +139,12 @@ async function sendViaGraph(to: string, subject: string, html: string): Promise<
       }),
     }
   );
+
+  let mailRes = await send();
+  if (mailRes.status === 502 || mailRes.status === 503 || mailRes.status === 504) {
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    mailRes = await send();
+  }
 
   if (!mailRes.ok) {
     const body = await mailRes.text();
