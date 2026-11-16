@@ -2,7 +2,11 @@
  * GET /api/cron/scheduled-outreach
  *
  * Processes announcements that have a scheduledAt time ≤ now and are still unpublished.
- * Called by Vercel Cron every 5 minutes: "* /5 * * * *"
+ * Called by Vercel Cron ONCE A DAY at about 14:00 UTC ("0 14 * * *"). The Vercel Hobby
+ * plan rejects any cron that runs more than daily (the whole deployment fails), so a
+ * scheduled announcement goes out on the first daily run at or after its scheduledAt —
+ * up to 24h later, and Hobby may fire anywhere within that hour. On Pro this can go back
+ * to every 5 minutes ("* /5 * * * *") for near-exact timing; nothing else needs to change.
  *
  * Authorization: Vercel sends `Authorization: Bearer ${CRON_SECRET}` — we verify it.
  * Idempotent: marks publishedAt before doing work to prevent double-publish.

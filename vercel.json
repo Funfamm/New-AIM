@@ -6,15 +6,15 @@
     },
     {
       "path": "/api/cron/scheduled-outreach",
-      "schedule": "*/5 * * * *"
+      "schedule": "0 14 * * *"
     },
     {
       "path": "/api/cron/heal-video-jobs",
-      "schedule": "*/15 * * * *"
+      "schedule": "15 4 * * *"
     },
     {
       "path": "/api/cron/heal-email-queue",
-      "schedule": "*/30 * * * *"
+      "schedule": "45 4 * * *"
     },
     {
       "path": "/api/cron/reconcile-counts",

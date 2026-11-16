@@ -6,7 +6,8 @@
  * to PENDING for retry or marks them FAILED after MAX_AUTO_RETRIES.
  *
  * Protected by CRON_SECRET. Add to vercel.json schedule.
- * Recommended schedule: every 15 minutes  "* /15 * * * *"
+ * Scheduled once a day in vercel.json (the Vercel Hobby plan rejects more frequent crons;
+ * on Pro, every 15 minutes "* /15 * * * *" is the intended cadence).
  */
 
 import { NextResponse } from "next/server";

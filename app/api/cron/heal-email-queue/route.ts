@@ -6,7 +6,8 @@
  * can pick them up on its next cycle.
  *
  * Protected by CRON_SECRET.
- * Recommended schedule: every 30 minutes  "* /30 * * * *"
+ * Scheduled once a day in vercel.json (the Vercel Hobby plan rejects more frequent crons;
+ * on Pro, every 30 minutes "* /30 * * * *" is the intended cadence).
  */
 
 import { NextResponse } from "next/server";

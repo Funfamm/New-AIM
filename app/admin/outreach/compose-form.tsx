@@ -684,7 +684,7 @@ export default function OutreachComposeForm({
       {scheduledAt && (
         <p className="outreach-hint" style={{ marginTop: "0.3rem" }}>
           {composeType === "announcement"
-            ? "Announcement will be saved as a draft and published automatically at this time."
+            ? "Announcement will be saved as a draft and published by the daily run (around 14:00 UTC) on or after this time."
             : "Email will be queued now and delivered at this time. In-app notifications send immediately."
           }
         </p>
