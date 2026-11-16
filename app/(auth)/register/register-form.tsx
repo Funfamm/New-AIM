@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { registerUser } from "@/lib/actions/auth";
 import { PasswordInput } from "@/components/password-input";
+import { DISPLAY_NAME_MAX, HONEYPOT_FIELD } from "@/lib/signup-guard";
 
 export function RegisterForm({ error }: { error?: string }) {
   const [matchError, setMatchError] = useState<string | null>(null);
@@ -36,7 +37,17 @@ export function RegisterForm({ error }: { error?: string }) {
             className="form-input"
             placeholder="Your name"
             autoComplete="name"
+            maxLength={DISPLAY_NAME_MAX}
           />
+        </div>
+
+        {/* Honeypot: off-screen, unfocusable, hidden from assistive tech. People never
+            fill it; form-filling bots do, and the server action drops the sign-up. */}
+        <div aria-hidden="true" style={{ position: "absolute", left: "-10000px", width: 1, height: 1, overflow: "hidden" }}>
+          <label>
+            Leave this field empty
+            <input type="text" name={HONEYPOT_FIELD} tabIndex={-1} autoComplete="off" data-1p-ignore data-lpignore="true" defaultValue="" />
+          </label>
         </div>
 
         <div className="form-group">

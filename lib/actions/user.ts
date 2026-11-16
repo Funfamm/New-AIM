@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { validateDisplayName } from "@/lib/signup-guard";
 
 async function requireUser() {
   const session = await auth();
@@ -46,11 +47,12 @@ export async function getUserPasswordState(): Promise<{ hasPassword: boolean }> 
 /** Update the current user's display name. */
 export async function updateUserProfile(formData: FormData) {
   const userId = await requireUser();
-  const name = (formData.get("name") as string | null)?.trim() || null;
-
-  if (name && name.length > 80) {
-    redirect("/dashboard/settings?error=Name+is+too+long");
+  // Same rule as sign-up: a display name is a name — no links, markup or symbols.
+  const nameCheck = validateDisplayName(formData.get("name"));
+  if (!nameCheck.ok) {
+    redirect("/dashboard/settings?error=" + encodeURIComponent(nameCheck.error));
   }
+  const name = nameCheck.name;
 
   await prisma.user.update({
     where: { id: userId },

@@ -15,16 +15,34 @@ import { trackEvent, getOrCreateSession } from "@/lib/analytics";
 import { writeSecurityEvent, createSecurityAlert } from "@/lib/security";
 import { rateLimit } from "@/lib/rate-limit";
 import { getClientIpHash } from "@/lib/request-ip";
+import { HONEYPOT_FIELD, isDisposableEmail, isPlausibleEmail, validateDisplayName } from "@/lib/signup-guard";
 
 // ── Register ──────────────────────────────────────────────────
 export async function registerUser(formData: FormData) {
-  const name = formData.get("name") as string;
   const email = (formData.get("email") as string)?.toLowerCase().trim();
   const password = formData.get("password") as string;
 
+  // Honeypot — a field people never see. A filled value means a form-filling bot:
+  // send it home as if nothing happened, without creating anything or revealing why.
+  if (String(formData.get(HONEYPOT_FIELD) ?? "").trim()) {
+    redirect("/");
+  }
+
   // Basic validation
-  if (!email || !password || password.length < 8) {
+  if (!isPlausibleEmail(email) || !password || password.length < 8) {
     redirect("/register?error=" + encodeURIComponent("Please provide a valid email and a password of at least 8 characters."));
+  }
+
+  // The display name is a NAME — no links, markup or symbols (see lib/signup-guard.ts).
+  // Rejecting the spam payload outright removes the reason to script this form at all.
+  const nameCheck = validateDisplayName(formData.get("name"));
+  if (!nameCheck.ok) {
+    redirect("/register?error=" + encodeURIComponent(nameCheck.error));
+  }
+  const name = nameCheck.name;
+
+  if (isDisposableEmail(email)) {
+    redirect("/register?error=" + encodeURIComponent("Please sign up with a permanent email address — temporary inboxes aren't supported."));
   }
 
   // Throttle scripted signup floods — each success creates/updates a User and can send

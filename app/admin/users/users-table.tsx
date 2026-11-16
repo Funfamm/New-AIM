@@ -422,7 +422,9 @@ export function UsersTable({ users, isFiltered, sessionRole }: Props) {
                 {/* Name + Email */}
                 <td>
                   <div className="ucell-name">
-                    {u.name ?? <span className="ucell-anon">No name</span>}
+                    {u.name
+                      ? <span className="ucell-name-text" title={u.name}>{u.name}</span>
+                      : <span className="ucell-anon">No name</span>}
                     {u.isSelf && <span className="uself-tag">you</span>}
                   </div>
                   <div className="ucell-email">{u.email}</div>
